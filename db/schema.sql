@@ -68,5 +68,7 @@ create index if not exists ix_cad_cnpj on cadastro_institucional (cnpj);
 -- RLS: leitura pública (anon) só-leitura; escrita via service_role
 alter table painel1_servidores enable row level security;
 alter table cadastro_institucional enable row level security;
-create policy if not exists p1_read on painel1_servidores for select using (true);
-create policy if not exists cad_read on cadastro_institucional for select using (true);
+drop policy if exists p1_read on painel1_servidores;
+create policy p1_read on painel1_servidores for select using (true);
+drop policy if exists cad_read on cadastro_institucional;
+create policy cad_read on cadastro_institucional for select using (true);

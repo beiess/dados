@@ -27,6 +27,8 @@ COLS = {
         "atores_relevantes", "atores_confirmados", "atores_validados", "observacoes"],
 }
 TAB = {"painel1": "painel1_servidores", "cadastro": "cadastro_institucional"}
+# coluna destino -> coluna de origem no CSV (quando diferem)
+RENAME = {"ibge": "cod_ibge"}
 
 
 def post(table, rows):
@@ -63,7 +65,7 @@ def main():
             n += 1
             if n <= feito:
                 continue
-            buf.append({c: (r.get(c) or None) for c in cols})
+            buf.append({c: (r.get(RENAME.get(c, c)) or None) for c in cols})
             if len(buf) >= LOTE:
                 post(table, buf); enviados += len(buf); buf = []
                 open(prog, "w").write(str(enviados))

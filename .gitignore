@@ -1,3 +1,5 @@
 *.csv
 *.progress
 .DS_Store
+.supabase_env
+config.js

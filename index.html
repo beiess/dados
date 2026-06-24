@@ -2,20 +2,19 @@
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>Base Canônica TCE-MG — Painéis</title>
 <style>
-:root{--b:#d0d7de}
-*{box-sizing:border-box}
+:root{--b:#d0d7de}*{box-sizing:border-box}
 body{font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f6f8fa;color:#1f2328}
-header{padding:14px 20px;background:#0d1117;color:#fff;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-header h1{margin:0;font-size:16px}
+header{padding:12px 18px;background:#0d1117;color:#fff;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{margin:0;font-size:15px}
 header select,header input{padding:7px 9px;border-radius:7px;border:1px solid #30363d;background:#161b22;color:#fff;font:inherit}
-.tabs{display:flex;gap:8px;padding:10px 20px;background:#fff;border-bottom:1px solid var(--b);align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:8px;padding:9px 18px;background:#fff;border-bottom:1px solid var(--b);align-items:center;flex-wrap:wrap}
 .tab{padding:8px 14px;border:1px solid var(--b);border-radius:8px;background:#fff;cursor:pointer;font-weight:600}
 .tab.on{background:#0d1117;color:#fff;border-color:#0d1117}
 button{padding:7px 11px;border:1px solid var(--b);border-radius:8px;background:#fff;cursor:pointer;font:inherit}
 #anon.on{background:#8250df;color:#fff;border-color:#8250df}
-#q{padding:7px 10px;border:1px solid var(--b);border-radius:8px;width:280px}
+#q{padding:7px 10px;border:1px solid var(--b);border-radius:8px;width:260px}
 #cnt{font-size:12px;color:#57606a}
-.wrap{padding:0 16px 40px}
+.wrap{padding:0 14px 40px}
 .tw{overflow:auto;max-height:78vh;border:1px solid var(--b);border-radius:8px;background:#fff;margin-top:10px}
 table{border-collapse:collapse;width:100%;table-layout:fixed}
 th,td{padding:6px 9px;border:1px solid var(--b);text-align:left;vertical-align:top;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -23,7 +22,7 @@ td.ml{white-space:normal}
 thead th{background:#f6f8fa;position:sticky;top:0;z-index:3;font-size:11px;text-transform:uppercase;color:#57606a;position:relative}
 .rz{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize}.rz:hover{background:#0969da}
 tr:hover{background:#f6f8fa}.doc{color:#8250df;font-variant-numeric:tabular-nums}.na{color:#c0c4ca}
-a{color:#0969da}.msg{padding:20px;color:#57606a}.S{color:#1a7f37;font-weight:700;text-align:center}
+a{color:#0969da}.msg{padding:24px;color:#57606a}.S{color:#1a7f37;font-weight:700;text-align:center}
 </style></head><body>
 <header>
   <h1>Base Canônica TCE-MG</h1>
@@ -38,59 +37,53 @@ a{color:#0969da}.msg{padding:20px;color:#57606a}.S{color:#1a7f37;font-weight:700
   <button onclick="setTab(tab===1?2:1)">↔ ir para o outro painel</button>
 </div>
 <div class=wrap><div class=tw id=tw><div class=msg>Selecione um município…</div></div></div>
-<script src="config.js"></script>
 <script>
-// ---- colunas exibidas ----
-const C1=["orgao","setor","cargo_funcao","nome","cpf","matricula","responsabilidade","consta_site","email_entidade","telefone_entidade","site_entidade","origem"];
-const C2=["orgao","esfera","cnpj","endereco","contato","email","site_oficial","portal_transparencia","gestores","atores_validados","observacoes"];
-const ML={responsabilidade:1,email_entidade:1,gestores:1,atores_validados:1,observacoes:1,emails_setoriais:1,redes_sociais:1};
-const WID={orgao:230,setor:190,cargo_funcao:190,nome:210,cpf:130,matricula:90,responsabilidade:230,consta_site:80,email_entidade:220,telefone_entidade:140,site_entidade:70,origem:200,esfera:120,cnpj:130,endereco:240,contato:140,email:200,site_oficial:70,portal_transparencia:80,gestores:300,atores_validados:280,observacoes:200};
-let tab=1, dados={1:[],2:[]}, anon=true, ibge=null;
-
+const ML={responsabilidade:1,email_entidade:1,gestores:1,atores_validados:1,observacoes:1};
+const LINKC={site_entidade:1,site_oficial:1,portal_transparencia:1};
+const WID={orgao:230,setor:190,cargo_funcao:190,nome:210,cpf:130,matricula:90,responsabilidade:240,consta_site:80,email_entidade:220,telefone_entidade:140,site_entidade:70,origem:200,esfera:120,cnpj:130,endereco:240,contato:140,email:200,site_oficial:70,portal_transparencia:80,gestores:300,atores_validados:280,observacoes:200};
+let tab=1, dados={1:null,2:null}, anon=true, ibge=null;
 function mask(c){return (c&&c.length===11)?("***."+c.slice(3,6)+"."+c.slice(6,9)+"-**"):c;}
-function setTab(n){tab=n;document.getElementById('t1').classList.toggle('on',n===1);document.getElementById('t2').classList.toggle('on',n===2);render();}
+function esc(s){return (''+s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function setTab(n){tab=n;t1.classList.toggle('on',n===1);t2.classList.toggle('on',n===2);render();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
-
-async function sb(path){
-  const r=await fetch(SB_URL+'/rest/v1/'+path,{headers:{apikey:SB_ANON,Authorization:'Bearer '+SB_ANON}});
-  if(!r.ok) throw new Error('Supabase '+r.status+': '+(await r.text()).slice(0,200));
-  return r.json();
-}
 async function load(){
-  ibge=document.getElementById('muni').value;
-  document.getElementById('tw').innerHTML='<div class=msg>Carregando…</div>';
+  ibge=document.getElementById('muni').value; dados={1:null,2:null};
+  tw.innerHTML='<div class=msg>Carregando…</div>';
   try{
-    dados[2]=await sb('cadastro_institucional?ibge=eq.'+ibge+'&select=*&order=orgao');
-    dados[1]=await sb('painel1_servidores?ibge=eq.'+ibge+'&select=*&order=orgao,nome&limit=20000');
-  }catch(e){document.getElementById('tw').innerHTML='<div class=msg>Erro: '+e.message+'</div>';return;}
+    const [a,b]=await Promise.all([
+      fetch('data/p1/'+ibge+'.json').then(r=>r.ok?r.json():{c:[],r:[]}),
+      fetch('data/p2/'+ibge+'.json').then(r=>r.ok?r.json():{c:[],r:[]})]);
+    dados[1]=a; dados[2]=b;
+  }catch(e){tw.innerHTML='<div class=msg>Erro ao carregar: '+e.message+'</div>';return;}
   render();
 }
 function render(){
-  if(!ibge){return;}
-  const cols=tab===1?C1:C2, rows=dados[tab], q=document.getElementById('q').value.toLowerCase();
+  if(!ibge||!dados[tab]){return;}
+  const d=dados[tab], cols=d.c, q=document.getElementById('q').value.toLowerCase();
+  const ci=Object.fromEntries(cols.map((c,i)=>[c,i]));
   const cg='<colgroup>'+cols.map(c=>'<col style="width:'+(WID[c]||140)+'px">').join('')+'</colgroup>';
   const head='<thead><tr>'+cols.map(c=>'<th>'+c+'<div class=rz></div></th>').join('')+'</tr></thead>';
-  let shown=0; const body=rows.filter(r=>{
-    if(!q)return true; return cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q));
-  }).map(r=>{shown++;return '<tr>'+cols.map(c=>{
-    let v=r[c]||'';
-    if(c==='cpf'){let d=anon?mask(v):v;return '<td class=doc>'+(d||'<span class=na>—</span>')+'</td>';}
-    if(!v)return '<td><span class=na>—</span></td>';
-    if(c==='consta_site')return '<td class=S>'+v+'</td>';
-    if((c==='site_oficial'||c==='site_entidade'||c==='portal_transparencia')&&(''+v).startsWith('http'))return '<td><a href="'+v+'" target=_blank>link</a></td>';
-    if(ML[c])return '<td class=ml>'+(''+v).split(' | ').map(x=>esc(x)).join('<br>')+'</td>';
-    return '<td>'+esc(v)+'</td>';
-  }).join('')+'</tr>';}).join('');
-  document.getElementById('tw').innerHTML='<table>'+cg+head+'<tbody>'+(body||'<tr><td>sem dados</td></tr>')+'</tbody></table>';
-  document.getElementById('cnt').textContent=shown+' de '+rows.length+' registros';
-  // resizer
+  let shown=0;
+  const body=d.r.filter(row=>!q||row.some(v=>(''+(v||'')).toLowerCase().includes(q))).map(row=>{
+    shown++;return '<tr>'+cols.map((c,i)=>{
+      let v=row[i]||'';
+      if(c==='cpf'){let x=anon?mask(v):v;return '<td class=doc>'+(x||'<span class=na>—</span>')+'</td>';}
+      if(!v)return '<td><span class=na>—</span></td>';
+      if(c==='consta_site')return '<td class=S>'+esc(v)+'</td>';
+      if(LINKC[c]&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>link</a></td>';
+      if(ML[c])return '<td class=ml>'+(''+v).split(' | ').map(esc).join('<br>')+'</td>';
+      return '<td>'+esc(v)+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  tw.innerHTML='<table>'+cg+head+'<tbody>'+(body||'<tr><td>sem dados</td></tr>')+'</tbody></table>';
+  document.getElementById('cnt').textContent=shown+' de '+d.r.length+' registros';
   document.querySelectorAll('thead th').forEach((th,i)=>{const h=th.querySelector('.rz');if(!h)return;h.onmousedown=e=>{e.preventDefault();const col=document.querySelectorAll('colgroup col')[i],sx=e.pageX,sw=col.getBoundingClientRect().width;const mv=ev=>col.style.width=Math.max(40,sw+ev.pageX-sx)+'px',up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)};document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up)};});
 }
-function esc(s){return (''+s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
-// init
+var t1,t2,tw;
 fetch('municipios.json').then(r=>r.json()).then(m=>{
-  document.getElementById('muni').innerHTML=m.map(x=>'<option value="'+x.ibge+'">'+x.nome+'</option>').join('');
+  t1=document.getElementById('t1');t2=document.getElementById('t2');tw=document.getElementById('tw');
+  document.getElementById('muni').innerHTML=m.map(x=>'<option value="'+x.ibge+'">'+x.nome+' ('+x.n1+' pess. / '+x.n2+' órg.)</option>').join('');
   document.getElementById('muni').onchange=load;
-  if(m.length){load();}
+  if(m.length)load();
 });
 </script></body></html>

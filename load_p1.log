@@ -1,0 +1,102 @@
+carregando painel1_servidores de ../exports/painel_MG_enriquecido.csv (a partir da linha 0)
+  20000 linhas
+  40000 linhas
+  60000 linhas
+  80000 linhas
+  100000 linhas
+  120000 linhas
+  140000 linhas
+  160000 linhas
+  180000 linhas
+  200000 linhas
+  220000 linhas
+  240000 linhas
+  260000 linhas
+  280000 linhas
+  300000 linhas
+  320000 linhas
+  340000 linhas
+  360000 linhas
+  380000 linhas
+  400000 linhas
+  420000 linhas
+  440000 linhas
+  460000 linhas
+  480000 linhas
+  500000 linhas
+  520000 linhas
+  540000 linhas
+  560000 linhas
+  580000 linhas
+  600000 linhas
+  620000 linhas
+  640000 linhas
+  660000 linhas
+  680000 linhas
+  700000 linhas
+  720000 linhas
+  740000 linhas
+  760000 linhas
+  780000 linhas
+  800000 linhas
+  820000 linhas
+  840000 linhas
+  860000 linhas
+  880000 linhas
+  900000 linhas
+  920000 linhas
+  940000 linhas
+  960000 linhas
+  980000 linhas
+  1000000 linhas
+  1020000 linhas
+  1040000 linhas
+  1060000 linhas
+  1080000 linhas
+  1100000 linhas
+  1120000 linhas
+  1140000 linhas
+  1160000 linhas
+  1180000 linhas
+  1200000 linhas
+  1220000 linhas
+  1240000 linhas
+  1260000 linhas
+  1280000 linhas
+  1300000 linhas
+  1320000 linhas
+  1340000 linhas
+Traceback (most recent call last):
+  File "/Users/israelsantiago/Library/CloudStorage/GoogleDrive-israel.taptos@gmail.com/Outros computadores/Meu laptop/D:/Plenum/Administrativo Plenum/André Azevedo/TCEMG/dados-painel/tools/load_supabase.py", line 39, in post
+    with urllib.request.urlopen(req, timeout=60) as r:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 521, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 630, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 559, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py", line 639, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 503: Service Unavailable
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/israelsantiago/Library/CloudStorage/GoogleDrive-israel.taptos@gmail.com/Outros computadores/Meu laptop/D:/Plenum/Administrativo Plenum/André Azevedo/TCEMG/dados-painel/tools/load_supabase.py", line 78, in <module>
+    main()
+  File "/Users/israelsantiago/Library/CloudStorage/GoogleDrive-israel.taptos@gmail.com/Outros computadores/Meu laptop/D:/Plenum/Administrativo Plenum/André Azevedo/TCEMG/dados-painel/tools/load_supabase.py", line 68, in main
+    post(table, buf); enviados += len(buf); buf = []
+    ^^^^^^^^^^^^^^^^
+  File "/Users/israelsantiago/Library/CloudStorage/GoogleDrive-israel.taptos@gmail.com/Outros computadores/Meu laptop/D:/Plenum/Administrativo Plenum/André Azevedo/TCEMG/dados-painel/tools/load_supabase.py", line 43, in post
+    raise RuntimeError(f"HTTP {e.code}: {e.read()[:300]}")
+RuntimeError: HTTP 503: b'{"code":"53100","details":null,"hint":"Check free disk space.","message":"could not extend file \\"base/5/17563\\": No space left on device"}'
