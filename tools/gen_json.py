@@ -4,8 +4,10 @@ Painel 1 (servidores) e Painel 2 (cadastro) + municipios.json com contagens.
 
 Uso: python3 tools/gen_json.py
 """
-import csv, os, json
+import csv, os, json, re
 from collections import defaultdict
+
+RE11 = re.compile(r"(?<!\d)\d{11}(?!\d)")  # sequência de 11 dígitos = formato CPF
 
 csv.field_size_limit(1 << 24)
 B = ".."
@@ -14,8 +16,19 @@ P2 = os.path.join(B, "exports", "cadastro_institucional_MG.csv")
 OUT1 = "data/p1"; OUT2 = "data/p2"
 os.makedirs(OUT1, exist_ok=True); os.makedirs(OUT2, exist_ok=True)
 
-P1J = ["orgao", "setor", "cargo_funcao", "nome", "cpf", "matricula", "responsabilidade",
+P1J = ["orgao", "setor", "cargo_funcao", "nome", "cpf", "responsabilidade",
        "consta_site", "email_entidade", "telefone_entidade", "site_entidade", "origem"]
+
+
+def scrub(v):
+    """rede de segurança: redige qualquer sequência de 11 dígitos (formato CPF)."""
+    return RE11.sub("***.***.***-**", v or "")
+
+
+def mask_cpf(c):
+    """CPF é chave interna; na EXPOSIÇÃO pública vai mascarado (LGPD/CLAUDE.md)."""
+    c = (c or "").strip()
+    return ("***." + c[3:6] + "." + c[6:9] + "-**") if len(c) == 11 and c.isdigit() else (c if not c.isdigit() else "")
 P2J = ["orgao", "esfera", "cnpj", "endereco", "contato", "email", "site_oficial",
        "portal_transparencia", "gestores", "atores_validados", "observacoes"]
 
@@ -26,7 +39,7 @@ with open(P1, encoding="utf-8") as f:
     for r in rd:
         ib = r.get("cod_ibge")
         if ib:
-            g1[ib].append([r.get(c) or "" for c in P1J])
+            g1[ib].append([(mask_cpf(r.get("cpf")) if c == "cpf" else scrub(r.get(c))) for c in P1J])
 for ib, rows in g1.items():
     json.dump({"c": P1J, "r": rows}, open(f"{OUT1}/{ib}.json", "w", encoding="utf-8"),
               ensure_ascii=False, separators=(",", ":"))
@@ -40,7 +53,7 @@ with open(P2, encoding="utf-8") as f:
     for r in rd:
         ib = r.get("ibge")
         if ib:
-            g2[ib].append([r.get(c) or "" for c in P2J])
+            g2[ib].append([scrub(r.get(c)) for c in P2J])
             nomes.setdefault(ib, r.get("cidade") or ib)
 for ib, rows in g2.items():
     json.dump({"c": P2J, "r": rows}, open(f"{OUT2}/{ib}.json", "w", encoding="utf-8"),
