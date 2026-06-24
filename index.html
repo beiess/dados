@@ -4,118 +4,165 @@
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}
 body{font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f6f8fa;color:#1f2328}
-header{padding:12px 18px;background:#0d1117;color:#fff;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-header h1{margin:0;font-size:15px} header .sp{flex:1}
-header select,header input{padding:7px 9px;border-radius:7px;border:1px solid #30363d;background:#161b22;color:#fff;font:inherit}
-.tabs{display:flex;gap:8px;padding:9px 18px;background:#fff;border-bottom:1px solid var(--b);align-items:center;flex-wrap:wrap}
-.tab{padding:8px 14px;border:1px solid var(--b);border-radius:8px;background:#fff;cursor:pointer;font-weight:600}
+header{padding:10px 16px;background:#0d1117;color:#fff;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{margin:0;font-size:15px}header .sp{flex:1}
+header input{padding:7px 9px;border-radius:7px;border:1px solid #30363d;background:#161b22;color:#fff;font:inherit}
+.tabs{display:flex;gap:8px;padding:8px 16px;background:#fff;border-bottom:1px solid var(--b);align-items:center;flex-wrap:wrap}
+.tab{padding:7px 13px;border:1px solid var(--b);border-radius:8px;background:#fff;cursor:pointer;font-weight:600}
 .tab.on{background:#0d1117;color:#fff;border-color:#0d1117}
 button{padding:7px 11px;border:1px solid var(--b);border-radius:8px;background:#fff;cursor:pointer;font:inherit}
 #anon.on{background:#8250df;color:#fff;border-color:#8250df}
-#q{padding:7px 10px;border:1px solid var(--b);border-radius:8px;width:240px}
+#q{padding:7px 10px;border:1px solid var(--b);border-radius:8px;width:230px}
 #cnt{font-size:12px;color:#57606a}
-.wrap{padding:0 14px 40px}
-.tw{overflow:auto;max-height:78vh;border:1px solid var(--b);border-radius:8px;background:#fff;margin-top:10px}
-table{border-collapse:collapse;table-layout:fixed;min-width:100%}
+.wrap{padding:0 12px 40px}
+.tw{overflow:auto;max-height:76vh;border:1px solid var(--b);border-radius:8px;background:#fff;margin-top:10px}
+table{border-collapse:collapse;table-layout:fixed}
 th,td{padding:6px 9px;border:1px solid var(--b);text-align:left;vertical-align:top;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 td.ml{white-space:normal}
-thead th{background:#f6f8fa;position:sticky;top:0;z-index:3;font-size:11px;text-transform:uppercase;color:#57606a;position:relative}
+thead th{background:#f6f8fa;position:sticky;top:0;z-index:3;font-size:11px;text-transform:uppercase;color:#57606a;position:relative;padding-right:20px}
+.flt{position:absolute;right:9px;top:5px;cursor:pointer;color:#8c959f;font-size:11px}.flt.act{color:#0969da}
 .rz{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize}.rz:hover{background:#0969da}
 tr:hover{background:#f6f8fa}.doc{color:#8250df;font-variant-numeric:tabular-nums}.na{color:#c0c4ca}
-a{color:#0969da}.msg{padding:24px;color:#57606a}.S{color:#1a7f37;font-weight:700;text-align:center}
+a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700;text-align:center}
 #login{max-width:340px;margin:12vh auto;background:#fff;border:1px solid var(--b);border-radius:12px;padding:26px}
-#login h2{margin:0 0 4px;font-size:18px}#login p{color:#57606a;margin:0 0 16px;font-size:12px}
+#login h2{margin:0 0 4px}#login p{color:#57606a;margin:0 0 14px;font-size:12px}
 #login input{width:100%;padding:10px;margin:6px 0;border:1px solid var(--b);border-radius:8px;font:inherit}
 #login button{width:100%;padding:10px;background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;margin-top:8px}
-#err{color:#cf222e;font-size:12px;min-height:16px}
-.hidden{display:none}
+#err{color:#cf222e;font-size:12px;min-height:16px}.hidden{display:none}
+.pop{position:absolute;z-index:50;background:#fff;border:1px solid var(--b);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.15);padding:8px;width:260px}
+.pop input.s{width:100%;padding:6px;border:1px solid var(--b);border-radius:6px;margin-bottom:6px}
+.pop .lst{max-height:230px;overflow:auto;border:1px solid var(--b);border-radius:6px;padding:4px}
+.pop label{display:block;padding:2px 4px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.pop .row{display:flex;gap:6px;margin-top:6px}.pop .row button{flex:1;font-size:12px;padding:5px}
+.mbtn{padding:7px 10px;border-radius:7px;border:1px solid #30363d;background:#161b22;color:#fff;cursor:pointer;font:inherit}
 </style></head><body>
 <div id=login>
   <h2>Base Canônica TCE-MG</h2>
   <p>Acesso restrito. Dados identificados (CPF/matrícula) protegidos por login (LGPD/LAI).</p>
   <input id=email type=email placeholder="e-mail" autocomplete=username>
   <input id=pw type=password placeholder="senha" autocomplete=current-password>
-  <button onclick=entrar()>Entrar</button>
-  <div id=err></div>
+  <button onclick=entrar()>Entrar</button><div id=err></div>
 </div>
 <div id=app class=hidden>
 <header>
   <h1>Base Canônica TCE-MG</h1>
-  <select id=muni></select>
-  <input id=q placeholder="busca na tabela…" oninput=render()>
+  <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
+  <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
   <span id=cnt></span><span class=sp></span>
-  <span id=who style="font-size:12px;opacity:.8"></span>
-  <button onclick=sair()>sair</button>
+  <span id=who style="font-size:12px;opacity:.8"></span><button onclick=sair()>sair</button>
 </header>
 <div class=tabs>
   <div class="tab on" id=t1 onclick="setTab(1)">👤 Painel 1 — Dados Estratégicos</div>
   <div class="tab" id=t2 onclick="setTab(2)">🏛️ Painel 2 — Cadastro Institucional</div>
   <button onclick="setTab(tab===1?2:1)">↔ ir para o outro painel</button>
+  <button onclick="limparFiltros()">limpar filtros de coluna</button>
 </div>
-<div class=wrap><div class=tw id=tw><div class=msg>Selecione um município…</div></div></div>
+<div class=wrap><div class=tw id=tw><div class=msg>Selecione municípios em “Municípios ▾”.</div></div></div>
 </div>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","remuneracao","responsabilidade","consta_site","origem"];
+const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","consta_site","origem"];
 const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriais","site_oficial","portal_transparencia","ouvidoria","gestores","atores_validados","observacoes"];
 const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1};
-const LINKC={site_oficial:1,site_entidade:1,portal_transparencia:1};
-const WID={orgao:230,setor:190,cargo_funcao:190,nome:210,cpf:130,matricula:100,remuneracao:110,responsabilidade:240,consta_site:80,origem:200,esfera:120,cnpj:140,endereco:240,contato:150,email:200,emails_setoriais:240,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
+const LINKC={site_oficial:1,portal_transparencia:1,instagram:1};
+const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:70,contato_adicional:140,remuneracao:110,responsabilidade:230,consta_site:80,origem:190,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
 const sb=supabase.createClient(SB_URL,SB_ANON);
-let tab=1,dados={1:[],2:[]},anon=true,ibge=null;
+let tab=1,dados={1:[],2:[]},anon=true,munis=[],sel=new Set();
+let fstate={1:{},2:{}}, colw={1:{},2:{}};
+function norm(s){return (''+(s||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();}
 function mask(c){return (c&&c.length===11&&/^\d+$/.test(c))?("***."+c.slice(3,6)+"."+c.slice(6,9)+"-**"):c;}
-function esc(s){return (''+s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
-function setTab(n){tab=n;document.getElementById('t1').classList.toggle('on',n===1);document.getElementById('t2').classList.toggle('on',n===2);render();}
+function esc(s){return (''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function igram(redes){var m=(''+(redes||'')).match(/Instagram:\s*(\S+)/i);return m?m[1]:'';}
+function setTab(n){tab=n;document.getElementById('t1').classList.toggle('on',n===1);document.getElementById('t2').classList.toggle('on',n===2);closePop();render();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
-async function entrar(){
-  document.getElementById('err').textContent='';
-  const {error}=await sb.auth.signInWithPassword({email:document.getElementById('email').value.trim(),password:document.getElementById('pw').value});
-  if(error){document.getElementById('err').textContent=error.message;return;}
-  start();
-}
+function limparFiltros(){fstate[tab]={};render();}
+// ---- auth ----
+async function entrar(){document.getElementById('err').textContent='';const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:pw.value});if(error){document.getElementById('err').textContent=error.message;return;}start();}
 async function sair(){await sb.auth.signOut();location.reload();}
-async function start(){
-  const {data:{session}}=await sb.auth.getSession();
-  if(!session)return;
-  document.getElementById('login').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
+async function start(){const {data:{session}}=await sb.auth.getSession();if(!session)return;
+  document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
   document.getElementById('who').textContent=session.user.email;
-  const m=await fetch('municipios.json').then(r=>r.json());
-  document.getElementById('muni').innerHTML=m.map(x=>'<option value="'+x.ibge+'">'+x.nome+' ('+x.n1+' pess.)</option>').join('');
-  document.getElementById('muni').onchange=load;
-  if(m.length)load();
+  munis=await fetch('municipios.json').then(r=>r.json());
 }
-async function load(){
-  ibge=document.getElementById('muni').value;
-  document.getElementById('tw').innerHTML='<div class=msg>Carregando…</div>';
-  const [a,b]=await Promise.all([
-    sb.from('painel1_servidores').select(P1C.join(',')).eq('ibge',ibge).order('orgao').limit(50000),
-    sb.from('cadastro_institucional').select(P2C.join(',')).eq('ibge',ibge).order('orgao')]);
+// ---- seletor de municípios (multi) ----
+function toggleMuni(ev){closePop();const p=document.createElement('div');p.className='pop';p.id='mpop';
+  p.style.left=ev.target.getBoundingClientRect().left+'px';p.style.top=(ev.target.getBoundingClientRect().bottom+4)+'px';
+  p.innerHTML='<input class=s placeholder="buscar município…" oninput="mfilter(this.value)">'
+    +'<div class=row><button onclick="mall(true)">marcar todos (amostra)</button><button onclick="mall(false)">limpar</button></div>'
+    +'<div class=lst id=mlst></div><div class=row><button onclick="carregar()" style="background:#0d1117;color:#fff">Carregar ('+sel.size+')</button></div>';
+  document.body.appendChild(p);mfilter('');}
+function mfilter(q){q=norm(q);const lst=document.getElementById('mlst');if(!lst)return;
+  lst.innerHTML=munis.filter(m=>!q||norm(m.nome).includes(q)).slice(0,400).map(m=>
+    '<label><input type=checkbox '+(sel.has(m.ibge)?'checked':'')+' onchange="msel2(\''+m.ibge+'\',this.checked)"> '+esc(m.nome)+' ('+m.n1+')</label>').join('');}
+function msel2(ib,on){on?sel.add(ib):sel.delete(ib);}
+function mall(on){sel=new Set(on?munis.map(m=>m.ibge):[]);closePop();toggleMuni({target:document.getElementById('msel')});}
+function closePop(){['mpop','fpop'].forEach(id=>{var e=document.getElementById(id);if(e)e.remove();});}
+async function carregar(){closePop();
+  const ids=[...sel];if(!ids.length){document.getElementById('tw').innerHTML='<div class=msg>Selecione ao menos um município.</div>';return;}
+  document.getElementById('tw').innerHTML='<div class=msg>Carregando '+ids.length+' município(s)…</div>';
+  const todos=ids.length>300;  // muitos = amostra global (limite)
+  let q1=sb.from('painel1_servidores').select('orgao,setor,cargo_funcao,nome,cpf,matricula,remuneracao,responsabilidade,consta_site,origem,ibge'),
+      q2=sb.from('cadastro_institucional').select('ibge,orgao,esfera,cnpj,endereco,contato,email,emails_setoriais,redes_sociais,site_oficial,portal_transparencia,ouvidoria,gestores,atores_validados,observacoes');
+  if(!todos){q1=q1.in('ibge',ids);q2=q2.in('ibge',ids);}
+  q1=q1.order('orgao').limit(todos?30000:60000);q2=q2.order('orgao').limit(5000);
+  const [a,b]=await Promise.all([q1,q2]);
   if(a.error||b.error){document.getElementById('tw').innerHTML='<div class=msg>Erro: '+((a.error||b.error).message)+'</div>';return;}
-  dados[1]=a.data||[];dados[2]=b.data||[];render();
+  // join contatos da entidade (cadastro) no painel 1
+  const cad={};(b.data||[]).forEach(e=>{cad[e.ibge+'|'+norm(e.orgao)]=e;});
+  dados[1]=(a.data||[]).map(r=>{const e=cad[r.ibge+'|'+norm(r.orgao)]||{};
+    return {...r,telefone:e.contato||'',email:e.email||'',instagram:igram(e.redes_sociais),contato_adicional:''};});
+  dados[2]=b.data||[];fstate={1:{},2:{}};
+  document.getElementById('msel').textContent='Municípios ('+ids.length+') ▾';
+  if(todos)document.getElementById('tw').innerHTML='';render();
+  if(todos)setTimeout(()=>{document.getElementById('cnt').textContent+=' · amostra de até 30.000 (use filtros de coluna)';},50);
+  else render();
 }
-function render(){
-  if(!ibge)return;
-  const cols=tab===1?P1C:P2C, rows=dados[tab], q=document.getElementById('q').value.toLowerCase();
-  const cg='<colgroup>'+cols.map(c=>'<col style="width:'+(WID[c]||140)+'px">').join('')+'</colgroup>';
-  const head='<thead><tr>'+cols.map(c=>'<th>'+c+'<div class=rz></div></th>').join('')+'</tr></thead>';
-  let shown=0;
-  const body=rows.filter(r=>!q||cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q))).map(r=>{
-    shown++;return '<tr>'+cols.map(c=>{
-      let v=r[c]||'';
+// ---- filtro por coluna (checkbox + busca) ----
+function openFilter(ev,ci){ev.stopPropagation();closePop();const cols=tab===1?P1C:P2C,col=cols[ci];
+  const vals=[...new Set(dados[tab].map(r=>(''+(r[col]||'')).trim()).filter(x=>x!==''))].sort();
+  const cur=fstate[tab][col];const p=document.createElement('div');p.className='pop';p.id='fpop';
+  const rc=ev.target.getBoundingClientRect();p.style.left=Math.max(8,rc.left-200)+'px';p.style.top=(rc.bottom+4)+'px';
+  p.innerHTML='<input class=s placeholder="buscar em '+col+'…" oninput="ffilter(this.value)">'
+    +'<div class=row><button onclick="fall(\''+col+'\',true)">todos</button><button onclick="fall(\''+col+'\',false)">nenhum</button></div>'
+    +'<div class=lst id=flst></div>';
+  document.body.appendChild(p);p._col=col;p._vals=vals;ffilter('');}
+function ffilter(q){q=norm(q);const p=document.getElementById('fpop');if(!p)return;const col=p._col,cur=fstate[tab][col];
+  document.getElementById('flst').innerHTML=p._vals.filter(v=>!q||norm(v).includes(q)).slice(0,800).map(v=>
+    '<label><input type=checkbox '+(!cur||cur.has(v)?'checked':'')+' onchange="ftoggle(\''+col+'\',this.dataset.v,this.checked)" data-v="'+esc(v)+'"> '+esc(v)+'</label>').join('')
+    +(p._vals.length>800?'<div style="font-size:11px;color:#999;padding:4px">+ '+(p._vals.length-800)+' (refine a busca)</div>':'');}
+function ftoggle(col,v,on){let s=fstate[tab][col];if(!s){s=new Set((document.getElementById('fpop')._vals));fstate[tab][col]=s;}on?s.add(v):s.delete(v);render();}
+function fall(col,on){const p=document.getElementById('fpop');fstate[tab][col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
+// ---- render ----
+function render(){const cols=tab===1?P1C:P2C,rows=dados[tab],q=document.getElementById('q').value.toLowerCase();
+  const fs=fstate[tab];
+  const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
+  const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
+  const head='<thead><tr>'+cols.map((c,i)=>'<th>'+c+'<span class="flt'+(fs[c]?' act':'')+'" onclick="openFilter(event,'+i+')">▾</span><div class=rz onmousedown="rzs(event,'+i+')"></div></th>').join('')+'</tr></thead>';
+  let shown=0;const out=[];
+  for(const r of rows){
+    if(q&&!cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q)))continue;
+    let ok=true;for(const c in fs){if(fs[c]&&!fs[c].has((''+(r[c]||'')).trim())){ok=false;break;}}
+    if(!ok)continue;shown++;if(shown>5000&&rows.length>5000){continue;}
+    out.push('<tr>'+cols.map(c=>{let v=r[c]||'';
       if(c==='cpf'){let x=anon?mask(v):v;return '<td class=doc>'+(x||'<span class=na>—</span>')+'</td>';}
       if(!v)return '<td><span class=na>—</span></td>';
       if(c==='consta_site')return '<td class=S>'+esc(v)+'</td>';
+      if(c==='instagram'&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>insta</a></td>';
       if(LINKC[c]&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>link</a></td>';
       if(ML[c])return '<td class=ml>'+(''+v).split(' | ').map(esc).join('<br>')+'</td>';
-      return '<td>'+esc(v)+'</td>';
-    }).join('')+'</tr>';
-  }).join('');
-  document.getElementById('tw').innerHTML='<table>'+cg+head+'<tbody>'+(body||'<tr><td>sem dados</td></tr>')+'</tbody></table>';
-  document.getElementById('cnt').textContent=shown+' de '+rows.length;
-  document.querySelectorAll('thead th').forEach((th,i)=>{const h=th.querySelector('.rz');if(!h)return;h.onmousedown=e=>{e.preventDefault();const col=document.querySelectorAll('colgroup col')[i],sx=e.pageX,sw=col.getBoundingClientRect().width;const mv=ev=>col.style.width=Math.max(40,sw+ev.pageX-sx)+'px',up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)};document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up)};});
+      return '<td>'+esc(v)+'</td>';}).join('')+'</tr>');
+  }
+  document.getElementById('tw').innerHTML='<table>'+cg+head+'<tbody>'+(out.join('')||'<tr><td>sem dados</td></tr>')+'</tbody></table>';
+  document.getElementById('cnt').textContent=shown+' de '+rows.length+(shown>5000&&rows.length>5000?' (mostrando 5.000; filtre)':'');
 }
+// ---- resize (persistente) ----
+function rzs(e,i){e.preventDefault();e.stopPropagation();const cols=tab===1?P1C:P2C,col=cols[i];
+  const colEl=document.querySelectorAll('colgroup col')[i],sx=e.pageX,sw=colEl.getBoundingClientRect().width;
+  const mv=ev=>{const w=Math.max(40,sw+ev.pageX-sx);colEl.style.width=w+'px';colw[tab][col]=w;};
+  const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);}
+document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
 </script></body></html>
