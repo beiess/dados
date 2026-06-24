@@ -2,4 +2,5 @@
 *.progress
 .DS_Store
 .supabase_env
-config.js
+data_full/
+index_local.html
