@@ -56,7 +56,8 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 <div class=tabs>
   <div class="tab on" id=t1 onclick="setTab(1)">👤 Painel 1 — Dados Estratégicos</div>
   <div class="tab" id=t2 onclick="setTab(2)">🏛️ Painel 2 — Cadastro Institucional</div>
-  <button onclick="setTab(tab===1?2:1)">↔ ir para o outro painel</button>
+  <div class="tab" id=t3 onclick="setTab(3)">🏗️ Painel 3 — Fornecedores de Obra</div>
+  <button onclick="setTab(tab===1?2:1)">↔ alternar Painel 1/2</button>
   <button onclick="limparFiltros()">limpar filtros de coluna</button>
   <button onclick="exportCSV()">⬇ Exportar CSV/Excel</button>
   <span style="font-size:11px;color:#57606a">células amarelas = editáveis (salvam ao sair do campo)</span>
@@ -66,13 +67,15 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","sancionado","mandato_eletivo","consta_site","origem"];
+const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","sancionado","mandato_eletivo","socio_empresa","consta_site","origem"];
 const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriais","site_oficial","portal_transparencia","ouvidoria","gestores","atores_validados","observacoes"];
-const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1};
+const P3C=["razao_social","documento","situacao","cnae_principal","porte","municipio_uf","telefone","email","capital_social","data_abertura","socios","fontes","valor_empenho_obra","n_empenhos_obra","qtd_licitacoes_obra","valor_licitacao","nome_fantasia","natureza_juridica","endereco"];
+function colsOf(){return tab===1?P1C:(tab===2?P2C:P3C);}
+const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};   // multivalor (split por " | ")
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};                  // editáveis/salváveis (painel 1)
 const LINKC={site_oficial:1,portal_transparencia:1};
-const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
+const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
 const RENDER_CAP=20000;
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let tab=1,dados={1:[],2:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
@@ -81,7 +84,7 @@ function norm(s){return (''+(s||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').toU
 function mask(c){return (c&&c.length===11&&/^\d+$/.test(c))?("***."+c.slice(3,6)+"."+c.slice(6,9)+"-**"):c;}
 function esc(s){return (''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function igram(redes){var m=(''+(redes||'')).match(/Instagram:\s*(\S+)/i);return m?m[1]:'';}
-function setTab(n){tab=n;document.getElementById('t1').classList.toggle('on',n===1);document.getElementById('t2').classList.toggle('on',n===2);closePop();render();}
+function setTab(n){tab=n;document.getElementById('t1').classList.toggle('on',n===1);document.getElementById('t2').classList.toggle('on',n===2);document.getElementById('t3').classList.toggle('on',n===3);closePop();render();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
 function limparFiltros(){fstate[tab]={};render();}
 async function entrar(){document.getElementById('err').textContent='';const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:pw.value});if(error){document.getElementById('err').textContent=error.message;return;}start();}
@@ -93,6 +96,7 @@ async function start(){const {data:{session}}=await sb.auth.getSession();if(!ses
   // carrega TODO o cadastro (2.151) p/ join de contatos + painel 2
   cadAll=await fetchAll('cadastro_institucional','ibge,orgao,esfera,cnpj,endereco,contato,email,emails_setoriais,redes_sociais,site_oficial,portal_transparencia,ouvidoria,gestores,atores_validados,observacoes',q=>q.order('orgao'));
   cadByKey={};cadAll.forEach(e=>{cadByKey[e.ibge+'|'+norm(e.orgao)]=e;});
+  dados[3]=await fetchAll('fornecedores_obra',P3C.join(','),q=>q.order('razao_social'));
 }
 // paginação: busca TODAS as linhas (sem limite prático), teto de segurança 200k
 async function fetchAll(tbl,cols,apply){let from=0,page=1000,all=[];
@@ -120,7 +124,7 @@ async function carregar(){closePop();const ids=[...sel];
   document.getElementById('tw').innerHTML='<div class=msg>Carregando '+ids.length+' município(s) — sem limite por município…</div>';
   try{
     const todos=ids.length>300;
-    const p1=await fetchAll('painel1_servidores','id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,sancionado,mandato_eletivo,consta_site,origem',
+    const p1=await fetchAll('painel1_servidores','id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,sancionado,mandato_eletivo,socio_empresa,consta_site,origem',
       q=>todos?q.order('ibge'):q.in('ibge',ids).order('orgao'));
     dados[1]=joinEnt(p1);
     dados[2]=todos?cadAll:cadAll.filter(e=>sel.has(e.ibge));
@@ -132,7 +136,7 @@ async function buscaResp(roles){closePop();
   document.getElementById('tw').innerHTML='<div class=msg>Buscando em todo o MG por responsabilidade ('+roles.length+' selecionada(s))…</div>';
   try{const byId={};
     for(const role of roles){const rows=await fetchAll('painel1_servidores',
-        'id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,sancionado,mandato_eletivo,consta_site,origem',
+        'id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,sancionado,mandato_eletivo,socio_empresa,consta_site,origem',
         q=>q.ilike('responsabilidade','%'+role+'%').order('ibge'));
       rows.forEach(r=>byId[r.id]=r);}
     dados[1]=joinEnt(Object.values(byId));dados[2]=cadAll;
@@ -144,7 +148,7 @@ function distinct(col){const vals=new Set();
   for(const r of dados[tab]){const v=(''+(r[col]||'')).trim();if(!v)continue;
     if(MV[col])(''+v).split(' | ').forEach(x=>{if(x.trim())vals.add(x.trim());});else vals.add(v);}
   return [...vals].sort();}
-function openFilter(ev,ci){ev.stopPropagation();closePop();const cols=tab===1?P1C:P2C,col=cols[ci];
+function openFilter(ev,ci){ev.stopPropagation();closePop();const cols=colsOf(),col=cols[ci];
   const vals=distinct(col);const p=document.createElement('div');p.className='pop';p.id='fpop';p._col=col;p._vals=vals;
   const rc=ev.target.getBoundingClientRect();p.style.left=Math.max(8,rc.left-220)+'px';p.style.top=(rc.bottom+4)+'px';
   let extra=(col==='responsabilidade')?'<div class=row><button onclick="respGlobal()" style="background:#0969da;color:#fff">🔎 buscar em TODO o MG (≥1 selecionada)</button></div>':'';
@@ -163,7 +167,7 @@ function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1][
   let roles;if(s&&s.size)roles=[...s];else roles=p._vals;  // se nada marcado, usa todos os visíveis
   if(!roles.length){alert('selecione ao menos uma responsabilidade');return;}buscaResp(roles);}
 // ---- filtro reutilizável (busca global + filtros de coluna, multivalor) ----
-function getFiltered(){const cols=tab===1?P1C:P2C,rows=dados[tab],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
+function getFiltered(){const cols=colsOf(),rows=dados[tab],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
   for(const r of rows){
     if(q&&!cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q)))continue;
     let ok=true;
@@ -174,7 +178,7 @@ function getFiltered(){const cols=tab===1?P1C:P2C,rows=dados[tab],q=document.get
   return out;}
 // ---- exportar CSV (resultado filtrado, abre no Excel; respeita máscara de CPF) ----
 function csvval(v){v=''+(v==null?'':v);return /[;"\n\r]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v;}
-function exportCSV(){const cols=tab===1?P1C:P2C,flt=getFiltered();
+function exportCSV(){const cols=colsOf(),flt=getFiltered();
   if(!flt.length){alert('nada para exportar');return;}
   const linhas=[cols.join(';')];
   for(const r of flt)linhas.push(cols.map(c=>{let v=r[c]||'';if(c==='cpf'&&anon)v=mask(v);return csvval(v);}).join(';'));
@@ -184,7 +188,7 @@ function exportCSV(){const cols=tab===1?P1C:P2C,flt=getFiltered();
   document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);}
 // ---- render ----
 function render(){if(document.getElementById('app').classList.contains('hidden'))return;
-  const cols=tab===1?P1C:P2C,fs=fstate[tab];
+  const cols=colsOf(),fs=fstate[tab];
   const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
   const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
   const head='<thead><tr>'+cols.map((c,i)=>'<th>'+c+'<span class="flt'+(fs[c]?' act':'')+'" onclick="openFilter(event,'+i+')">▾</span><div class=rz onmousedown="rzs(event,'+i+')"></div></th>').join('')+'</tr></thead>';
@@ -213,7 +217,7 @@ async function saveCell(el){const id=el.dataset.id,col=el.dataset.col,val=el.inn
   el.dataset.orig=val;el.title='salvo';el.style.background='#dafbe1';setTimeout(()=>{el.style.background='#fffbe6';},900);
   const row=dados[1].find(r=>''+r.id===''+id);if(row)row[col]=val;}
 // ---- resize persistente ----
-function rzs(e,i){e.preventDefault();e.stopPropagation();const cols=tab===1?P1C:P2C,col=cols[i];
+function rzs(e,i){e.preventDefault();e.stopPropagation();const cols=colsOf(),col=cols[i];
   const colEl=document.querySelectorAll('colgroup col')[i],sx=e.pageX,sw=colEl.getBoundingClientRect().width;
   const mv=ev=>{const w=Math.max(40,sw+ev.pageX-sx);colEl.style.width=w+'px';colw[tab][col]=w;};
   const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
