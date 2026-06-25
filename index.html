@@ -25,7 +25,10 @@ thead th{background:#f6f8fa;position:sticky;top:0;z-index:3;font-size:11px;text-
 .flt{position:absolute;right:9px;top:5px;cursor:pointer;color:#8c959f;font-size:11px}.flt.act{color:#0969da;font-weight:700}
 .rz{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize}.rz:hover{background:#0969da}
 tr:hover{background:#f6f8fa}.doc{color:#8250df;font-variant-numeric:tabular-nums}.na{color:#c0c4ca}
-a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700;text-align:center}
+a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700;text-align:center}.err{color:#cf222e}
+.barwrap{height:6px;background:#e7ebef;border-radius:4px;overflow:hidden;width:280px;margin:10px 0}
+.bar{height:100%;width:35%;background:#0969da;border-radius:4px;animation:ind 1.1s infinite ease-in-out}
+@keyframes ind{0%{margin-left:-35%}100%{margin-left:100%}}
 #login{max-width:340px;margin:12vh auto;background:#fff;border:1px solid var(--b);border-radius:12px;padding:26px}
 #login h2{margin:0 0 4px}#login p{color:#57606a;margin:0 0 14px;font-size:12px}
 #login input{width:100%;padding:10px;margin:6px 0;border:1px solid var(--b);border-radius:8px;font:inherit}
@@ -40,14 +43,15 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </style></head><body>
 <div id=login>
   <h2>Base Canônica TCE-MG</h2>
-  <p>Acesso restrito. Dados identificados (CPF/matrícula) protegidos por login (LGPD/LAI).</p>
+  <p>Acesso restrito. Dados identificados protegidos por login (LGPD/LAI).</p>
+  <form onsubmit="entrar();return false;">
   <input id=email type=email placeholder="e-mail" autocomplete=username>
   <input id=pw type=password placeholder="senha" autocomplete=current-password>
-  <button onclick=entrar()>Entrar</button><div id=err></div>
+  <button type=submit>Entrar</button></form><div id=err></div>
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Base Canônica TCE-MG <span style=opacity:.5;font-size:11px>v4.2</span></h1>
+  <h1>Base Canônica TCE-MG <span style="opacity:.5;font-size:11px">v5</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -59,12 +63,11 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
   <div class="tab" id=t2 onclick="setTab(2)">🏛️ Painel 2 — Cadastro Institucional</div>
   <div class="tab" id=t3 onclick="setTab(3)">🏗️ Painel 3 — Fornecedores de Obra</div>
   <div class="tab" id=t4 onclick="setTab(4)">📄 Painel 4 — Contratos 2026</div>
-  <button onclick="setTab(tab===1?2:1)">↔ alternar Painel 1/2</button>
-  <button onclick="limparFiltros()">limpar filtros de coluna</button>
-  <button onclick="exportCSV()">⬇ Exportar CSV/Excel</button>
-  <span style="font-size:11px;color:#57606a">células amarelas = editáveis (salvam ao sair do campo)</span>
+  <button onclick="limparFiltros()">limpar filtros</button>
+  <button onclick="exportCSV()">⬇ Exportar CSV</button>
+  <span style="font-size:11px;color:#57606a">amarelo = editável (salva ao sair do campo)</span>
 </div>
-<div class=wrap><div class=tw id=tw><div class=msg>Selecione municípios em “Municípios ▾” e clique Carregar.</div></div></div>
+<div class=wrap><div class=tw id=tw><div class=msg>Selecione município(s) em “Municípios ▾” e clique Carregar (Painéis 1, 2, 4). O Painel 3 carrega ao clicar na aba.</div></div></div>
 </div>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -74,52 +77,53 @@ const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriai
 const P3C=["razao_social","documento","situacao","cnae_principal","porte","municipio_uf","telefone","email","capital_social","data_abertura","socios","fontes","valor_empenho_obra","n_empenhos_obra","qtd_licitacoes_obra","valor_licitacao","nome_fantasia","natureza_juridica","endereco"];
 const P4C=["orgao","unidade_orcamentaria","num_processo","num_contrato","data_assinatura","contratado","doc_contratado","vig_inicio","vig_fim","qtd_aditivos","rescisao","valor_original","valor_atualizado"];
 function colsOf(){return tab===1?P1C:(tab===2?P2C:(tab===3?P3C:P4C));}
-const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1};
-const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};   // multivalor (split por " | ")
-const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};                  // editáveis/salváveis (painel 1)
+const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1,sancionado:1,mandato_eletivo:1,socio_empresa:1};
+const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};
+const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};
 const LINKC={site_oficial:1,portal_transparencia:1};
-const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
-const RENDER_CAP=20000;
+const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120};
+const RENDER_CAP=20000, TIMEOUT=45000;
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let tab=1,dados={1:[],2:[],3:[],4:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
-let fstate={1:{},2:{}}, colw={1:{},2:{}};
+let fstate={1:{},2:{},3:{},4:{}}, colw={1:{},2:{},3:{},4:{}};
 function norm(s){return (''+(s||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();}
 function mask(c){return (c&&c.length===11&&/^\d+$/.test(c))?("***."+c.slice(3,6)+"."+c.slice(6,9)+"-**"):c;}
 function esc(s){return (''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function igram(redes){var m=(''+(redes||'')).match(/Instagram:\s*(\S+)/i);return m?m[1]:'';}
-async function setTab(n){tab=n;
-  ['t1','t2','t3','t4'].forEach(function(id,i){document.getElementById(id).classList.toggle('on',n===i+1);});
-  closePop();var tw=document.getElementById('tw');
-  if(n===3 && !(dados[3]&&dados[3].length)){tw.innerHTML='<div class=msg>Carregando fornecedores…</div>';
-    try{dados[3]=await fetchAll('fornecedores_obra',P3C.join(','),function(q){return q.order('razao_social');});}
-    catch(e){tw.innerHTML='<div class=msg>Erro ao carregar Painel 3: '+e.message+'</div>';return;}}
-  if(n===4 && !(dados[4]&&dados[4].length)){
-    if(!sel.size){tw.innerHTML='<div class=msg>Selecione município(s) em “Municípios ▾” e clique Carregar para ver os contratos.</div>';return;}
-    tw.innerHTML='<div class=msg>Carregando contratos…</div>';var ids=[...sel],todos=ids.length>300;
-    try{dados[4]=await fetchAll('contratos_2026','cod_ibge,orgao,unidade_orcamentaria,num_processo,num_contrato,data_assinatura,contratado,doc_contratado,vig_inicio,vig_fim,qtd_aditivos,rescisao,valor_original,valor_atualizado',function(q){return todos?q.order('cod_ibge'):q.in('cod_ibge',ids);});}
-    catch(e){tw.innerHTML='<div class=msg>Erro ao carregar Painel 4: '+e.message+'</div>';return;}}
-  render();}
-function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
-function limparFiltros(){fstate[tab]={};render();}
-async function entrar(){document.getElementById('err').textContent='';const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:pw.value});if(error){document.getElementById('err').textContent=error.message;return;}start();}
+function tw(){return document.getElementById('tw');}
+function loading(label){tw().innerHTML='<div class=msg>'+esc(label)+'<div class=barwrap><div class=bar></div></div><span id=progc>0 registros…</span></div>';}
+function prog(n){var e=document.getElementById('progc');if(e)e.textContent=n.toLocaleString('pt-BR')+' registros…';}
+function showErr(msg){tw().innerHTML='<div class="msg err">⚠ '+esc(msg)+'</div>';}
+async function token(){const {data}=await sb.auth.getSession();return data&&data.session?data.session.access_token:null;}
+async function sbfetch(tbl,qs,onprog){
+  const t=await token(); if(!t) throw new Error('sessão expirada — recarregue e faça login');
+  let from=0,page=1000,all=[];
+  while(true){
+    const c=new AbortController(), to=setTimeout(()=>c.abort(),TIMEOUT); let r;
+    try{r=await fetch(SB_URL+'/rest/v1/'+tbl+'?'+qs,{headers:{apikey:SB_ANON,Authorization:'Bearer '+t,'Range-Unit':'items','Range':from+'-'+(from+page-1)},signal:c.signal});}
+    catch(e){clearTimeout(to);throw new Error(e.name==='AbortError'?('tempo esgotado (>'+(TIMEOUT/1000)+'s) em '+tbl):('falha de rede em '+tbl+': '+e.message));}
+    clearTimeout(to);
+    if(!r.ok){throw new Error('HTTP '+r.status+' em '+tbl+': '+(await r.text()).slice(0,180));}
+    const d=await r.json(); all=all.concat(d); if(onprog)onprog(all.length);
+    if(!d.length||d.length<page) break; from+=page; if(all.length>=200000) break;
+  }
+  return all;
+}
+function inList(ids){return ids.join(',');}
+async function entrar(){document.getElementById('err').textContent='Entrando…';
+  const {error}=await sb.auth.signInWithPassword({email:document.getElementById('email').value.trim(),password:document.getElementById('pw').value});
+  if(error){document.getElementById('err').textContent=error.message;return;}start();}
 async function sair(){await sb.auth.signOut();location.reload();}
 async function start(){const {data:{session}}=await sb.auth.getSession();if(!session)return;
   document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
   document.getElementById('who').textContent=session.user.email;
-  munis=await fetch('municipios.json').then(r=>r.json());
-  // carrega TODO o cadastro (2.151) p/ join de contatos + painel 2
-  cadAll=await fetchAll('cadastro_institucional','ibge,orgao,esfera,cnpj,endereco,contato,email,emails_setoriais,redes_sociais,site_oficial,portal_transparencia,ouvidoria,gestores,atores_validados,observacoes',q=>q.order('orgao'));
+  try{munis=await fetch('municipios.json').then(r=>r.json());}catch(e){munis=[];}
+  loading('Carregando cadastro institucional…');
+  try{cadAll=await sbfetch('cadastro_institucional','select='+P2C.join(',')+',ibge,redes_sociais&order=orgao',prog);}
+  catch(e){showErr('Cadastro: '+e.message);return;}
   cadByKey={};cadAll.forEach(e=>{cadByKey[e.ibge+'|'+norm(e.orgao)]=e;});
+  tw().innerHTML='<div class=msg>Pronto. Selecione município(s) e clique Carregar (Painéis 1/2/4), ou clique no Painel 3.</div>';
 }
-// paginação: busca TODAS as linhas (sem limite prático), teto de segurança 200k
-async function fetchAll(tbl,cols,apply){let from=0,page=1000,all=[];
-  while(true){let q=sb.from(tbl).select(cols);q=apply(q).range(from,from+page-1);
-    const {data,error}=await q;if(error)throw error;all=all.concat(data||[]);
-    if(!data||data.length<page)break;from+=page;if(all.length>=200000)break;}
-  return all;}
-function joinEnt(rows){return rows.map(r=>{const e=cadByKey[r.ibge+'|'+norm(r.orgao)]||{};
-  return {...r,telefone:r.telefone||e.contato||'',email:r.email||e.email||'',instagram:r.instagram||igram(e.redes_sociais),contato_adicional:r.contato_adicional||''};});}
-// ---- seletor de municípios ----
 function toggleMuni(ev){closePop();const p=document.createElement('div');p.className='pop';p.id='mpop';
   p.style.left=ev.target.getBoundingClientRect().left+'px';p.style.top=(ev.target.getBoundingClientRect().bottom+4)+'px';
   p.innerHTML='<input class=s placeholder="buscar município…" oninput="mfilter(this.value)">'
@@ -133,108 +137,90 @@ function msel2(ib,on){on?sel.add(ib):sel.delete(ib);}
 function mall(on){sel=new Set(on?munis.map(m=>m.ibge):[]);closePop();toggleMuni({target:document.getElementById('msel')});}
 function closePop(){['mpop','fpop'].forEach(id=>{var e=document.getElementById(id);if(e)e.remove();});}
 async function carregar(){closePop();const ids=[...sel];
-  if(!ids.length){document.getElementById('tw').innerHTML='<div class=msg>Selecione ao menos um município.</div>';return;}
-  document.getElementById('tw').innerHTML='<div class=msg>Carregando '+ids.length+' município(s) — sem limite por município…</div>';
+  if(!ids.length){showErr('Selecione ao menos um município.');return;}
+  document.getElementById('msel').textContent='Municípios ('+ids.length+') ▾';
+  const todos=ids.length>300;
+  loading('Carregando Painel 1 (servidores) de '+ids.length+' município(s)…');
   try{
-    const todos=ids.length>300;
-    const p1=await fetchAll('painel1_servidores','id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,sancionado,mandato_eletivo,socio_empresa,consta_site,origem',
-      q=>todos?q.order('ibge'):q.in('ibge',ids).order('orgao'));
-    dados[1]=joinEnt(p1);
+    const p1=await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+'&order=orgao'+(todos?'':'&ibge=in.('+inList(ids)+')'),prog);
+    dados[1]=p1.map(r=>{const e=cadByKey[r.ibge+'|'+norm(r.orgao)]||{};
+      return Object.assign({},r,{telefone:r.telefone||e.contato||'',email:r.email||e.email||'',instagram:r.instagram||igram(e.redes_sociais),contato_adicional:r.contato_adicional||''});});
     dados[2]=todos?cadAll:cadAll.filter(e=>sel.has(e.ibge));
-    dados[4]=await fetchAll('contratos_2026','cod_ibge,orgao,unidade_orcamentaria,num_processo,num_contrato,data_assinatura,contratado,doc_contratado,vig_inicio,vig_fim,qtd_aditivos,rescisao,valor_original,valor_atualizado',q=>todos?q.order('cod_ibge'):q.in('cod_ibge',ids));
-  }catch(e){document.getElementById('tw').innerHTML='<div class=msg>Erro: '+e.message+'</div>';return;}
-  fstate={1:{},2:{}};document.getElementById('msel').textContent='Municípios ('+ids.length+') ▾';render();
+    loading('Carregando Painel 4 (contratos)…');
+    dados[4]=await sbfetch('contratos_2026','select='+P4C.join(',')+',cod_ibge&order=cod_ibge'+(todos?'':'&cod_ibge=in.('+inList(ids)+')'),prog);
+  }catch(e){showErr(e.message);return;}
+  fstate={1:{},2:{},3:dados[3].length?fstate[3]:{},4:{}};tab=1;setTabUI();render();
 }
-// ---- busca de RESPONSABILIDADE em TODO o MG (≥1 flag), sem limite ----
-async function buscaResp(roles){closePop();
-  document.getElementById('tw').innerHTML='<div class=msg>Buscando em todo o MG por responsabilidade ('+roles.length+' selecionada(s))…</div>';
+function setTabUI(){['t1','t2','t3','t4'].forEach((id,i)=>document.getElementById(id).classList.toggle('on',tab===i+1));}
+async function setTab(n){tab=n;setTabUI();closePop();
+  if(n===3 && !dados[3].length){loading('Carregando Painel 3 (fornecedores de obra)…');
+    try{dados[3]=await sbfetch('fornecedores_obra','select='+P3C.join(',')+'&order=razao_social',prog);}
+    catch(e){showErr('Painel 3: '+e.message);return;}}
+  if(n===4 && !dados[4].length && !sel.size){showErr('Selecione município(s) em “Municípios ▾” e clique Carregar para ver os contratos.');return;}
+  render();
+}
+async function buscaResp(roles){closePop();loading('Buscando responsabilidade em todo o MG…');
   try{const byId={};
-    for(const role of roles){const rows=await fetchAll('painel1_servidores',
-        'id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,sancionado,mandato_eletivo,socio_empresa,consta_site,origem',
-        q=>q.ilike('responsabilidade','%'+role+'%').order('ibge'));
+    for(const role of roles){const rows=await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+'&responsabilidade=ilike.*'+encodeURIComponent(role)+'*&order=ibge',prog);
       rows.forEach(r=>byId[r.id]=r);}
-    dados[1]=joinEnt(Object.values(byId));dados[2]=cadAll;
-    fstate[1]={};setTab(1);
-  }catch(e){document.getElementById('tw').innerHTML='<div class=msg>Erro: '+e.message+'</div>';}
+    dados[1]=Object.values(byId).map(r=>{const e=cadByKey[r.ibge+'|'+norm(r.orgao)]||{};return Object.assign({},r,{telefone:r.telefone||e.contato||'',email:r.email||e.email||'',instagram:r.instagram||igram(e.redes_sociais)});});
+    tab=1;setTabUI();render();
+  }catch(e){showErr(e.message);}
 }
-// ---- filtro por coluna ----
-function distinct(col){const vals=new Set();
-  for(const r of dados[tab]){const v=(''+(r[col]||'')).trim();if(!v)continue;
-    if(MV[col])(''+v).split(' | ').forEach(x=>{if(x.trim())vals.add(x.trim());});else vals.add(v);}
-  return [...vals].sort();}
-function openFilter(ev,ci){ev.stopPropagation();closePop();const cols=colsOf(),col=cols[ci];
-  const vals=distinct(col);const p=document.createElement('div');p.className='pop';p.id='fpop';p._col=col;p._vals=vals;
+function distinct(col){const v=new Set();for(const r of dados[tab]){const x=(''+(r[col]||'')).trim();if(!x)continue;if(MV[col])x.split(' | ').forEach(y=>{if(y.trim())v.add(y.trim());});else v.add(x);}return [...v].sort();}
+function openFilter(ev,ci){ev.stopPropagation();closePop();const col=colsOf()[ci],vals=distinct(col);
+  const p=document.createElement('div');p.className='pop';p.id='fpop';p._col=col;p._vals=vals;
   const rc=ev.target.getBoundingClientRect();p.style.left=Math.max(8,rc.left-220)+'px';p.style.top=(rc.bottom+4)+'px';
-  let extra=(col==='responsabilidade')?'<div class=row><button onclick="respGlobal()" style="background:#0969da;color:#fff">🔎 buscar em TODO o MG (≥1 selecionada)</button></div>':'';
-  p.innerHTML='<input class=s placeholder="buscar em '+col+'…" oninput="ffilter(this.value)">'
-    +'<div class=row><button onclick="fall(\''+col.replace(/'/g,"")+'\',true)">todos</button><button onclick="fall(\''+col.replace(/'/g,"")+'\',false)">nenhum</button></div>'
-    +'<div class=lst id=flst></div>'+extra;
+  let extra=(col==='responsabilidade')?'<div class=row><button onclick="respGlobal()" style="background:#0969da;color:#fff">🔎 buscar em TODO o MG</button></div>':'';
+  p.innerHTML='<input class=s placeholder="buscar…" oninput="ffilter(this.value)"><div class=row><button onclick="fall(true)">todos</button><button onclick="fall(false)">nenhum</button></div><div class=lst id=flst></div>'+extra;
   document.body.appendChild(p);ffilter('');}
 function ffilter(q){q=norm(q);const p=document.getElementById('fpop');if(!p)return;const col=p._col,cur=fstate[tab][col];
   document.getElementById('flst').innerHTML=p._vals.filter(v=>!q||norm(v).includes(q)).slice(0,800).map(v=>
-    '<label><input type=checkbox '+(!cur||cur.has(v)?'checked':'')+' onchange="ftoggle(this.dataset.v,this.checked)" data-v="'+esc(v)+'"> '+esc(v)+'</label>').join('')
-    +(p._vals.length>800?'<div style="font-size:11px;color:#999;padding:4px">+'+(p._vals.length-800)+' (refine a busca)</div>':'');}
-function ftoggle(v,on){const p=document.getElementById('fpop'),col=p._col;let s=fstate[tab][col];
-  if(!s){s=new Set(p._vals);fstate[tab][col]=s;}on?s.add(v):s.delete(v);render();}
-function fall(col,on){const p=document.getElementById('fpop');fstate[tab][col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
-function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];
-  let roles;if(s&&s.size)roles=[...s];else roles=p._vals;  // se nada marcado, usa todos os visíveis
-  if(!roles.length){alert('selecione ao menos uma responsabilidade');return;}buscaResp(roles);}
-// ---- filtro reutilizável (busca global + filtros de coluna, multivalor) ----
+    '<label><input type=checkbox '+(!cur||cur.has(v)?'checked':'')+' onchange="ftoggle(this.dataset.v,this.checked)" data-v="'+esc(v)+'"> '+esc(v)+'</label>').join('');}
+function ftoggle(v,on){const p=document.getElementById('fpop'),col=p._col;let s=fstate[tab][col];if(!s){s=new Set(p._vals);fstate[tab][col]=s;}on?s.add(v):s.delete(v);render();}
+function fall(on){const p=document.getElementById('fpop');fstate[tab][p._col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
+function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];let roles=(s&&s.size)?[...s]:p._vals;if(!roles.length){alert('selecione');return;}buscaResp(roles);}
+function limparFiltros(){fstate[tab]={};render();}
 function getFiltered(){const cols=colsOf(),rows=dados[tab]||[],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
-  for(const r of rows){
+  for(const r of rows){if(!r)continue;
     if(q&&!cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q)))continue;
-    let ok=true;
-    for(const c in fs){if(!fs[c])continue;const cell=(''+(r[c]||'')).trim();
-      if(MV[c]){if(!cell.split(' | ').some(x=>fs[c].has(x.trim()))){ok=false;break;}}
-      else if(!fs[c].has(cell)){ok=false;break;}}
+    let ok=true;for(const c in fs){if(!fs[c])continue;const cell=(''+(r[c]||'')).trim();
+      if(MV[c]){if(!cell.split(' | ').some(x=>fs[c].has(x.trim()))){ok=false;break;}}else if(!fs[c].has(cell)){ok=false;break;}}
     if(ok)out.push(r);}
   return out;}
-// ---- exportar CSV (resultado filtrado, abre no Excel; respeita máscara de CPF) ----
 function csvval(v){v=''+(v==null?'':v);return /[;"\n\r]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v;}
-function exportCSV(){const cols=colsOf(),flt=getFiltered();
-  if(!flt.length){alert('nada para exportar');return;}
-  const linhas=[cols.join(';')];
-  for(const r of flt)linhas.push(cols.map(c=>{let v=r[c]||'';if(c==='cpf'&&anon)v=mask(v);return csvval(v);}).join(';'));
-  const blob=new Blob(['﻿'+linhas.join('\r\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.csv';
-  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);}
-// ---- render ----
+function exportCSV(){const cols=colsOf(),flt=getFiltered();if(!flt.length){alert('nada para exportar');return;}
+  const L=[cols.join(';')];for(const r of flt)L.push(cols.map(c=>{let v=r[c]||'';if(c==='cpf'&&anon)v=mask(v);return csvval(v);}).join(';'));
+  const b=new Blob(['﻿'+L.join('\r\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);}
+function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
 function render(){if(document.getElementById('app').classList.contains('hidden'))return;
   const cols=colsOf(),fs=fstate[tab];
   const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
   const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
   const head='<thead><tr>'+cols.map((c,i)=>'<th>'+c+'<span class="flt'+(fs[c]?' act':'')+'" onclick="openFilter(event,'+i+')">▾</span><div class=rz onmousedown="rzs(event,'+i+')"></div></th>').join('')+'</tr></thead>';
   const flt=getFiltered();let rendered=0;const out=[];
-  for(const r of flt){
-    if(!r){continue;}
-    if(rendered>=RENDER_CAP)break;rendered++;
+  for(const r of flt){if(!r)continue;if(rendered>=RENDER_CAP)break;rendered++;
     out.push('<tr>'+cols.map(c=>{let v=r[c]||'';
       if(tab===1&&EDIT[c])return '<td class=edit contenteditable data-id="'+esc(r.id)+'" data-col="'+c+'" data-orig="'+esc(v)+'" onblur="saveCell(this)">'+esc(v)+'</td>';
       if(c==='cpf'){let x=anon?mask(v):v;return '<td class=doc>'+(x||'<span class=na>—</span>')+'</td>';}
       if(!v)return '<td><span class=na>—</span></td>';
-      if(c==='sancionado')return '<td style="color:#cf222e;font-weight:600">'+esc(v)+'</td>';
       if(c==='consta_site')return '<td class=S>'+esc(v)+'</td>';
+      if(c==='sancionado')return '<td style="color:#cf222e;font-weight:600">'+esc(v)+'</td>';
       if(c==='instagram'&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>insta</a></td>';
       if(LINKC[c]&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>link</a></td>';
       if(ML[c])return '<td class=ml>'+(''+v).split(' | ').map(esc).join('<br>')+'</td>';
-      return '<td>'+esc(v)+'</td>';}).join('')+'</tr>');
-  }
-  var vazio=tab===4&&(dados[4]||[]).length===0?'<tr><td>selecione município(s) em “Municípios ▾” e clique Carregar</td></tr>':'<tr><td>sem dados</td></tr>';
-  document.getElementById('tw').innerHTML='<table>'+cg+head+'<tbody>'+(out.join('')||vazio)+'</tbody></table>';
-  document.getElementById('cnt').textContent=flt.length+' de '+(dados[tab]||[]).length+(flt.length>RENDER_CAP?' (exibindo '+RENDER_CAP+'; exporte p/ ver todos)':'');
+      return '<td>'+esc(v)+'</td>';}).join('')+'</tr>');}
+  const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos'}[tab];
+  tw().innerHTML='<table>'+cg+head+'<tbody>'+(out.join('')||'<tr><td>sem dados</td></tr>')+'</tbody></table>';
+  document.getElementById('cnt').textContent=flt.length.toLocaleString('pt-BR')+' '+nm+(flt.length>RENDER_CAP?' (exibindo '+RENDER_CAP.toLocaleString('pt-BR')+'; exporte p/ ver todos)':'');
 }
-// ---- salvar célula editável no banco ----
-async function saveCell(el){const id=el.dataset.id,col=el.dataset.col,val=el.innerText.trim();
-  if(val===el.dataset.orig)return;el.style.background='#fff3cd';
-  const {error}=await sb.from('painel1_servidores').update({[col]:val||null}).eq('id',id);
-  if(error){el.style.background='#ffd7d5';el.title='Erro: '+error.message;return;}
-  el.dataset.orig=val;el.title='salvo';el.style.background='#dafbe1';setTimeout(()=>{el.style.background='#fffbe6';},900);
-  const row=dados[1].find(r=>''+r.id===''+id);if(row)row[col]=val;}
-// ---- resize persistente ----
-function rzs(e,i){e.preventDefault();e.stopPropagation();const cols=colsOf(),col=cols[i];
-  const colEl=document.querySelectorAll('colgroup col')[i],sx=e.pageX,sw=colEl.getBoundingClientRect().width;
+async function saveCell(el){const id=el.dataset.id,col=el.dataset.col,val=el.innerText.trim();if(val===el.dataset.orig)return;
+  el.style.background='#fff3cd';const t=await token();
+  const r=await fetch(SB_URL+'/rest/v1/painel1_servidores?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_ANON,Authorization:'Bearer '+t,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({[col]:val||null})});
+  if(!r.ok){el.style.background='#ffd7d5';el.title='Erro '+r.status;return;}
+  el.dataset.orig=val;el.style.background='#dafbe1';setTimeout(()=>el.style.background='#fffbe6',900);}
+function rzs(e,i){e.preventDefault();e.stopPropagation();const col=colsOf()[i],colEl=document.querySelectorAll('colgroup col')[i],sx=e.pageX,sw=colEl.getBoundingClientRect().width;
   const mv=ev=>{const w=Math.max(40,sw+ev.pageX-sx);colEl.style.width=w+'px';colw[tab][col]=w;};
   const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
   document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);}
