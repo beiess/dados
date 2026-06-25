@@ -80,7 +80,7 @@ const LINKC={site_oficial:1,portal_transparencia:1};
 const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
 const RENDER_CAP=20000;
 const sb=supabase.createClient(SB_URL,SB_ANON);
-let tab=1,dados={1:[],2:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
+let tab=1,dados={1:[],2:[],3:[],4:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
 let fstate={1:{},2:{}}, colw={1:{},2:{}};
 function norm(s){return (''+(s||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();}
 function mask(c){return (c&&c.length===11&&/^\d+$/.test(c))?("***."+c.slice(3,6)+"."+c.slice(6,9)+"-**"):c;}
@@ -98,7 +98,7 @@ async function start(){const {data:{session}}=await sb.auth.getSession();if(!ses
   // carrega TODO o cadastro (2.151) p/ join de contatos + painel 2
   cadAll=await fetchAll('cadastro_institucional','ibge,orgao,esfera,cnpj,endereco,contato,email,emails_setoriais,redes_sociais,site_oficial,portal_transparencia,ouvidoria,gestores,atores_validados,observacoes',q=>q.order('orgao'));
   cadByKey={};cadAll.forEach(e=>{cadByKey[e.ibge+'|'+norm(e.orgao)]=e;});
-  dados[3]=await fetchAll('fornecedores_obra',P3C.join(','),q=>q.order('razao_social'));
+  dados[3]=await fetchAll('fornecedores_obra',P3C.join(','),q=>q.order('razao_social'));render();
 }
 // paginação: busca TODAS as linhas (sem limite prático), teto de segurança 200k
 async function fetchAll(tbl,cols,apply){let from=0,page=1000,all=[];
@@ -170,7 +170,7 @@ function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1][
   let roles;if(s&&s.size)roles=[...s];else roles=p._vals;  // se nada marcado, usa todos os visíveis
   if(!roles.length){alert('selecione ao menos uma responsabilidade');return;}buscaResp(roles);}
 // ---- filtro reutilizável (busca global + filtros de coluna, multivalor) ----
-function getFiltered(){const cols=colsOf(),rows=dados[tab],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
+function getFiltered(){const cols=colsOf(),rows=dados[tab]||[],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
   for(const r of rows){
     if(q&&!cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q)))continue;
     let ok=true;
@@ -209,8 +209,9 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
       if(ML[c])return '<td class=ml>'+(''+v).split(' | ').map(esc).join('<br>')+'</td>';
       return '<td>'+esc(v)+'</td>';}).join('')+'</tr>');
   }
-  document.getElementById('tw').innerHTML='<table>'+cg+head+'<tbody>'+(out.join('')||'<tr><td>sem dados</td></tr>')+'</tbody></table>';
-  document.getElementById('cnt').textContent=flt.length+' de '+dados[tab].length+(flt.length>RENDER_CAP?' (exibindo '+RENDER_CAP+'; exporte p/ ver todos)':'');
+  var vazio=tab===4&&(dados[4]||[]).length===0?'<tr><td>selecione município(s) em “Municípios ▾” e clique Carregar</td></tr>':'<tr><td>sem dados</td></tr>';
+  document.getElementById('tw').innerHTML='<table>'+cg+head+'<tbody>'+(out.join('')||vazio)+'</tbody></table>';
+  document.getElementById('cnt').textContent=flt.length+' de '+(dados[tab]||[]).length+(flt.length>RENDER_CAP?' (exibindo '+RENDER_CAP+'; exporte p/ ver todos)':'');
 }
 // ---- salvar célula editável no banco ----
 async function saveCell(el){const id=el.dataset.id,col=el.dataset.col,val=el.innerText.trim();
