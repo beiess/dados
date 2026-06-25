@@ -66,13 +66,13 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","consta_site","origem"];
+const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","sancionado","mandato_eletivo","consta_site","origem"];
 const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriais","site_oficial","portal_transparencia","ouvidoria","gestores","atores_validados","observacoes"];
 const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};   // multivalor (split por " | ")
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};                  // editáveis/salváveis (painel 1)
 const LINKC={site_oficial:1,portal_transparencia:1};
-const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
+const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
 const RENDER_CAP=20000;
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let tab=1,dados={1:[],2:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
@@ -120,7 +120,7 @@ async function carregar(){closePop();const ids=[...sel];
   document.getElementById('tw').innerHTML='<div class=msg>Carregando '+ids.length+' município(s) — sem limite por município…</div>';
   try{
     const todos=ids.length>300;
-    const p1=await fetchAll('painel1_servidores','id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,consta_site,origem',
+    const p1=await fetchAll('painel1_servidores','id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,sancionado,mandato_eletivo,consta_site,origem',
       q=>todos?q.order('ibge'):q.in('ibge',ids).order('orgao'));
     dados[1]=joinEnt(p1);
     dados[2]=todos?cadAll:cadAll.filter(e=>sel.has(e.ibge));
@@ -132,7 +132,7 @@ async function buscaResp(roles){closePop();
   document.getElementById('tw').innerHTML='<div class=msg>Buscando em todo o MG por responsabilidade ('+roles.length+' selecionada(s))…</div>';
   try{const byId={};
     for(const role of roles){const rows=await fetchAll('painel1_servidores',
-        'id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,consta_site,origem',
+        'id,ibge,orgao,setor,cargo_funcao,nome,cpf,matricula,telefone,email,instagram,contato_adicional,remuneracao,responsabilidade,sancionado,mandato_eletivo,consta_site,origem',
         q=>q.ilike('responsabilidade','%'+role+'%').order('ibge'));
       rows.forEach(r=>byId[r.id]=r);}
     dados[1]=joinEnt(Object.values(byId));dados[2]=cadAll;
@@ -195,6 +195,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
       if(tab===1&&EDIT[c])return '<td class=edit contenteditable data-id="'+esc(r.id)+'" data-col="'+c+'" data-orig="'+esc(v)+'" onblur="saveCell(this)">'+esc(v)+'</td>';
       if(c==='cpf'){let x=anon?mask(v):v;return '<td class=doc>'+(x||'<span class=na>—</span>')+'</td>';}
       if(!v)return '<td><span class=na>—</span></td>';
+      if(c==='sancionado')return '<td style="color:#cf222e;font-weight:600">'+esc(v)+'</td>';
       if(c==='consta_site')return '<td class=S>'+esc(v)+'</td>';
       if(c==='instagram'&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>insta</a></td>';
       if(LINKC[c]&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>link</a></td>';
