@@ -57,6 +57,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
   <div class="tab on" id=t1 onclick="setTab(1)">👤 Painel 1 — Dados Estratégicos</div>
   <div class="tab" id=t2 onclick="setTab(2)">🏛️ Painel 2 — Cadastro Institucional</div>
   <div class="tab" id=t3 onclick="setTab(3)">🏗️ Painel 3 — Fornecedores de Obra</div>
+  <div class="tab" id=t4 onclick="setTab(4)">📄 Painel 4 — Contratos 2026</div>
   <button onclick="setTab(tab===1?2:1)">↔ alternar Painel 1/2</button>
   <button onclick="limparFiltros()">limpar filtros de coluna</button>
   <button onclick="exportCSV()">⬇ Exportar CSV/Excel</button>
@@ -70,12 +71,13 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","sancionado","mandato_eletivo","socio_empresa","consta_site","origem"];
 const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriais","site_oficial","portal_transparencia","ouvidoria","gestores","atores_validados","observacoes"];
 const P3C=["razao_social","documento","situacao","cnae_principal","porte","municipio_uf","telefone","email","capital_social","data_abertura","socios","fontes","valor_empenho_obra","n_empenhos_obra","qtd_licitacoes_obra","valor_licitacao","nome_fantasia","natureza_juridica","endereco"];
-function colsOf(){return tab===1?P1C:(tab===2?P2C:P3C);}
+const P4C=["orgao","unidade_orcamentaria","num_processo","num_contrato","data_assinatura","contratado","doc_contratado","vig_inicio","vig_fim","qtd_aditivos","rescisao","valor_original","valor_atualizado"];
+function colsOf(){return tab===1?P1C:(tab===2?P2C:(tab===3?P3C:P4C));}
 const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};   // multivalor (split por " | ")
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};                  // editáveis/salváveis (painel 1)
 const LINKC={site_oficial:1,portal_transparencia:1};
-const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
+const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200};
 const RENDER_CAP=20000;
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let tab=1,dados={1:[],2:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
@@ -84,7 +86,7 @@ function norm(s){return (''+(s||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').toU
 function mask(c){return (c&&c.length===11&&/^\d+$/.test(c))?("***."+c.slice(3,6)+"."+c.slice(6,9)+"-**"):c;}
 function esc(s){return (''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function igram(redes){var m=(''+(redes||'')).match(/Instagram:\s*(\S+)/i);return m?m[1]:'';}
-function setTab(n){tab=n;document.getElementById('t1').classList.toggle('on',n===1);document.getElementById('t2').classList.toggle('on',n===2);document.getElementById('t3').classList.toggle('on',n===3);closePop();render();}
+function setTab(n){tab=n;document.getElementById('t1').classList.toggle('on',n===1);document.getElementById('t2').classList.toggle('on',n===2);document.getElementById('t3').classList.toggle('on',n===3);document.getElementById('t4').classList.toggle('on',n===4);closePop();render();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
 function limparFiltros(){fstate[tab]={};render();}
 async function entrar(){document.getElementById('err').textContent='';const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:pw.value});if(error){document.getElementById('err').textContent=error.message;return;}start();}
@@ -128,6 +130,7 @@ async function carregar(){closePop();const ids=[...sel];
       q=>todos?q.order('ibge'):q.in('ibge',ids).order('orgao'));
     dados[1]=joinEnt(p1);
     dados[2]=todos?cadAll:cadAll.filter(e=>sel.has(e.ibge));
+    dados[4]=await fetchAll('contratos_2026','cod_ibge,orgao,unidade_orcamentaria,num_processo,num_contrato,data_assinatura,contratado,doc_contratado,vig_inicio,vig_fim,qtd_aditivos,rescisao,valor_original,valor_atualizado',q=>todos?q.order('cod_ibge'):q.in('cod_ibge',ids));
   }catch(e){document.getElementById('tw').innerHTML='<div class=msg>Erro: '+e.message+'</div>';return;}
   fstate={1:{},2:{}};document.getElementById('msel').textContent='Municípios ('+ids.length+') ▾';render();
 }
