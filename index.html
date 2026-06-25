@@ -58,6 +58,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
   <div class="tab" id=t2 onclick="setTab(2)">🏛️ Painel 2 — Cadastro Institucional</div>
   <button onclick="setTab(tab===1?2:1)">↔ ir para o outro painel</button>
   <button onclick="limparFiltros()">limpar filtros de coluna</button>
+  <button onclick="exportCSV()">⬇ Exportar CSV/Excel</button>
   <span style="font-size:11px;color:#57606a">células amarelas = editáveis (salvam ao sair do campo)</span>
 </div>
 <div class=wrap><div class=tw id=tw><div class=msg>Selecione municípios em “Municípios ▾” e clique Carregar.</div></div></div>
@@ -161,20 +162,35 @@ function fall(col,on){const p=document.getElementById('fpop');fstate[tab][col]=o
 function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];
   let roles;if(s&&s.size)roles=[...s];else roles=p._vals;  // se nada marcado, usa todos os visíveis
   if(!roles.length){alert('selecione ao menos uma responsabilidade');return;}buscaResp(roles);}
-// ---- render ----
-function render(){if(document.getElementById('app').classList.contains('hidden'))return;
-  const cols=tab===1?P1C:P2C,rows=dados[tab],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];
-  const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
-  const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
-  const head='<thead><tr>'+cols.map((c,i)=>'<th>'+c+'<span class="flt'+(fs[c]?' act':'')+'" onclick="openFilter(event,'+i+')">▾</span><div class=rz onmousedown="rzs(event,'+i+')"></div></th>').join('')+'</tr></thead>';
-  let match=0,rendered=0;const out=[];
+// ---- filtro reutilizável (busca global + filtros de coluna, multivalor) ----
+function getFiltered(){const cols=tab===1?P1C:P2C,rows=dados[tab],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
   for(const r of rows){
     if(q&&!cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q)))continue;
     let ok=true;
     for(const c in fs){if(!fs[c])continue;const cell=(''+(r[c]||'')).trim();
       if(MV[c]){if(!cell.split(' | ').some(x=>fs[c].has(x.trim()))){ok=false;break;}}
       else if(!fs[c].has(cell)){ok=false;break;}}
-    if(!ok)continue;match++;if(rendered>=RENDER_CAP)continue;rendered++;
+    if(ok)out.push(r);}
+  return out;}
+// ---- exportar CSV (resultado filtrado, abre no Excel; respeita máscara de CPF) ----
+function csvval(v){v=''+(v==null?'':v);return /[;"\n\r]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v;}
+function exportCSV(){const cols=tab===1?P1C:P2C,flt=getFiltered();
+  if(!flt.length){alert('nada para exportar');return;}
+  const linhas=[cols.join(';')];
+  for(const r of flt)linhas.push(cols.map(c=>{let v=r[c]||'';if(c==='cpf'&&anon)v=mask(v);return csvval(v);}).join(';'));
+  const blob=new Blob(['﻿'+linhas.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.csv';
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);}
+// ---- render ----
+function render(){if(document.getElementById('app').classList.contains('hidden'))return;
+  const cols=tab===1?P1C:P2C,fs=fstate[tab];
+  const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
+  const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
+  const head='<thead><tr>'+cols.map((c,i)=>'<th>'+c+'<span class="flt'+(fs[c]?' act':'')+'" onclick="openFilter(event,'+i+')">▾</span><div class=rz onmousedown="rzs(event,'+i+')"></div></th>').join('')+'</tr></thead>';
+  const flt=getFiltered();let rendered=0;const out=[];
+  for(const r of flt){
+    if(rendered>=RENDER_CAP)break;rendered++;
     out.push('<tr>'+cols.map(c=>{let v=r[c]||'';
       if(tab===1&&EDIT[c])return '<td class=edit contenteditable data-id="'+esc(r.id)+'" data-col="'+c+'" data-orig="'+esc(v)+'" onblur="saveCell(this)">'+esc(v)+'</td>';
       if(c==='cpf'){let x=anon?mask(v):v;return '<td class=doc>'+(x||'<span class=na>—</span>')+'</td>';}
@@ -186,7 +202,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
       return '<td>'+esc(v)+'</td>';}).join('')+'</tr>');
   }
   document.getElementById('tw').innerHTML='<table>'+cg+head+'<tbody>'+(out.join('')||'<tr><td>sem dados</td></tr>')+'</tbody></table>';
-  document.getElementById('cnt').textContent=match+' de '+rows.length+(match>RENDER_CAP?' (mostrando '+RENDER_CAP+'; refine os filtros)':'');
+  document.getElementById('cnt').textContent=flt.length+' de '+dados[tab].length+(flt.length>RENDER_CAP?' (exibindo '+RENDER_CAP+'; exporte p/ ver todos)':'');
 }
 // ---- salvar célula editável no banco ----
 async function saveCell(el){const id=el.dataset.id,col=el.dataset.col,val=el.innerText.trim();
