@@ -47,7 +47,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Base Canônica TCE-MG <span style=opacity:.5;font-size:11px>v4.1</span></h1>
+  <h1>Base Canônica TCE-MG <span style=opacity:.5;font-size:11px>v4.2</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -87,7 +87,18 @@ function norm(s){return (''+(s||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').toU
 function mask(c){return (c&&c.length===11&&/^\d+$/.test(c))?("***."+c.slice(3,6)+"."+c.slice(6,9)+"-**"):c;}
 function esc(s){return (''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function igram(redes){var m=(''+(redes||'')).match(/Instagram:\s*(\S+)/i);return m?m[1]:'';}
-function setTab(n){tab=n;document.getElementById('t1').classList.toggle('on',n===1);document.getElementById('t2').classList.toggle('on',n===2);document.getElementById('t3').classList.toggle('on',n===3);document.getElementById('t4').classList.toggle('on',n===4);closePop();render();}
+async function setTab(n){tab=n;
+  ['t1','t2','t3','t4'].forEach(function(id,i){document.getElementById(id).classList.toggle('on',n===i+1);});
+  closePop();var tw=document.getElementById('tw');
+  if(n===3 && !(dados[3]&&dados[3].length)){tw.innerHTML='<div class=msg>Carregando fornecedores…</div>';
+    try{dados[3]=await fetchAll('fornecedores_obra',P3C.join(','),function(q){return q.order('razao_social');});}
+    catch(e){tw.innerHTML='<div class=msg>Erro ao carregar Painel 3: '+e.message+'</div>';return;}}
+  if(n===4 && !(dados[4]&&dados[4].length)){
+    if(!sel.size){tw.innerHTML='<div class=msg>Selecione município(s) em “Municípios ▾” e clique Carregar para ver os contratos.</div>';return;}
+    tw.innerHTML='<div class=msg>Carregando contratos…</div>';var ids=[...sel],todos=ids.length>300;
+    try{dados[4]=await fetchAll('contratos_2026','cod_ibge,orgao,unidade_orcamentaria,num_processo,num_contrato,data_assinatura,contratado,doc_contratado,vig_inicio,vig_fim,qtd_aditivos,rescisao,valor_original,valor_atualizado',function(q){return todos?q.order('cod_ibge'):q.in('cod_ibge',ids);});}
+    catch(e){tw.innerHTML='<div class=msg>Erro ao carregar Painel 4: '+e.message+'</div>';return;}}
+  render();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
 function limparFiltros(){fstate[tab]={};render();}
 async function entrar(){document.getElementById('err').textContent='';const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:pw.value});if(error){document.getElementById('err').textContent=error.message;return;}start();}
@@ -99,7 +110,6 @@ async function start(){const {data:{session}}=await sb.auth.getSession();if(!ses
   // carrega TODO o cadastro (2.151) p/ join de contatos + painel 2
   cadAll=await fetchAll('cadastro_institucional','ibge,orgao,esfera,cnpj,endereco,contato,email,emails_setoriais,redes_sociais,site_oficial,portal_transparencia,ouvidoria,gestores,atores_validados,observacoes',q=>q.order('orgao'));
   cadByKey={};cadAll.forEach(e=>{cadByKey[e.ibge+'|'+norm(e.orgao)]=e;});
-  dados[3]=await fetchAll('fornecedores_obra',P3C.join(','),q=>q.order('razao_social'));render();
 }
 // paginação: busca TODAS as linhas (sem limite prático), teto de segurança 200k
 async function fetchAll(tbl,cols,apply){let from=0,page=1000,all=[];
