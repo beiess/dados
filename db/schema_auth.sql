@@ -10,8 +10,7 @@ create table painel1_servidores (
   consta_site text, origem text
 );
 create index ix_p1_ibge on painel1_servidores (ibge);
-create index ix_p1_nome on painel1_servidores (nome);
-create index ix_p1_cpf  on painel1_servidores (cpf);
+-- (sem índices em nome/cpf p/ economizar disco no free; filtra por ibge e busca no município)
 
 -- cadastro_institucional já existe (2.151). Garante RLS.
 alter table painel1_servidores enable row level security;
