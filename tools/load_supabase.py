@@ -22,8 +22,11 @@ COLS = {
         "contato", "email", "emails_setoriais", "redes_sociais", "site_oficial",
         "portal_transparencia", "ouvidoria", "links_relevantes", "gestores",
         "atores_relevantes", "atores_confirmados", "atores_validados", "observacoes"],
+    "estrutura_despesa_2026": ["cod_ibge", "orgao", "unidade_orcamentaria", "funcao",
+        "subfuncao", "programa", "acao", "subacao", "natureza_despesa", "fonte_recurso", "valor"],
 }
-TAB = {"painel1": "painel1_servidores", "cadastro": "cadastro_institucional"}
+TAB = {"painel1": "painel1_servidores", "cadastro": "cadastro_institucional",
+       "estrutura": "estrutura_despesa_2026"}
 # coluna destino -> coluna de origem no CSV (quando diferem)
 RENAME = {"ibge": "cod_ibge"}
 
