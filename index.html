@@ -56,7 +56,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.2</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.3</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -88,14 +88,14 @@ const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriai
 const P3C=["razao_social","documento","situacao","cnae_principal","porte","municipio_uf","telefone","email","capital_social","data_abertura","socios","fontes","valor_empenho_obra","n_empenhos_obra","qtd_licitacoes_obra","valor_licitacao","nome_fantasia","natureza_juridica","endereco"];
 const P4C=["orgao","unidade_orcamentaria","num_processo","num_contrato","data_assinatura","contratado","doc_contratado","objeto","vig_inicio","vig_fim","qtd_aditivos","rescisao","valor_original","valor_atualizado"];
 const P5DB=["orgao","unidade_orcamentaria","funcao","subfuncao","programa","acao","subacao","natureza_despesa","fonte_recurso","valor"];
-const P5C=["cod_ibge","seq_orgao",...P5DB];
+const P5C=["cod_ibge","seq_orgao","seq_unidade","cod_orgao","cod_unidade",...P5DB];
 function colsOf(){return tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:P5C)));}
 const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1,sancionado:1,mandato_eletivo:1,socio_empresa:1,objeto:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};
 const LINKC={site_oficial:1,portal_transparencia:1};
 const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,objeto:380,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120};
-Object.assign(WID,{cod_ibge:90,seq_orgao:100,funcao:170,subfuncao:200,programa:250,acao:280,subacao:150,natureza_despesa:300,fonte_recurso:300,valor:140});
+Object.assign(WID,{cod_ibge:90,seq_orgao:100,seq_unidade:110,cod_orgao:90,cod_unidade:100,funcao:170,subfuncao:200,programa:250,acao:280,subacao:150,natureza_despesa:300,fonte_recurso:300,valor:140});
 const RENDER_CAP=20000, TIMEOUT=45000;
 const NUMC={remuneracao:1,valor_empenho_obra:1,valor_licitacao:1,capital_social:1,n_empenhos_obra:1,qtd_licitacoes_obra:1,qtd_aditivos:1,valor_original:1,valor_atualizado:1,valor:1};
 const TOTC={1:["remuneracao"],2:[],3:["valor_empenho_obra","valor_licitacao"],4:["valor_original","valor_atualizado"],5:["valor"]};
@@ -173,8 +173,13 @@ async function carregar(){closePop();const ids=[...sel];
     dados[4]=await sbfetch('contratos_2026','select='+P4C.join(',')+',cod_ibge&order=cod_ibge'+(todos?'':'&cod_ibge=in.('+inList(ids)+')'),prog);
     loading('Carregando Painel 5 (estrutura / despesa)…');
     {const p5=await sbfetch('estrutura_despesa_2026','select='+P5DB.join(',')+',cod_ibge&order=cod_ibge'+(todos?'':'&cod_ibge=in.('+inList(ids)+')'),prog);
-     dados[5]=p5.map(r=>{const m=/^\s*(\d+)/.exec(r.orgao||'');const co=m?(''+parseInt(m[1],10)):'';
-       return Object.assign(r,{seq_orgao:(orgaos[r.cod_ibge]||{})[co]||''});});}
+     dados[5]=p5.map(r=>{
+       const mo=/^\s*(\d+)/.exec(r.orgao||''); const co=mo?(''+parseInt(mo[1],10)):'';
+       const cod_orgao=(/^\s*([\w.]+)\s*-/.exec(r.orgao||'')||[])[1]||'';
+       const cod_unidade=(/^\s*([\w.]+)\s*-/.exec(r.unidade_orcamentaria||'')||[])[1]||'';
+       const E=orgaos[r.cod_ibge]||{};
+       return Object.assign(r,{cod_orgao,cod_unidade,
+         seq_orgao:(E.o||{})[co]||'', seq_unidade:(E.u||{})[co+'_'+cod_unidade]||''});});}
   }catch(e){showErr(e.message);return;}
   fstate={1:{},2:{},3:dados[3].length?fstate[3]:{},4:{},5:{}};tab=1;setTabUI();render();
 }
