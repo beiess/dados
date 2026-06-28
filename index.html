@@ -1,7 +1,7 @@
 <!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Base Canônica TCE-MG — Painéis (acesso restrito)</title>
+<title>Painel Estratégico — TCE-MG (acesso restrito)</title>
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}
 body{font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f6f8fa;color:#1f2328}
@@ -21,9 +21,10 @@ table{border-collapse:collapse;table-layout:fixed}
 th,td{padding:6px 9px;border:1px solid var(--b);text-align:left;vertical-align:top;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 td.ml{white-space:normal}
 td.edit{background:#fffbe6;white-space:normal;cursor:text}td.edit:focus{outline:2px solid #0969da;background:#fff}
-thead th{background:#f6f8fa;position:sticky;top:0;z-index:3;font-size:11px;text-transform:uppercase;color:#57606a;position:relative;padding-right:20px}
-.flt{position:absolute;right:9px;top:5px;cursor:pointer;color:#8c959f;font-size:11px}.flt.act{color:#0969da;font-weight:700}
-.rz{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize}.rz:hover{background:#0969da}
+thead th{background:#f6f8fa;position:sticky;top:0;z-index:3;font-size:11px;text-transform:uppercase;color:#57606a;padding-right:34px;cursor:pointer;user-select:none}
+thead th:hover{background:#eef1f4}.sorti{color:#0969da;font-weight:700;margin-left:3px}
+.flt{position:absolute;right:14px;top:5px;cursor:pointer;color:#8c959f;font-size:11px;z-index:4}.flt.act{color:#0969da;font-weight:700}
+.rz{position:absolute;right:0;top:0;width:9px;height:100%;cursor:col-resize;z-index:5}.rz:hover{background:#0969da}
 tr:hover{background:#f6f8fa}.doc{color:#8250df;font-variant-numeric:tabular-nums}.na{color:#c0c4ca}
 a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700;text-align:center}.err{color:#cf222e}
 .barwrap{height:6px;background:#e7ebef;border-radius:4px;overflow:hidden;width:280px;margin:10px 0}
@@ -40,9 +41,13 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 .pop label{display:block;padding:2px 4px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .pop .row{display:flex;gap:6px;margin-top:6px}.pop .row button{flex:1;font-size:12px;padding:5px}
 .mbtn{padding:7px 10px;border-radius:7px;border:1px solid #30363d;background:#161b22;color:#fff;cursor:pointer;font:inherit}
+.xref{color:#0969da;cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}.xref:hover{text-decoration:underline}
+#tot{font-size:12px;color:#1a7f37;font-weight:600}
+.xtag{display:inline-flex;align-items:center;gap:6px;background:#ddf4ff;border:1px solid #54aeff;color:#0969da;border-radius:7px;padding:3px 8px;font-size:12px}
+.xtag b{cursor:pointer;font-weight:700}
 </style></head><body>
 <div id=login>
-  <h2>Base Canônica TCE-MG</h2>
+  <h2>Painel Estratégico</h2>
   <p>Acesso restrito. Dados identificados protegidos por login (LGPD/LAI).</p>
   <form onsubmit="entrar();return false;">
   <input id=email type=email placeholder="e-mail" autocomplete=username>
@@ -51,7 +56,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Base Canônica TCE-MG <span style="opacity:.5;font-size:11px">v5.1</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -64,13 +69,18 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
   <div class="tab" id=t3 onclick="setTab(3)">🏗️ Painel 3 — Fornecedores de Obra</div>
   <div class="tab" id=t4 onclick="setTab(4)">📄 Painel 4 — Contratos 2026</div>
   <button onclick="limparFiltros()">limpar filtros</button>
-  <button onclick="exportCSV()">⬇ Exportar CSV</button>
-  <span style="font-size:11px;color:#57606a">amarelo = editável (salva ao sair do campo)</span>
+  <button onclick="exportCSV()">⬇ CSV</button>
+  <button onclick="exportXLSX()">⬇ Excel</button>
+  <span id=xtag></span>
+  <span class=sp></span>
+  <span id=tot></span>
+  <span style="font-size:11px;color:#57606a">amarelo = editável · clique no cabeçalho ordena</span>
 </div>
 <div class=wrap><div class=tw id=tw><div class=msg>Selecione município(s) em “Municípios ▾” e clique Carregar (Painéis 1, 2, 4). O Painel 3 carrega ao clicar na aba.</div></div></div>
 </div>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","sancionado","mandato_eletivo","socio_empresa","consta_site","origem"];
 const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriais","site_oficial","portal_transparencia","ouvidoria","gestores","atores_validados","observacoes"];
@@ -83,9 +93,17 @@ const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};
 const LINKC={site_oficial:1,portal_transparencia:1};
 const WID={orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,objeto:380,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120};
 const RENDER_CAP=20000, TIMEOUT=45000;
+const NUMC={remuneracao:1,valor_empenho_obra:1,valor_licitacao:1,capital_social:1,n_empenhos_obra:1,qtd_licitacoes_obra:1,qtd_aditivos:1,valor_original:1,valor_atualizado:1};
+const TOTC={1:["remuneracao"],2:[],3:["valor_empenho_obra","valor_licitacao"],4:["valor_original","valor_atualizado"]};
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let tab=1,dados={1:[],2:[],3:[],4:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
 let fstate={1:{},2:{},3:{},4:{}}, colw={1:{},2:{},3:{},4:{}};
+let sortState={1:null,2:null,3:null,4:null}, xref=null;
+function parseNum(v){if(v==null)return 0;let s=(''+v).replace(/[^\d.,-]/g,'');if(!s)return 0;
+  if(s.indexOf('.')>=0&&s.indexOf(',')>=0)s=s.replace(/\./g,'').replace(',','.');
+  else if(s.indexOf(',')>=0)s=s.replace(',','.');
+  const n=parseFloat(s);return isNaN(n)?0:n;}
+function fmtBR(n){return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function norm(s){return (''+(s||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();}
 function mask(c){return (c&&c.length===11&&/^\d+$/.test(c))?("***."+c.slice(3,6)+"."+c.slice(6,9)+"-**"):c;}
 function esc(s){return (''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -180,31 +198,49 @@ function ffilter(q){q=norm(q);const p=document.getElementById('fpop');if(!p)retu
 function ftoggle(v,on){const p=document.getElementById('fpop'),col=p._col;let s=fstate[tab][col];if(!s){s=new Set(p._vals);fstate[tab][col]=s;}on?s.add(v):s.delete(v);render();}
 function fall(on){const p=document.getElementById('fpop');fstate[tab][p._col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
 function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];let roles=(s&&s.size)?[...s]:p._vals;if(!roles.length){alert('selecione');return;}buscaResp(roles);}
-function limparFiltros(){fstate[tab]={};render();}
+function limparFiltros(){fstate[tab]={};sortState[tab]=null;if(xref&&xref.tab===tab)xref=null;render();}
 function getFiltered(){const cols=colsOf(),rows=dados[tab]||[],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
   for(const r of rows){if(!r)continue;
+    if(xref&&xref.tab===tab&&!xref.match(r))continue;
     if(q&&!cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q)))continue;
     let ok=true;for(const c in fs){if(!fs[c])continue;const cell=(''+(r[c]||'')).trim();
       if(MV[c]){if(!cell.split(' | ').some(x=>fs[c].has(x.trim()))){ok=false;break;}}else if(!fs[c].has(cell)){ok=false;break;}}
     if(ok)out.push(r);}
   return out;}
+function applySort(arr){const so=sortState[tab];if(!so)return arr;const c=so.col,num=NUMC[c],sgn=so.dir==='asc'?1:-1;
+  return arr.slice().sort((a,b)=>{if(num)return (parseNum(a[c])-parseNum(b[c]))*sgn;
+    const x=norm(a[c]),y=norm(b[c]);return x<y?-sgn:(x>y?sgn:0);});}
+function viewRows(){return applySort(getFiltered());}
+function sortBy(ev,i){ev.stopPropagation();const col=colsOf()[i],s=sortState[tab];
+  if(s&&s.col===col){if(s.dir==='asc')s.dir='desc';else sortState[tab]=null;}else sortState[tab]={col,dir:'asc'};
+  render();}
 function csvval(v){v=''+(v==null?'':v);return /[;"\n\r]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v;}
-function exportCSV(){const cols=colsOf(),flt=getFiltered();if(!flt.length){alert('nada para exportar');return;}
+function exportCSV(){const cols=colsOf(),flt=viewRows();if(!flt.length){alert('nada para exportar');return;}
   const L=[cols.join(';')];for(const r of flt)L.push(cols.map(c=>{let v=r[c]||'';if(c==='cpf'&&anon)v=mask(v);return csvval(v);}).join(';'));
   const b=new Blob(['﻿'+L.join('\r\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');
   a.href=URL.createObjectURL(b);a.download='painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);}
+function exportXLSX(){if(typeof XLSX==='undefined'){alert('biblioteca Excel ainda carregando — tente em instantes');return;}
+  const cols=colsOf(),flt=viewRows();if(!flt.length){alert('nada para exportar');return;}
+  const aoa=[cols];for(const r of flt)aoa.push(cols.map(c=>{let v=r[c]==null?'':r[c];if(c==='cpf'&&anon)v=mask(v);
+    return NUMC[c]?parseNum(v):(''+v);}));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=cols.map(c=>({wch:Math.min(60,Math.max(10,(WID[c]||120)/7))}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'painel'+tab);
+  XLSX.writeFile(wb,'painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.xlsx');}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
 function render(){if(document.getElementById('app').classList.contains('hidden'))return;
-  const cols=colsOf(),fs=fstate[tab];
+  const cols=colsOf(),fs=fstate[tab],so=sortState[tab];
   const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
   const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
-  const head='<thead><tr>'+cols.map((c,i)=>'<th>'+c+'<span class="flt'+(fs[c]?' act':'')+'" onclick="openFilter(event,'+i+')">▾</span><div class=rz onmousedown="rzs(event,'+i+')"></div></th>').join('')+'</tr></thead>';
-  const flt=getFiltered();let rendered=0;const out=[];
+  const head='<thead><tr>'+cols.map((c,i)=>{const ar=so&&so.col===c?'<span class=sorti>'+(so.dir==='asc'?'▲':'▼')+'</span>':'';
+    return '<th onclick="sortBy(event,'+i+')" title="ordenar">'+c+ar+'<span class="flt'+(fs[c]?' act':'')+'" onclick="openFilter(event,'+i+')">▾</span><div class=rz onmousedown="rzs(event,'+i+')" onclick="event.stopPropagation()"></div></th>';}).join('')+'</tr></thead>';
+  const flt=viewRows();let rendered=0;const out=[];
   for(const r of flt){if(!r)continue;if(rendered>=RENDER_CAP)break;rendered++;
     out.push('<tr>'+cols.map(c=>{let v=r[c]||'';
       if(tab===1&&EDIT[c])return '<td class=edit contenteditable data-id="'+esc(r.id)+'" data-col="'+c+'" data-orig="'+esc(v)+'" onblur="saveCell(this)">'+esc(v)+'</td>';
       if(c==='cpf'){let x=anon?mask(v):v;return '<td class=doc>'+(x||'<span class=na>—</span>')+'</td>';}
       if(!v)return '<td><span class=na>—</span></td>';
+      if(tab===3&&c==='razao_social')return '<td class=ml><span class=xref data-nome="'+esc(v)+'" onclick="cruzaForn(this)" title="ver contratos 2026 deste fornecedor em todo o MG">'+esc(v)+'</span></td>';
+      if(tab===4&&c==='contratado')return '<td class=ml><span class=xref data-nome="'+esc(v)+'" onclick="cruzaContr(this)" title="ver cadastro deste fornecedor (Painel 3)">'+esc(v)+'</span></td>';
       if(c==='consta_site')return '<td class=S>'+esc(v)+'</td>';
       if(c==='sancionado')return '<td style="color:#cf222e;font-weight:600">'+esc(v)+'</td>';
       if(c==='instagram'&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>insta</a></td>';
@@ -214,15 +250,34 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
   const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos'}[tab];
   tw().innerHTML='<table>'+cg+head+'<tbody>'+(out.join('')||'<tr><td>sem dados</td></tr>')+'</tbody></table>';
   document.getElementById('cnt').textContent=flt.length.toLocaleString('pt-BR')+' '+nm+(flt.length>RENDER_CAP?' (exibindo '+RENDER_CAP.toLocaleString('pt-BR')+'; exporte p/ ver todos)':'');
+  const tc=TOTC[tab]||[];document.getElementById('tot').textContent=tc.length?tc.map(c=>'Σ '+c+': '+fmtBR(flt.reduce((s,r)=>s+parseNum(r[c]),0))).join('   ·   '):'';
+  renderXtag();
 }
+function renderXtag(){const e=document.getElementById('xtag');if(!e)return;
+  e.innerHTML=(xref&&xref.tab===tab)?'<span class=xtag>🔗 '+esc(xref.label)+' <b onclick="clearXref()" title="remover cruzamento">✕</b></span>':'';}
+function clearXref(){xref=null;render();}
+async function cruzaContr(el){const nome=el.dataset.nome,nn=norm(nome);
+  if(!dados[3].length){loading('Carregando Painel 3 (fornecedores de obra)…');
+    try{dados[3]=await sbfetch('fornecedores_obra','select='+P3C.join(',')+'&order=razao_social',prog);}catch(e){showErr('Painel 3: '+e.message);return;}}
+  tab=3;setTabUI();fstate[3]={};sortState[3]=null;
+  xref={tab:3,label:'fornecedor = '+nome,match:r=>norm(r.razao_social)===nn||norm(r.nome_fantasia)===nn};
+  render();}
+async function cruzaForn(el){const nome=el.dataset.nome;
+  loading('Buscando contratos 2026 de “'+nome+'” em todo o MG…');
+  try{const rows=await sbfetch('contratos_2026','select='+P4C.join(',')+',cod_ibge&contratado=ilike.*'+encodeURIComponent(nome)+'*&order=cod_ibge',prog);
+    dados[4]=rows;tab=4;setTabUI();fstate[4]={};sortState[4]=null;xref=null;render();
+  }catch(e){showErr('Cruzamento: '+e.message);}}
 async function saveCell(el){const id=el.dataset.id,col=el.dataset.col,val=el.innerText.trim();if(val===el.dataset.orig)return;
   el.style.background='#fff3cd';const t=await token();
   const r=await fetch(SB_URL+'/rest/v1/painel1_servidores?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_ANON,Authorization:'Bearer '+t,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({[col]:val||null})});
   if(!r.ok){el.style.background='#ffd7d5';el.title='Erro '+r.status;return;}
   el.dataset.orig=val;el.style.background='#dafbe1';setTimeout(()=>el.style.background='#fffbe6',900);}
-function rzs(e,i){e.preventDefault();e.stopPropagation();const col=colsOf()[i],colEl=document.querySelectorAll('colgroup col')[i],sx=e.pageX,sw=colEl.getBoundingClientRect().width;
-  const mv=ev=>{const w=Math.max(40,sw+ev.pageX-sx);colEl.style.width=w+'px';colw[tab][col]=w;};
-  const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+function rzs(e,i){e.preventDefault();e.stopPropagation();
+  const col=colsOf()[i],colEl=document.querySelectorAll('colgroup col')[i],th=e.target.closest('th');
+  const sx=e.pageX,sw=(th?th.offsetWidth:(colw[tab][col]||WID[col]||140));
+  document.body.style.userSelect='none';document.body.style.cursor='col-resize';
+  const mv=ev=>{const w=Math.max(50,sw+ev.pageX-sx);colEl.style.width=w+'px';colw[tab][col]=w;};
+  const up=()=>{document.body.style.userSelect='';document.body.style.cursor='';document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
   document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);}
 document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
