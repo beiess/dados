@@ -12,6 +12,7 @@ create table painel6_responsaveis (
   nome text,
   tipo_responsabilidade text,
   cpf text,
+  email text,
   origem text,
   no_painel1 text
 );

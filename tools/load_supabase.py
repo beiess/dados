@@ -26,7 +26,7 @@ COLS = {
     "estrutura_despesa_2026": ["cod_ibge", "orgao", "unidade_orcamentaria", "funcao",
         "subfuncao", "programa", "acao", "subacao", "natureza_despesa", "fonte_recurso", "valor"],
     "painel6_responsaveis": ["cod_ibge", "orgao", "nome", "tipo_responsabilidade",
-        "cpf", "origem", "no_painel1"],
+        "cpf", "email", "origem", "no_painel1"],
 }
 TAB = {"painel1": "painel1_servidores", "cadastro": "cadastro_institucional",
        "estrutura": "estrutura_despesa_2026", "responsaveis": "painel6_responsaveis"}
