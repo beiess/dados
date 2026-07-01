@@ -56,7 +56,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.4</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.5</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -262,7 +262,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
       if(!v)return '<td><span class=na>—</span></td>';
       if(tab===3&&c==='razao_social')return '<td class=ml><span class=xref data-nome="'+esc(v)+'" onclick="cruzaForn(this)" title="ver contratos 2026 deste fornecedor em todo o MG">'+esc(v)+'</span></td>';
       if(tab===4&&c==='contratado')return '<td class=ml><span class=xref data-nome="'+esc(v)+'" onclick="cruzaContr(this)" title="ver cadastro deste fornecedor (Painel 3)">'+esc(v)+'</span></td>';
-      if(c==='no_painel1')return '<td style="text-align:center;font-weight:600;color:'+(v==='Sim'?'#1a7f37':'#cf222e')+'">'+esc(v)+'</td>';
+      if(c==='no_painel1')return '<td style="text-align:center;font-weight:600;color:'+(v==='Sim'?'#1a7f37':(v==='Não'?'#cf222e':'#8c959f'))+'">'+esc(v)+'</td>';
       if(c==='consta_site')return '<td class=S>'+esc(v)+'</td>';
       if(c==='sancionado')return '<td style="color:#cf222e;font-weight:600">'+esc(v)+'</td>';
       if(c==='instagram'&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>insta</a></td>';
