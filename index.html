@@ -56,7 +56,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.5</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.6</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -260,6 +260,8 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
       if(tab===1&&EDIT[c])return '<td class=edit contenteditable data-id="'+esc(r.id)+'" data-col="'+c+'" data-orig="'+esc(v)+'" onblur="saveCell(this)">'+esc(v)+'</td>';
       if(c==='cpf'){let x=anon?mask(v):v;return '<td class=doc>'+(x||'<span class=na>—</span>')+'</td>';}
       if(!v)return '<td><span class=na>—</span></td>';
+      if(tab===1&&c==='nome')return '<td class=ml><span class=xref data-cpf="'+esc(r.cpf||'')+'" data-nome="'+esc(v)+'" onclick="cruzaPessoa(this,6)" title="ver responsabilidades em licitações (Painel 6)">'+esc(v)+'</span></td>';
+      if(tab===6&&c==='nome')return '<td class=ml><span class=xref data-cpf="'+esc(r.cpf||'')+'" data-nome="'+esc(v)+'" onclick="cruzaPessoa(this,1)" title="ver este servidor no Painel 1">'+esc(v)+'</span></td>';
       if(tab===3&&c==='razao_social')return '<td class=ml><span class=xref data-nome="'+esc(v)+'" onclick="cruzaForn(this)" title="ver contratos 2026 deste fornecedor em todo o MG">'+esc(v)+'</span></td>';
       if(tab===4&&c==='contratado')return '<td class=ml><span class=xref data-nome="'+esc(v)+'" onclick="cruzaContr(this)" title="ver cadastro deste fornecedor (Painel 3)">'+esc(v)+'</span></td>';
       if(c==='no_painel1')return '<td style="text-align:center;font-weight:600;color:'+(v==='Sim'?'#1a7f37':(v==='Não'?'#cf222e':'#8c959f'))+'">'+esc(v)+'</td>';
@@ -289,6 +291,24 @@ async function cruzaForn(el){const nome=el.dataset.nome;
   try{const rows=await sbfetch('contratos_2026','select='+P4C.join(',')+',cod_ibge&contratado=ilike.*'+encodeURIComponent(nome)+'*&order=cod_ibge',prog);
     dados[4]=rows;tab=4;setTabUI();fstate[4]={};sortState[4]=null;xref=null;render();
   }catch(e){showErr('Cruzamento: '+e.message);}}
+async function cruzaPessoa(el,target){
+  const c=(''+(el.dataset.cpf||'')).replace(/\D/g,''), nome=el.dataset.nome;
+  if(c.length!==11){alert('CPF completo indisponível para cruzar esta pessoa (não casou no Painel 1).');return;}
+  if(target===1){
+    loading('Buscando “'+nome+'” no Painel 1 (servidor) em todo o MG…');
+    try{const rows=await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+'&cpf=eq.'+c+'&order=ibge',prog);
+      dados[1]=rows.map(r=>{const e=cadByKey[r.ibge+'|'+norm(r.orgao)]||{};
+        return Object.assign({},r,{telefone:r.telefone||e.contato||'',email:r.email||e.email||'',instagram:r.instagram||igram(e.redes_sociais),contato_adicional:r.contato_adicional||''});});
+      tab=1;setTabUI();fstate[1]={};sortState[1]=null;xref={tab:1,label:'pessoa: '+nome,match:()=>true};render();
+      if(!dados[1].length)showErr('“'+nome+'” não encontrado no Painel 1.');
+    }catch(e){showErr('Cruzamento: '+e.message);}
+  }else{
+    loading('Buscando responsabilidades de “'+nome+'” (Painel 6) em todo o MG…');
+    try{dados[6]=await sbfetch('painel6_responsaveis','select='+P6C.join(',')+'&cpf=eq.'+c+'&order=cod_ibge',prog);
+      tab=6;setTabUI();fstate[6]={};sortState[6]=null;xref={tab:6,label:'pessoa: '+nome,match:()=>true};render();
+      if(!dados[6].length)showErr('Sem responsabilidades no Painel 6 para “'+nome+'”.');
+    }catch(e){showErr('Cruzamento: '+e.message);}
+  }}
 async function saveCell(el){const id=el.dataset.id,col=el.dataset.col,val=el.innerText.trim();if(val===el.dataset.orig)return;
   el.style.background='#fff3cd';const t=await token();
   const r=await fetch(SB_URL+'/rest/v1/painel1_servidores?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_ANON,Authorization:'Bearer '+t,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({[col]:val||null})});
