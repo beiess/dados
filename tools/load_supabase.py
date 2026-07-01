@@ -16,7 +16,8 @@ LOTE = 1000
 # colunas destino por tabela (subconjunto útil do CSV)
 COLS = {
     "painel1_servidores": ["ibge", "orgao", "setor", "cargo_funcao", "nome", "cpf",
-        "matricula", "remuneracao", "responsabilidade", "consta_site", "origem"],
+        "matricula", "remuneracao", "responsabilidade", "consta_site", "origem",
+        "sancionado", "mandato_eletivo", "socio_empresa"],
     "cadastro_institucional": ["entidade_id", "ibge", "uf", "cod_orgao", "cidade", "entidade",
         "orgao", "esfera", "cnpj", "endereco", "latitude", "longitude", "geo_precisao",
         "contato", "email", "emails_setoriais", "redes_sociais", "site_oficial",
