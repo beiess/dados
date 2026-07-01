@@ -68,7 +68,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.8</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.9</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -327,7 +327,7 @@ async function perfil(cpf,nome){
     h+='<div class=sec><h4>Vínculos como servidor — Painel 1 ('+p1.length+')</h4>';
     h+=p1.length?('<table><tr><th>Município</th><th>Órgão</th><th>Setor</th><th>Cargo</th><th>Remuneração</th></tr>'+p1.slice(0,60).map(r=>'<tr><td>'+esc(munNome(r.ibge))+'</td><td>'+esc(r.orgao||'—')+'</td><td>'+esc(r.setor||'—')+'</td><td>'+esc(r.cargo_funcao||'—')+'</td><td>'+esc(r.remuneracao||'—')+'</td></tr>').join('')+'</table>'):'<span class=na>não encontrado no Painel 1</span>';
     h+='</div><div class=sec><h4>Responsabilidades em licitações — Painel 6 ('+p6.length+')</h4>';
-    h+=p6.length?('<table><tr><th>Município</th><th>Órgão</th><th>Tipo</th><th>Origem</th></tr>'+p6.slice(0,60).map(r=>'<tr><td>'+esc(munNome(r.cod_ibge))+'</td><td>'+esc(r.orgao||'—')+'</td><td>'+esc(r.tipo_responsabilidade||'—')+'</td><td>'+esc(r.origem||'')+'</td></tr>').join('')+'</table>'):'<span class=na>sem responsabilidades registradas</span>';
+    h+=p6.length?('<table><tr><th>Município</th><th>Órgão</th><th>Tipo</th><th>Origem</th><th>E-mail</th></tr>'+p6.slice(0,60).map(r=>'<tr><td>'+esc(munNome(r.cod_ibge))+'</td><td>'+esc(r.orgao||'—')+'</td><td>'+esc(r.tipo_responsabilidade||'—')+'</td><td>'+esc(r.origem||'')+'</td><td>'+((r.email||'').includes('@')?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'—')+'</td></tr>').join('')+'</table>'):'<span class=na>sem responsabilidades registradas</span>';
     h+='</div><div class=sec><button class=go onclick="fecharPerfil();cruzaPessoa(_perfil.c,_perfil.nome,1)">abrir no Painel 1</button><button class=go onclick="fecharPerfil();cruzaPessoa(_perfil.c,_perfil.nome,6)">abrir no Painel 6</button></div></div>';
     card.innerHTML=head+h;
   }catch(e){card.innerHTML=head+'<div class="bd err">Erro: '+esc(e.message)+'</div>';}
