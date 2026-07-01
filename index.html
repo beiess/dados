@@ -45,6 +45,18 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 #tot{font-size:12px;color:#1a7f37;font-weight:600}
 .xtag{display:inline-flex;align-items:center;gap:6px;background:#ddf4ff;border:1px solid #54aeff;color:#0969da;border-radius:7px;padding:3px 8px;font-size:12px}
 .xtag b{cursor:pointer;font-weight:700}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:100;justify-content:center;align-items:flex-start;overflow:auto;padding:36px 12px}
+#modal.on{display:flex}
+.card{background:#fff;border-radius:12px;max-width:920px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,.3)}
+.card h3{margin:0;padding:13px 18px;background:#0d1117;color:#fff;border-radius:12px 12px 0 0;font-size:15px;display:flex;gap:10px;align-items:center}
+.card h3 .x{margin-left:auto;cursor:pointer;font-size:20px;line-height:1}
+.card .bd{padding:14px 18px}
+.card .sec{margin:12px 0}.card .sec h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;color:#57606a;letter-spacing:.03em}
+.card table{width:100%;font-size:12px;border-collapse:collapse}.card td,.card th{padding:4px 7px;border:1px solid var(--b);text-align:left}
+.card th{background:#f6f8fa;font-size:11px;text-transform:uppercase;color:#57606a}
+.chip{display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;margin:0 6px 4px 0}
+.chip.s{background:#ffebe9;color:#cf222e}.chip.m{background:#fff8c5;color:#7d4e00}.chip.o{background:#ddf4ff;color:#0969da}
+.card .go{padding:6px 10px;border:1px solid var(--b);border-radius:7px;background:#fff;cursor:pointer;font:inherit;font-size:12px;margin-right:6px}
 </style></head><body>
 <div id=login>
   <h2>Painel Estratégico</h2>
@@ -56,7 +68,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.6</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v6.7</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -80,6 +92,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 </div>
 <div class=wrap><div class=tw id=tw><div class=msg>Selecione município(s) em “Municípios ▾” e clique Carregar (Painéis 1, 2, 4, 5, 6). O Painel 3 carrega ao clicar na aba.</div></div></div>
 </div>
+<div id=modal onclick="if(event.target.id=='modal')fecharPerfil()"><div class=card id=card></div></div>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -260,8 +273,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
       if(tab===1&&EDIT[c])return '<td class=edit contenteditable data-id="'+esc(r.id)+'" data-col="'+c+'" data-orig="'+esc(v)+'" onblur="saveCell(this)">'+esc(v)+'</td>';
       if(c==='cpf'){let x=anon?mask(v):v;return '<td class=doc>'+(x||'<span class=na>—</span>')+'</td>';}
       if(!v)return '<td><span class=na>—</span></td>';
-      if(tab===1&&c==='nome')return '<td class=ml><span class=xref data-cpf="'+esc(r.cpf||'')+'" data-nome="'+esc(v)+'" onclick="cruzaPessoa(this,6)" title="ver responsabilidades em licitações (Painel 6)">'+esc(v)+'</span></td>';
-      if(tab===6&&c==='nome')return '<td class=ml><span class=xref data-cpf="'+esc(r.cpf||'')+'" data-nome="'+esc(v)+'" onclick="cruzaPessoa(this,1)" title="ver este servidor no Painel 1">'+esc(v)+'</span></td>';
+      if((tab===1||tab===6)&&c==='nome')return '<td class=ml><span class=xref data-cpf="'+esc(r.cpf||'')+'" data-nome="'+esc(v)+'" onclick="perfil(this.dataset.cpf,this.dataset.nome)" title="abrir perfil da pessoa (Painel 1 + Painel 6)">'+esc(v)+'</span></td>';
       if(tab===3&&c==='razao_social')return '<td class=ml><span class=xref data-nome="'+esc(v)+'" onclick="cruzaForn(this)" title="ver contratos 2026 deste fornecedor em todo o MG">'+esc(v)+'</span></td>';
       if(tab===4&&c==='contratado')return '<td class=ml><span class=xref data-nome="'+esc(v)+'" onclick="cruzaContr(this)" title="ver cadastro deste fornecedor (Painel 3)">'+esc(v)+'</span></td>';
       if(c==='no_painel1')return '<td style="text-align:center;font-weight:600;color:'+(v==='Sim'?'#1a7f37':(v==='Não'?'#cf222e':'#8c959f'))+'">'+esc(v)+'</td>';
@@ -291,8 +303,36 @@ async function cruzaForn(el){const nome=el.dataset.nome;
   try{const rows=await sbfetch('contratos_2026','select='+P4C.join(',')+',cod_ibge&contratado=ilike.*'+encodeURIComponent(nome)+'*&order=cod_ibge',prog);
     dados[4]=rows;tab=4;setTabUI();fstate[4]={};sortState[4]=null;xref=null;render();
   }catch(e){showErr('Cruzamento: '+e.message);}}
-async function cruzaPessoa(el,target){
-  const c=(''+(el.dataset.cpf||'')).replace(/\D/g,''), nome=el.dataset.nome;
+let _perfil={c:'',nome:''};
+function fecharPerfil(){document.getElementById('modal').classList.remove('on');}
+function munNome(ib){const m=munis.find(x=>x.ibge===ib);return m?m.nome:ib;}
+async function perfil(cpf,nome){
+  const c=(''+(cpf||'')).replace(/\D/g,'');_perfil={c,nome};
+  const card=document.getElementById('card');document.getElementById('modal').classList.add('on');
+  const head='<h3>👤 '+esc(nome)+' <span style="opacity:.6;font-size:12px;font-weight:400">'+(anon?mask(c):c||'—')+'</span><span class=x onclick="fecharPerfil()">✕</span></h3>';
+  card.innerHTML=head+'<div class=bd>Carregando perfil…<div class=barwrap><div class=bar></div></div></div>';
+  if(c.length!==11){card.innerHTML=head+'<div class=bd><span class=na>CPF completo indisponível para esta pessoa (não casou no Painel 1).</span></div>';return;}
+  try{
+    const [p1,p6]=await Promise.all([
+      sbfetch('painel1_servidores','select=ibge,'+P1C.join(',')+'&cpf=eq.'+c+'&order=ibge'),
+      sbfetch('painel6_responsaveis','select='+P6C.join(',')+'&cpf=eq.'+c+'&order=cod_ibge')]);
+    const uniq=k=>[...new Set(p1.map(r=>(r[k]||'').trim()).filter(Boolean))];
+    const chips=[];
+    uniq('sancionado').forEach(v=>chips.push('<span class="chip s" title="'+esc(v)+'">⚠ sancionado</span>'));
+    uniq('mandato_eletivo').forEach(v=>chips.push('<span class="chip m" title="'+esc(v)+'">🗳 '+esc(v)+'</span>'));
+    if(p1.some(r=>(r.socio_empresa||'').trim()))chips.push('<span class="chip o" title="'+esc(uniq('socio_empresa').join(' | '))+'">🏢 sócio de empresa</span>');
+    let h='<div class=bd>';
+    if(chips.length)h+='<div class=sec>'+chips.join('')+'</div>';
+    h+='<div class=sec><h4>Vínculos como servidor — Painel 1 ('+p1.length+')</h4>';
+    h+=p1.length?('<table><tr><th>Município</th><th>Órgão</th><th>Setor</th><th>Cargo</th><th>Remuneração</th></tr>'+p1.slice(0,60).map(r=>'<tr><td>'+esc(munNome(r.ibge))+'</td><td>'+esc(r.orgao||'—')+'</td><td>'+esc(r.setor||'—')+'</td><td>'+esc(r.cargo_funcao||'—')+'</td><td>'+esc(r.remuneracao||'—')+'</td></tr>').join('')+'</table>'):'<span class=na>não encontrado no Painel 1</span>';
+    h+='</div><div class=sec><h4>Responsabilidades em licitações — Painel 6 ('+p6.length+')</h4>';
+    h+=p6.length?('<table><tr><th>Município</th><th>Órgão</th><th>Tipo</th><th>Origem</th></tr>'+p6.slice(0,60).map(r=>'<tr><td>'+esc(munNome(r.cod_ibge))+'</td><td>'+esc(r.orgao||'—')+'</td><td>'+esc(r.tipo_responsabilidade||'—')+'</td><td>'+esc(r.origem||'')+'</td></tr>').join('')+'</table>'):'<span class=na>sem responsabilidades registradas</span>';
+    h+='</div><div class=sec><button class=go onclick="fecharPerfil();cruzaPessoa(_perfil.c,_perfil.nome,1)">abrir no Painel 1</button><button class=go onclick="fecharPerfil();cruzaPessoa(_perfil.c,_perfil.nome,6)">abrir no Painel 6</button></div></div>';
+    card.innerHTML=head+h;
+  }catch(e){card.innerHTML=head+'<div class="bd err">Erro: '+esc(e.message)+'</div>';}
+}
+async function cruzaPessoa(cpf,nome,target){
+  const c=(''+(cpf||'')).replace(/\D/g,'');
   if(c.length!==11){alert('CPF completo indisponível para cruzar esta pessoa (não casou no Painel 1).');return;}
   if(target===1){
     loading('Buscando “'+nome+'” no Painel 1 (servidor) em todo o MG…');
