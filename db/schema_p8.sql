@@ -32,8 +32,17 @@ create table servidores_estado_2026 (
   n_meses text,
   primeiro_mes text,
   ultimo_mes text,
-  presente_em text
+  presente_em text,
+  no_painel1 text  -- 'Sim'/'Não': nome também consta no Painel 1 (servidores municipais); cruzamento POR NOME normalizado (homônimos possíveis)
 );
+-- Popular no_painel1 após a carga (cruzamento por nome normalizado, sem acento):
+--   create extension if not exists unaccent;
+--   update servidores_estado_2026 s set no_painel1 = case when exists (
+--     select 1 from painel1_servidores p
+--     where regexp_replace(trim(upper(unaccent(p.nome))),'\s+',' ','g')
+--         = regexp_replace(trim(upper(unaccent(s.nome))),'\s+',' ','g')
+--   ) then 'Sim' else 'Não' end;
+-- (para 1,35M x 482k, materialize os nomes distintos do P1 numa tabela indexada antes do update.)
 create index ix_p8_masp on servidores_estado_2026 (masp);
 create index ix_p8_nome on servidores_estado_2026 (nome);
 create index ix_p8_lot  on servidores_estado_2026 (sigla_lotacao_atual);
