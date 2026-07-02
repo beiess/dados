@@ -27,9 +27,17 @@ COLS = {
         "subfuncao", "programa", "acao", "subacao", "natureza_despesa", "fonte_recurso", "valor"],
     "painel6_responsaveis": ["cod_ibge", "orgao", "nome", "tipo_responsabilidade",
         "cpf", "email", "origem", "no_painel1"],
+    "servidores_estado_2026": ["masp", "nome", "situacao_atual", "cargo_efetivo_atual",
+        "comissao_atual", "funcao_gratif_atual", "carga_horaria", "sigla_lotacao_atual",
+        "desc_lotacao_atual", "sigla_dotacao_atual", "desc_dotacao_atual", "data_inicio",
+        "data_aposentadoria", "data_desligamento", "n_vinculos", "vinculos_adm",
+        "cargos_efetivos_periodo", "comissoes_periodo", "funcoes_gratif_periodo",
+        "orgaos_lotacao_periodo", "situacoes_periodo", "mudou_situacao", "n_meses",
+        "primeiro_mes", "ultimo_mes", "presente_em"],
 }
 TAB = {"painel1": "painel1_servidores", "cadastro": "cadastro_institucional",
-       "estrutura": "estrutura_despesa_2026", "responsaveis": "painel6_responsaveis"}
+       "estrutura": "estrutura_despesa_2026", "responsaveis": "painel6_responsaveis",
+       "estado_2026": "servidores_estado_2026"}
 # coluna destino -> coluna de origem no CSV (quando diferem)
 RENAME = {"ibge": "cod_ibge"}
 
@@ -62,7 +70,7 @@ def main():
     feito = int(open(prog).read().strip()) if os.path.exists(prog) else 0
     print(f"carregando {table} de {src} (a partir da linha {feito})", flush=True)
     buf = []; n = 0; enviados = feito
-    with open(src, encoding="utf-8") as f:
+    with open(src, encoding="utf-8-sig") as f:
         rd = csv.DictReader(f, delimiter=";")
         for r in rd:
             n += 1
