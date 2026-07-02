@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v8.1</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v9</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -101,6 +101,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <div class="tab" id=t5 onclick="setTab(5)">🌳 Painel 5 — Estrutura / Despesa 2026</div>
   <div class="tab" id=t6 onclick="setTab(6)">🧑‍⚖️ Painel 6 — Responsáveis</div>
   <div class="tab" id=t7 onclick="setTab(7)">🏛️ Painel 8 — Servidores do Estado (MG)</div>
+  <div class="tab" id=t8 onclick="setTab(8)">🏢 Painel 9 — Receita Federal (CNPJ)</div>
   <button onclick="openCols(event)">☰ colunas</button>
   <button onclick="limparFiltros()">limpar filtros</button>
   <button onclick="exportCSV()">⬇ CSV</button>
@@ -270,7 +271,7 @@ async function carregar(){closePop();const ids=[...sel];
   try{await loadPanel(1,ids);}catch(e){showErr(e.message);return;}
   tab=1;setTabUI();render();
 }
-function setTabUI(){['t1','t2','t3','t4','t5','t6','t7'].forEach((id,i)=>document.getElementById(id).classList.toggle('on',tab===i+1));}
+function setTabUI(){['t1','t2','t3','t4','t5','t6','t7','t8'].forEach((id,i)=>document.getElementById(id).classList.toggle('on',tab===i+1));}
 async function setTab(n){tab=n;setTabUI();closePop();
   if(n===3||n===7){if(panelSig[n]!=='ALL'){try{await loadPanel(n,[]);}catch(e){showErr('Painel '+(n===7?8:n)+': '+e.message);return;}}}
   else if(n===1||n===4||n===5||n===6){
@@ -384,6 +385,7 @@ function onScroll(){const t=tw();if(_shown>=_disp.length)return;
   if(t.scrollTop+t.clientHeight>=t.scrollHeight-600){const end=Math.min(_disp.length,_shown+CHUNK);
     const tb=document.getElementById('tb');if(tb)tb.insertAdjacentHTML('beforeend',_disp.slice(_shown,end).map(rowHTML).join(''));_shown=end;}}
 function render(){if(document.getElementById('app').classList.contains('hidden'))return;
+  if(tab===8){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='';if(!document.getElementById('rfbq'))renderRFB();return;}
   ensureVis();const cols=visibleCols(),fs=fstate[tab],so=sortState[tab];
   const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
   const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
@@ -504,6 +506,93 @@ function rzs(e,i,col){e.preventDefault();e.stopPropagation();
   const mv=ev=>{const w=Math.max(50,sw+ev.pageX-sx);colEl.style.width=w+'px';colw[tab][col]=w;};
   const up=()=>{document.body.style.userSelect='';document.body.style.cursor='';document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
   document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);}
+// ── Painel 9 — Receita Federal (consulta CNPJ ao vivo via BrasilAPI + cruzamento com a base) ──
+let rfbLast='';
+function renderRFB(){
+  tw().innerHTML='<div style="padding:14px 4px;max-width:1040px">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'
+    +'<select id=rfbtipo style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit">'
+      +'<option value=cnpj>CNPJ — consulta Receita ao vivo</option>'
+      +'<option value=razao>Razão social — na base interna</option>'
+      +'<option value=socio>Sócio / nome — na base interna</option></select>'
+    +'<input id=rfbq placeholder="digite e tecle Enter…" style="flex:1;min-width:240px;padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit" onkeydown="if(event.key===\'Enter\')consultaRFB()">'
+    +'<button onclick="consultaRFB()" style="background:#0d1117;color:#fff">Consultar</button></div>'
+    +'<div id=rfbres>'+(rfbLast||'<div class=msg>Escolha o <b>tipo de dado</b> e informe o valor. Ex.: CNPJ <b>00.000.000/0001-91</b> → empresa, estabelecimento, CNAE, Simples/MEI, sócios (QSA) e <b>cruzamento com os painéis</b> (fornecedor P3 / contratado P4 / sócio de servidor P1). Fonte: Receita Federal (Dados Abertos CNPJ) via BrasilAPI; dado de PJ é público, CPF de sócio vem mascarado.</div>')+'</div></div>';
+}
+function rfbSet(h){rfbLast=h;var e=document.getElementById('rfbres');if(e)e.innerHTML=h;}
+function fmtCNPJ(c){c=(''+c).replace(/\D/g,'').padStart(14,'0');return c.slice(0,2)+'.'+c.slice(2,5)+'.'+c.slice(5,8)+'/'+c.slice(8,12)+'-'+c.slice(12);}
+async function consultaRFB(){var tipo=document.getElementById('rfbtipo').value,q=document.getElementById('rfbq').value.trim();
+  if(!q)return; if(tipo==='cnpj')return consultaCNPJ(q); return consultaInternaRFB(tipo,q);}
+async function consultaCNPJ(q){var cnpj=q.replace(/\D/g,'');
+  if(cnpj.length!==14){rfbSet('<div class="msg err">CNPJ deve ter 14 dígitos (inclua a filial, ex. 0001). Recebido: '+esc(cnpj.length)+' díg.</div>');return;}
+  rfbSet('<div class=msg>Consultando Receita — CNPJ '+esc(fmtCNPJ(cnpj))+'…<div class=barwrap><div class=bar></div></div></div>');
+  var d;
+  try{var r=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+cnpj);
+    if(r.status===404){rfbSet('<div class="msg err">CNPJ não encontrado na base da Receita.</div>');return;}
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    d=await r.json();
+  }catch(e){rfbSet('<div class="msg err">Falha na consulta: '+esc(e.message)+'. Se for bloqueio de CORS/rede, me avise que eu troco a API.</div>');return;}
+  rfbSet(cardCNPJ(d)); cruzaRFB(d);}
+function cardCNPJ(d){
+  var kv=function(k,v){return v?('<tr><th style="width:150px">'+k+'</th><td>'+esc(v)+'</td></tr>'):'';};
+  var simples=(d.opcao_pelo_simples?'Simples: SIM'+(d.data_opcao_pelo_simples?' ('+d.data_opcao_pelo_simples+')':''):'Simples: não')+'  ·  '+(d.opcao_pelo_mei?'MEI: SIM':'MEI: não');
+  var cnaes=[(d.cnae_fiscal?(d.cnae_fiscal+' — '+(d.cnae_fiscal_descricao||'')):'')].concat((d.cnaes_secundarios||[]).map(function(c){return c.codigo+' — '+c.descricao;})).filter(Boolean);
+  var qsa=d.qsa||[];
+  var ativa=d.descricao_situacao_cadastral==='ATIVA';
+  var h='<div class=card style="max-width:none;box-shadow:none;border:1px solid var(--b)">';
+  h+='<h3 style="border-radius:12px 12px 0 0">🏢 '+esc(d.razao_social||'—')+' <span style="opacity:.6;font-size:12px;font-weight:400">'+fmtCNPJ(d.cnpj)+'</span>'
+     +'<span style="margin-left:auto;font-size:12px;font-weight:700;color:'+(ativa?'#7ee787':'#ff7b72')+'">'+esc(d.descricao_situacao_cadastral||'')+'</span></h3><div class=bd>';
+  h+='<div class=sec><table>'+kv('Nome fantasia',d.nome_fantasia)+kv('Natureza jurídica',d.natureza_juridica)+kv('Porte',d.porte)
+     +kv('Capital social',(d.capital_social!=null&&d.capital_social!=='')?('R$ '+fmtBR(parseNum(d.capital_social))):'')
+     +kv('Início atividade',d.data_inicio_atividade)+kv('Matriz/Filial',d.descricao_identificador_matriz_filial)
+     +kv('Situação',(d.descricao_situacao_cadastral||'')+(d.data_situacao_cadastral?(' desde '+d.data_situacao_cadastral):'')+(d.descricao_motivo_situacao_cadastral&&d.descricao_motivo_situacao_cadastral!=='SEM MOTIVO'?(' — '+d.descricao_motivo_situacao_cadastral):''))
+     +'</table></div>';
+  h+='<div class=sec><h4>Endereço &amp; contato</h4><table>'
+     +kv('Endereço',[d.descricao_tipo_de_logradouro,d.logradouro,d.numero,d.complemento].filter(Boolean).join(' ')+(d.bairro?(', '+d.bairro):''))
+     +kv('Município/UF',(d.municipio||'')+(d.uf?('/'+d.uf):''))+kv('CEP',d.cep)
+     +kv('Telefone',[d.ddd_telefone_1,d.ddd_telefone_2].filter(Boolean).join(' / '))+kv('E-mail',d.email)+'</table></div>';
+  h+='<div class=sec><h4>CNAE (atividades)</h4>'+(cnaes.length?('<div class=ml>'+cnaes.map(esc).join('<br>')+'</div>'):'<span class=na>—</span>')+'</div>';
+  h+='<div class=sec><h4>Simples / MEI</h4>'+esc(simples)+'</div>';
+  h+='<div class=sec><h4>Quadro societário — QSA ('+qsa.length+')</h4>';
+  h+=qsa.length?('<table><tr><th>Sócio</th><th>Qualificação</th><th>Entrada</th><th>Doc (mascarado)</th><th>Faixa etária</th></tr>'
+     +qsa.map(function(s){return '<tr><td>'+esc(s.nome_socio||'—')+'</td><td>'+esc(s.qualificacao_socio||'')+'</td><td>'+esc(s.data_entrada_sociedade||'')+'</td><td class=doc>'+esc(s.cnpj_cpf_do_socio||'')+'</td><td>'+esc(s.faixa_etaria||'')+'</td></tr>';}).join('')+'</table>'):'<span class=na>sem sócios listados</span>';
+  h+='</div><div class=sec id=rfbcruz><h4>Cruzamentos na base</h4><span class=na>verificando…</span></div></div></div>';
+  return h;}
+async function cruzaRFB(d){var el=document.getElementById('rfbcruz');if(!el)return;
+  var nm=encodeURIComponent(d.razao_social||''),cnpj=(''+d.cnpj).replace(/\D/g,'');
+  try{
+    var res=await Promise.all([
+      sbfetch('fornecedores_obra','select=razao_social,documento,municipio_uf&razao_social=ilike.*'+nm+'*'),
+      sbfetch('contratos_2026','select=cod_ibge,orgao,contratado&contratado=ilike.*'+nm+'*'),
+      sbfetch('painel1_servidores','select=nome,ibge&socio_empresa=ilike.*'+nm+'*')]);
+    var forn=res[0],contr=res[1],soc=res[2];
+    var h='<h4>Cruzamentos na base</h4><div class=ml>';
+    h+='• <b>Fornecedor de obra (P3):</b> '+forn.length+(forn.length?(' — '+forn.slice(0,3).map(function(x){return esc(x.razao_social);}).join('; ')):'')+'<br>';
+    h+='• <b>Contratos 2026 (P4):</b> '+contr.length+(contr.length?(' — '+contr.slice(0,3).map(function(x){return esc(munNome(x.cod_ibge))+': '+esc(x.orgao);}).join('; ')):'')+'<br>';
+    h+='• <b>Sócios que constam como servidores (P1):</b> '+soc.length+(soc.length?(' — '+soc.slice(0,5).map(function(x){return esc(x.nome);}).join('; ')):'')+'</div>';
+    el.innerHTML=h;
+  }catch(e){el.innerHTML='<h4>Cruzamentos na base</h4><span class=err>falha: '+esc(e.message)+'</span>';}}
+async function consultaInternaRFB(tipo,q){rfbSet('<div class=msg>Buscando na base interna…<div class=barwrap><div class=bar></div></div></div>');
+  var qq=encodeURIComponent(q);
+  try{
+    if(tipo==='razao'){
+      var r=await Promise.all([
+        sbfetch('fornecedores_obra','select=razao_social,documento,situacao,municipio_uf&razao_social=ilike.*'+qq+'*'),
+        sbfetch('contratos_2026','select=cod_ibge,orgao,contratado,valor_original&contratado=ilike.*'+qq+'*')]);
+      var forn=r[0],contr=r[1];
+      var h='<div class=sec><h4>Fornecedores de obra — P3 ('+forn.length+')</h4>'+(forn.length?('<table><tr><th>Razão social</th><th>CNPJ</th><th>Situação</th><th>Município</th></tr>'+forn.slice(0,150).map(function(x){return '<tr><td>'+esc(x.razao_social)+'</td><td class=doc>'+esc(x.documento||'')+'</td><td>'+esc(x.situacao||'')+'</td><td>'+esc(x.municipio_uf||'')+'</td></tr>';}).join('')+'</table>'):'<span class=na>nada encontrado</span>')+'</div>';
+      h+='<div class=sec><h4>Contratos 2026 — P4 ('+contr.length+')</h4>'+(contr.length?('<table><tr><th>Município</th><th>Órgão</th><th>Contratado</th><th>Valor</th></tr>'+contr.slice(0,150).map(function(x){return '<tr><td>'+esc(munNome(x.cod_ibge))+'</td><td>'+esc(x.orgao||'')+'</td><td>'+esc(x.contratado||'')+'</td><td>'+esc(x.valor_original||'')+'</td></tr>';}).join('')+'</table>'):'<span class=na>nada encontrado</span>')+'</div>';
+      rfbSet(h);
+    }else{
+      var r2=await Promise.all([
+        sbfetch('painel1_servidores','select=nome,ibge,orgao,socio_empresa&nome=ilike.*'+qq+'*'),
+        sbfetch('servidores_estado_2026','select=masp,nome,situacao_atual,sigla_lotacao_atual&nome=ilike.*'+qq+'*')]);
+      var p1=r2[0],p8=r2[1];
+      var h2='<div class=sec><h4>Servidores municipais — P1 ('+p1.length+')</h4>'+(p1.length?('<table><tr><th>Nome</th><th>Município</th><th>Órgão</th><th>Sócio de</th></tr>'+p1.slice(0,150).map(function(x){return '<tr><td>'+esc(x.nome)+'</td><td>'+esc(munNome(x.ibge))+'</td><td>'+esc(x.orgao||'')+'</td><td class=ml>'+esc((x.socio_empresa||'').slice(0,140))+'</td></tr>';}).join('')+'</table>'):'<span class=na>nada</span>')+'</div>';
+      h2+='<div class=sec><h4>Servidores do Estado — P8 ('+p8.length+')</h4>'+(p8.length?('<table><tr><th>MASP</th><th>Nome</th><th>Situação</th><th>Lotação</th></tr>'+p8.slice(0,150).map(function(x){return '<tr><td>'+esc(x.masp)+'</td><td>'+esc(x.nome)+'</td><td>'+esc(x.situacao_atual||'')+'</td><td>'+esc(x.sigla_lotacao_atual||'')+'</td></tr>';}).join('')+'</table>'):'<span class=na>nada</span>')+'</div>';
+      rfbSet(h2);
+    }
+  }catch(e){rfbSet('<div class="msg err">falha: '+esc(e.message)+'</div>');}}
 document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
 </script></body></html>
