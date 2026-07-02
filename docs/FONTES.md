@@ -110,6 +110,19 @@
 
 ---
 
+## Painel 9 — Receita Federal (CNPJ), consulta ao vivo
+| campo | valor |
+|---|---|
+| fonte | Receita Federal — Dados Abertos CNPJ (Empresas/Estabelecimentos/Sócios/Simples/tabelas) |
+| fonte_url | Consulta ao vivo via **BrasilAPI** `https://brasilapi.com.br/api/cnpj/v1/<cnpj>` (espelho da base RFB). Dump bruto: `arquivos.receitafederal.gov.br` (share Nextcloud `YggdBLfdninEJX9`, WebDAV, ~7,6 GB/mês, meses 2023-05..2026-06). |
+| fonte_tipo | API REST (browser, CORS `*`) — **não hospeda** as 60M+ linhas (opção escolhida) |
+| data_coleta | ao vivo (por consulta) |
+| grau_confianca | **A** (PJ por CNPJ na Receita) / cruzamento com a base por razão social/nome (**C**) |
+| chaves_canonicas | `cnpj` (14) / `cnpj_raiz` (8); CPF de sócio **mascarado** na origem |
+| cadencia | Base RFB atualizada mensalmente (a API reflete o mais recente) |
+| refresh | Nenhum a carregar — é on-demand. Para busca por nome/CNAE em TODA a base seria preciso a opção 2/3 (subconjunto/infra dedicada). |
+| armadilhas | API por CNPJ (não busca por razão/CNAE em todas as 60M). "Busca aprofundada" = QSA + cruzamento com P3/P4/P1. Dado de PJ é público (A8); CPF de sócio mascarado. |
+
 ## Fontes canônicas de referência (CLAUDE.md)
 - **compras.gov.br** — `dadosabertos.compras.gov.br` (API REST, envelope paginado). Swagger em `/swagger-ui/index.html`.
 - **Contratos.gov.br** — `contratos.comprasnet.gov.br` (OpenAPI `/docs/api-docs.json`).
