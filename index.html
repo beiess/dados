@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v8</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v8.1</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -184,6 +184,7 @@ async function fetchRange(tbl,qs,t,from,to,withCount){
 // busca paginada: 1ª página traz a contagem total (Prefer:count=exact); o resto vem em PARALELO (pool)
 async function sbfetch(tbl,qs,onprog){
   const t=await token(); if(!t) throw new Error('sessão expirada — recarregue e faça login');
+  qs=qs.replace(/&?order=[^&]*/g,'')+'&order=id';  // paginação estável: ordena por chave única (PK) — sem isso as páginas paralelas podem repetir/pular linhas
   const page=1000, CAP=capOverride||DLCAP; _lastCapped=0;
   const first=await fetchRange(tbl,qs,t,0,page-1,true);
   let all=first.data.slice(); if(onprog)onprog(all.length);
