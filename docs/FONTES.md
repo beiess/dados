@@ -123,5 +123,20 @@
 4. **Atualizar este catálogo:** nova `data_coleta` + contagens; registrar qualquer nova armadilha.
 5. Dado pessoal permanece mascarado na exposição; só fontes oficiais abertas.
 
-> Próximo passo possível (opcional): automatizar 1–3 com agendamento (cron/rotina) por painel, mantendo
-> este catálogo como fonte da verdade da proveniência.
+## Retroalimentação automática (agendada)
+- **Painel 8 (mensal) — AUTOMATIZADO.** `tools/retroalimentar_p8.py` é auto-contido e idempotente:
+  consulta a API CKAN, e **só age se houver mês novo** (estado em `<P8_DIR>/.p8_last_month`). Faz
+  download → consolida por `masp` → `rpc/truncate_servidores_estado` → load REST → `rpc/refresh_p8_no_painel1`.
+  Roda localmente (onde estão `.supabase_env` e a pasta DADOSMG) via `launchd` semanal
+  (`~/Library/LaunchAgents/com.beiess.retroalimentar-p8.plist`, wrapper `DADOSMG/tools/run_retroalimentar_p8.sh`).
+  Objetos de apoio no Supabase (funções `security definer`, chamáveis via REST `/rpc`):
+  `truncate_servidores_estado()`, `refresh_p8_no_painel1()` (usa a tabela indexada `p1_nomes_norm`),
+  `refresh_p1_nomes_norm()` (reconstruir quando o Painel 1 mudar).
+- **Painéis 4 e 5 (TCE ReportViewer):** mesma mecânica é possível (fonte é URL pública) — pendente
+  de orquestrador próprio.
+- **Painéis 1, 3, 6 (SICOM local):** dependem das remessas SICOM em disco local (não são URL pública),
+  então a retroalimentação roda **na máquina local** (não em nuvem/cron sem os arquivos). Documentado o
+  refresh; automação local sob demanda.
+
+> Fonte da verdade da proveniência: **`FONTES.md`** (canônico em `TCEMG/FONTES.md`, espelhado em
+> `beiess/dados/docs/FONTES.md`). Toda atualização registra nova `data_coleta` + contagens aqui.
