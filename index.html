@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.1</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.2</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -561,17 +561,20 @@ function cardCNPJ(d){
      +qsa.map(function(s){return '<tr><td>'+esc(s.nome_socio||'—')+'</td><td>'+esc(s.qualificacao_socio||'')+'</td><td>'+esc(s.data_entrada_sociedade||'')+'</td><td class=doc>'+esc(s.cnpj_cpf_do_socio||'')+'</td><td>'+esc(s.faixa_etaria||'')+'</td></tr>';}).join('')+'</table>'):'<span class=na>sem sócios listados</span>';
   h+='</div><div class=sec id=rfbcruz><h4>Cruzamentos na base</h4><span class=na>verificando…</span></div></div></div>';
   return h;}
+function pncpBusca(cnpj){return fetch('https://pncp.gov.br/api/search/?q='+cnpj+'&tipos_documento=contrato&status=todos&pagina=1&tam_pagina=5').then(function(r){return r.ok?r.json():{};}).then(function(j){return {total:(j.total!=null?j.total:(j.totalRegistros!=null?j.totalRegistros:null)),items:(j.items||j.resultado||[])};}).catch(function(){return {total:null,items:[]};});}
 async function cruzaRFB(d){var el=document.getElementById('rfbcruz');if(!el)return;
   var nm=encodeURIComponent(d.razao_social||''),cnpj=(''+d.cnpj).replace(/\D/g,'');
   try{
     var res=await Promise.all([
       sbfetch('fornecedores_obra','select=razao_social,documento,municipio_uf&razao_social=ilike.*'+nm+'*'),
       sbfetch('contratos_2026','select=cod_ibge,orgao,contratado&contratado=ilike.*'+nm+'*'),
-      sbfetch('painel1_servidores','select=nome,ibge&socio_empresa=ilike.*'+nm+'*')]);
-    var forn=res[0],contr=res[1],soc=res[2];
-    var h='<h4>Cruzamentos na base</h4><div class=ml>';
+      sbfetch('painel1_servidores','select=nome,ibge&socio_empresa=ilike.*'+nm+'*'),
+      pncpBusca(cnpj)]);
+    var forn=res[0],contr=res[1],soc=res[2],pncp=res[3];
+    var h='<h4>Cruzamentos na base + PNCP</h4><div class=ml>';
     h+='• <b>Fornecedor de obra (P3):</b> '+forn.length+(forn.length?(' — '+forn.slice(0,3).map(function(x){return esc(x.razao_social);}).join('; ')):'')+'<br>';
     h+='• <b>Contratos 2026 (P4):</b> '+contr.length+(contr.length?(' — '+contr.slice(0,3).map(function(x){return esc(munNome(x.cod_ibge))+': '+esc(x.orgao);}).join('; ')):'')+'<br>';
+    h+='• <b>Contratos públicos (PNCP):</b> '+(pncp.total==null?'indisponível':pncp.total)+(pncp.items.length?(' — ex.: '+pncp.items.slice(0,2).map(function(x){return esc((x.orgao_nome||'')+' — '+(x.title||''));}).join('; ')):'')+'<br>';
     h+='• <b>Sócios que constam como servidores (P1):</b> '+soc.length+(soc.length?(' — '+soc.slice(0,5).map(function(x){return esc(x.nome);}).join('; ')):'')+'</div>';
     el.innerHTML=h;
   }catch(e){el.innerHTML='<h4>Cruzamentos na base</h4><span class=err>falha: '+esc(e.message)+'</span>';}}
@@ -804,8 +807,8 @@ function docDossiePDF(){
   fetch('https://brasilapi.com.br/api/cnpj/v1/'+v).then(function(r){
     if(r.status===404)throw new Error('CNPJ não encontrado na Receita.');
     if(!r.ok)throw new Error('HTTP '+r.status); return r.json();
-  }).then(function(d){ buildDossiePDF(d);
-    s.innerHTML='<div class=msg style="padding:6px 0">✅ Dossiê de Habilitação (Lei 14.133) gerado e baixado. Identificação da Receita preenchida; demais itens com link direto (CNPJ/UF) e status. As consultas com chave (Portal Transparência) e as protegidas (CRF/CND/CNDT/TCU…) eu executo sob demanda — peça no chat.</div>';
+  }).then(function(d){ return pncpBusca((''+d.cnpj).replace(/\D/g,'')).then(function(pncp){ buildDossiePDF(d,pncp);
+    s.innerHTML='<div class=msg style="padding:6px 0">✅ Dossiê de Habilitação (Lei 14.133) gerado e baixado. Identificação da Receita + PNCP ('+(pncp.total==null?'?':pncp.total)+' contratos). As consultas com chave (Portal Transparência) e as protegidas (CRF/CND/CNDT/TCU…) eu executo sob demanda.</div>'; });
   }).catch(function(e){ s.innerHTML='<div class="msg err">Falha: '+esc(e.message)+'</div>'; });
 }
 function habUF(uf){var m={
@@ -814,7 +817,7 @@ function habUF(uf){var m={
   RJ:{junta:'https://www.jucerja.rj.gov.br/'},
   PR:{junta:'https://www.juntacomercial.pr.gov.br/'}
 };return m[uf]||{};}
-function buildDossiePDF(d){
+function buildDossiePDF(d,pncp){
   var J=window.jspdf.jsPDF, doc=new J({unit:'pt',format:'a4'});
   var M=40,W=515,y=48, cj=(''+d.cnpj).replace(/\D/g,''), uf=(d.uf||'').toUpperCase(), U=habUF(uf);
   function nl(n){y+=(n||14); if(y>800){doc.addPage();y=48;}}
@@ -851,6 +854,7 @@ function buildDossiePDF(d){
   kv('Situação',(d.descricao_situacao_cadastral||'')+(d.data_situacao_cadastral?(' desde '+d.data_situacao_cadastral):''));
   kv('Simples / MEI',(d.opcao_pelo_simples?'Simples: SIM':'Simples: não')+' · '+(d.opcao_pelo_mei?'MEI: SIM':'MEI: não'));
   kv('QSA (sócios)',(d.qsa||[]).map(function(x){return x.nome_socio;}).filter(Boolean).join('; ')||'—');
+  kv('Contratos públicos (PNCP)',(pncp&&pncp.total!=null)?(pncp.total+' contrato(s)'+(pncp.items&&pncp.items.length?(' · ex.: '+pncp.items.slice(0,2).map(function(x){return (x.orgao_nome||'')+' — '+(x.title||'');}).join(' | ')):'')):'indisponível');
   nl(2);rule();
   // 2. checklist de habilitação
   h2('2. Documentos de habilitação — status e vias de obtenção');
