@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v10.2</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v10.3</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -120,6 +120,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 const P1C=["orgao","setor","cargo_funcao","nome","cpf","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","sancionado","mandato_eletivo","socio_empresa","consta_site","origem"];
 const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriais","site_oficial","portal_transparencia","ouvidoria","gestores","atores_validados","observacoes"];
@@ -613,6 +614,7 @@ function renderDOC(){
     +'<div class=sec style="background:#f6f8fa;border:1px solid var(--b);border-radius:8px;padding:10px"><h4>⚙️ Gerar CRF — CNPJ único</h4>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
         +'<input id=docUm placeholder="CNPJ (14 dígitos)" style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit;min-width:220px" onkeydown="if(event.key===\'Enter\')docGerarUm()">'
+        +'<button onclick="docCartaoPDF()" style="background:#1a7f37;color:#fff" title="gera e baixa o PDF na hora, no navegador, sem instalar nada (dados abertos da Receita via BrasilAPI)">📄 Cartão CNPJ (PDF)</button>'
         +'<button onclick="docGerarUm()" style="background:#0d1117;color:#fff">⚙️ Gerar CRF (automação)</button>'
         +'<button onclick="docAbrirCaixa()" title="abre a consulta da Caixa já com o CNPJ; com o userscript CRF instalado, baixa o PDF sozinho">⤓ Baixar CRF (auto) ↗</button>'
       +'</div><div id=docUmOut></div></div>'
@@ -674,6 +676,61 @@ function docAbrirCaixa(){
   if(navigator.clipboard)navigator.clipboard.writeText(v);
   window.open('https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf#in='+v,'_blank');
   s.innerHTML='<div class=msg style="padding:6px 0">Consulta da Caixa aberta com o CNPJ. <b>Com o userscript CRF instalado</b> (Tampermonkey — arquivo em <code>AUTOMACOES/crf-fgts/crf-fgts.user.js</code>), ele preenche, consulta, abre o certificado e dispara a impressão sozinho — é só <b>Salvar como PDF</b>. Sem o userscript, o CNPJ já foi copiado: cole em “Inscrição” → Consultar → Certificado → Visualizar → Imprimir.</div>';
+}
+// Cartão CNPJ em PDF — 100% client-side (dados abertos Receita via BrasilAPI + jsPDF). Download instantâneo, zero instalação.
+function docCartaoPDF(){
+  var v=((document.getElementById('docUm')||{}).value||'').replace(/\D/g,'');
+  var s=document.getElementById('docUmOut');
+  if(v.length!==14){s.innerHTML='<span class=err>Informe um CNPJ de 14 dígitos.</span>';return;}
+  if(!window.jspdf||!window.jspdf.jsPDF){s.innerHTML='<span class=err>Biblioteca de PDF ainda carregando — tente novamente em instantes.</span>';return;}
+  s.innerHTML='<div class=msg>Consultando a Receita e gerando o PDF…<div class=barwrap><div class=bar></div></div></div>';
+  fetch('https://brasilapi.com.br/api/cnpj/v1/'+v).then(function(r){
+    if(r.status===404)throw new Error('CNPJ não encontrado na base da Receita.');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(d){ buildCartaoPDF(d);
+    s.innerHTML='<div class=msg style="padding:6px 0">✅ PDF do Cartão CNPJ gerado e baixado (dados da Receita/BrasilAPI). O CRF (Caixa) tem link dentro do PDF — o arquivo do CRF depende da via de obtenção.</div>';
+  }).catch(function(e){ s.innerHTML='<div class="msg err">Falha: '+esc(e.message)+' (se for CORS/rede, me avise).</div>'; });
+}
+function buildCartaoPDF(d){
+  var J=window.jspdf.jsPDF, doc=new J({unit:'pt',format:'a4'});
+  var M=40, W=515, y=48, cj=(''+d.cnpj).replace(/\D/g,'');
+  function nl(n){y+=(n||14); if(y>800){doc.addPage();y=48;}}
+  function rule(){doc.setDrawColor(210);doc.line(M,y,M+W,y);nl(12);}
+  function h1(t){doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(20);doc.text(t,M,y);nl(18);}
+  function h2(t){doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30);doc.text(t,M,y);nl(15);}
+  function kv(k,val){if(val==null||val==='')return;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(90);doc.text(k+':',M,y);
+    doc.setFont('helvetica','normal');doc.setTextColor(20);var L=doc.splitTextToSize(''+val,W-115);doc.text(L,M+115,y);nl(12*L.length);}
+  function p(t){doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(70);var L=doc.splitTextToSize(''+t,W);doc.text(L,M,y);nl(11*L.length);}
+  h1('Consulta CNPJ — Dados Cadastrais (Receita Federal / BrasilAPI)');
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(120);
+  doc.text('Documento informativo gerado pelo Painel Estratégico — não é o Comprovante oficial da Receita.',M,y);nl(16);rule();
+  h2(d.razao_social||'—');
+  kv('CNPJ',fmtCNPJ(d.cnpj)); kv('Nome fantasia',d.nome_fantasia);
+  kv('Situação',(d.descricao_situacao_cadastral||'')+(d.data_situacao_cadastral?(' desde '+d.data_situacao_cadastral):'')+(d.descricao_motivo_situacao_cadastral&&d.descricao_motivo_situacao_cadastral!=='SEM MOTIVO'?(' — '+d.descricao_motivo_situacao_cadastral):''));
+  kv('Natureza jurídica',d.natureza_juridica); kv('Porte',d.porte);
+  kv('Capital social',(d.capital_social!=null&&d.capital_social!=='')?('R$ '+fmtBR(parseNum(d.capital_social))):'');
+  kv('Início atividade',d.data_inicio_atividade); kv('Matriz/Filial',d.descricao_identificador_matriz_filial);
+  nl(2);rule(); h2('Endereço & contato');
+  kv('Endereço',[d.descricao_tipo_de_logradouro,d.logradouro,d.numero,d.complemento].filter(Boolean).join(' ')+(d.bairro?(', '+d.bairro):''));
+  kv('Município/UF',(d.municipio||'')+(d.uf?('/'+d.uf):'')); kv('CEP',d.cep);
+  kv('Telefone',[d.ddd_telefone_1,d.ddd_telefone_2].filter(Boolean).join(' / ')); kv('E-mail',d.email);
+  nl(2);rule(); h2('Atividades (CNAE)');
+  var cn=[(d.cnae_fiscal?(d.cnae_fiscal+' — '+(d.cnae_fiscal_descricao||'')):'')].concat((d.cnaes_secundarios||[]).map(function(c){return c.codigo+' — '+c.descricao;})).filter(Boolean);
+  if(cn.length)cn.forEach(function(c){p('• '+c);}); else p('—');
+  nl(2);rule(); h2('Simples / MEI');
+  p((d.opcao_pelo_simples?'Simples Nacional: SIM'+(d.data_opcao_pelo_simples?(' ('+d.data_opcao_pelo_simples+')'):''):'Simples Nacional: não')+'    |    '+(d.opcao_pelo_mei?'MEI: SIM':'MEI: não'));
+  nl(2);rule(); h2('Quadro societário — QSA ('+((d.qsa||[]).length)+')');
+  if((d.qsa||[]).length)(d.qsa).forEach(function(sc){p('• '+(sc.nome_socio||'—')+' — '+(sc.qualificacao_socio||'')+(sc.data_entrada_sociedade?(' — desde '+sc.data_entrada_sociedade):'')+(sc.cnpj_cpf_do_socio?(' — doc '+sc.cnpj_cpf_do_socio):''));}); else p('—');
+  nl(2);rule(); h2('Certificado de Regularidade do FGTS (CRF)');
+  p('O CRF é emitido pela Caixa e não pode ser incluído automaticamente aqui (portal protegido por anti-robô). Obtenha no link abaixo, informando o CNPJ '+fmtCNPJ(d.cnpj)+':');
+  doc.setTextColor(9,105,218);doc.setFontSize(9);
+  doc.textWithLink('» Consultar/obter o CRF na Caixa (consulta-crf.caixa.gov.br)',M,y,{url:'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf#in='+cj});
+  nl(16);rule();
+  doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130);
+  var foot=doc.splitTextToSize('Fonte: Receita Federal (Dados Abertos CNPJ) via BrasilAPI (brasilapi.com.br). Consulta realizada em '+(new Date()).toLocaleString('pt-BR')+'. Documento informativo automático; NÃO substitui o Comprovante oficial de Inscrição e Situação Cadastral da Receita, nem certidões. CPF de sócio exibido conforme mascaramento da fonte.',W);
+  doc.text(foot,M,y);
+  doc.save('CartaoCNPJ_'+cj+'.pdf');
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
