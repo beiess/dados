@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v10.3</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -615,6 +615,7 @@ function renderDOC(){
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
         +'<input id=docUm placeholder="CNPJ (14 dígitos)" style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit;min-width:220px" onkeydown="if(event.key===\'Enter\')docGerarUm()">'
         +'<button onclick="docCartaoPDF()" style="background:#1a7f37;color:#fff" title="gera e baixa o PDF na hora, no navegador, sem instalar nada (dados abertos da Receita via BrasilAPI)">📄 Cartão CNPJ (PDF)</button>'
+        +'<button onclick="docDossiePDF()" style="background:#0550ae;color:#fff" title="PDF consolidado: identificação (Receita) + checklist de habilitação Lei 14.133 com links pré-preenchidos por CNPJ/UF e status/método">📋 Dossiê Habilitação 14.133 (PDF)</button>'
         +'<button onclick="docGerarUm()" style="background:#0d1117;color:#fff">⚙️ Gerar CRF (automação)</button>'
         +'<button onclick="docAbrirCaixa()" title="abre a consulta da Caixa já com o CNPJ; com o userscript CRF instalado, baixa o PDF sozinho">⤓ Baixar CRF (auto) ↗</button>'
       +'</div><div id=docUmOut></div></div>'
@@ -731,6 +732,101 @@ function buildCartaoPDF(d){
   var foot=doc.splitTextToSize('Fonte: Receita Federal (Dados Abertos CNPJ) via BrasilAPI (brasilapi.com.br). Consulta realizada em '+(new Date()).toLocaleString('pt-BR')+'. Documento informativo automático; NÃO substitui o Comprovante oficial de Inscrição e Situação Cadastral da Receita, nem certidões. CPF de sócio exibido conforme mascaramento da fonte.',W);
   doc.text(foot,M,y);
   doc.save('CartaoCNPJ_'+cj+'.pdf');
+}
+// Dossiê de Habilitação (Lei 14.133/2021) — PDF consolidado: identificação (Receita) + checklist de documentos com links por CNPJ/UF e status.
+function docDossiePDF(){
+  var v=((document.getElementById('docUm')||{}).value||'').replace(/\D/g,'');
+  var s=document.getElementById('docUmOut');
+  if(v.length!==14){s.innerHTML='<span class=err>Informe um CNPJ de 14 dígitos.</span>';return;}
+  if(!window.jspdf||!window.jspdf.jsPDF){s.innerHTML='<span class=err>Biblioteca de PDF ainda carregando.</span>';return;}
+  s.innerHTML='<div class=msg>Consultando a Receita e montando o Dossiê de Habilitação (14.133)…<div class=barwrap><div class=bar></div></div></div>';
+  fetch('https://brasilapi.com.br/api/cnpj/v1/'+v).then(function(r){
+    if(r.status===404)throw new Error('CNPJ não encontrado na Receita.');
+    if(!r.ok)throw new Error('HTTP '+r.status); return r.json();
+  }).then(function(d){ buildDossiePDF(d);
+    s.innerHTML='<div class=msg style="padding:6px 0">✅ Dossiê de Habilitação (Lei 14.133) gerado e baixado. Identificação da Receita preenchida; demais itens com link direto (CNPJ/UF) e status. As consultas com chave (Portal Transparência) e as protegidas (CRF/CND/CNDT/TCU…) eu executo sob demanda — peça no chat.</div>';
+  }).catch(function(e){ s.innerHTML='<div class="msg err">Falha: '+esc(e.message)+'</div>'; });
+}
+function habUF(uf){var m={
+  SP:{junta:'https://www.jucesponline.sp.gov.br/'},
+  MG:{junta:'https://www.jucemg.mg.gov.br/',sefaz:'https://www2.fazenda.mg.gov.br/sol/'},
+  RJ:{junta:'https://www.jucerja.rj.gov.br/'},
+  PR:{junta:'https://www.juntacomercial.pr.gov.br/'}
+};return m[uf]||{};}
+function buildDossiePDF(d){
+  var J=window.jspdf.jsPDF, doc=new J({unit:'pt',format:'a4'});
+  var M=40,W=515,y=48, cj=(''+d.cnpj).replace(/\D/g,''), uf=(d.uf||'').toUpperCase(), U=habUF(uf);
+  function nl(n){y+=(n||14); if(y>800){doc.addPage();y=48;}}
+  function rule(){doc.setDrawColor(210);doc.line(M,y,M+W,y);nl(12);}
+  function h1(t){doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(20);doc.text(t,M,y);nl(19);}
+  function h2(t){doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30);doc.text(t,M,y);nl(15);}
+  function kv(k,val){if(val==null||val==='')return;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(90);doc.text(k+':',M,y);
+    doc.setFont('helvetica','normal');doc.setTextColor(20);var L=doc.splitTextToSize(''+val,W-115);doc.text(L,M+115,y);nl(12*L.length);}
+  var MET={A:['obtido (Receita)',[26,127,55]],P:['consulta assistida (navegador real)',[9,80,174]],K:['requer chave — assistente executa',[154,103,0]],L:['link direto',[80,80,80]],U:['por UF ('+uf+')',[130,80,10]]};
+  function item(nome,met,url){
+    var mm=MET[met]||MET.L;
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20);
+    var nl1=doc.splitTextToSize('• '+nome,W-140);doc.text(nl1,M,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(mm[1][0],mm[1][1],mm[1][2]);
+    doc.text('['+mm[0]+']',M+W-135,y);
+    nl(11*nl1.length);
+    if(url){doc.setTextColor(9,105,218);doc.setFontSize(7.5);
+      var us=doc.splitTextToSize('   ↳ '+url,W-10);doc.textWithLink(us[0],M,y,{url:url}); nl(11);}
+  }
+  // capa
+  h1('Dossiê de Habilitação — Lei nº 14.133/2021');
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(60);
+  doc.text((d.razao_social||'—'),M,y);nl(13);
+  doc.setFontSize(8.5);doc.setTextColor(90);
+  doc.text('CNPJ '+fmtCNPJ(d.cnpj)+'   ·   UF '+ (uf||'—') +'   ·   Situação: '+(d.descricao_situacao_cadastral||'—'),M,y);nl(12);
+  doc.text('Gerado em '+(new Date()).toLocaleString('pt-BR')+' pelo Painel Estratégico (agente de contratação).',M,y);nl(14);rule();
+  // 1. identificação
+  h2('1. Identificação (Receita Federal / BrasilAPI)');
+  kv('Nome fantasia',d.nome_fantasia);kv('Natureza jurídica',d.natureza_juridica);kv('Porte',d.porte);
+  kv('Capital social',(d.capital_social!=null&&d.capital_social!=='')?('R$ '+fmtBR(parseNum(d.capital_social))):'');
+  kv('Início atividade',d.data_inicio_atividade);
+  kv('CNAE principal',(d.cnae_fiscal?(d.cnae_fiscal+' — '+(d.cnae_fiscal_descricao||'')):''));
+  kv('Endereço',[d.descricao_tipo_de_logradouro,d.logradouro,d.numero].filter(Boolean).join(' ')+(d.bairro?(', '+d.bairro):'')+' — '+(d.municipio||'')+'/'+uf);
+  kv('Situação',(d.descricao_situacao_cadastral||'')+(d.data_situacao_cadastral?(' desde '+d.data_situacao_cadastral):''));
+  kv('Simples / MEI',(d.opcao_pelo_simples?'Simples: SIM':'Simples: não')+' · '+(d.opcao_pelo_mei?'MEI: SIM':'MEI: não'));
+  kv('QSA (sócios)',(d.qsa||[]).map(function(x){return x.nome_socio;}).filter(Boolean).join('; ')||'—');
+  nl(2);rule();
+  // 2. checklist de habilitação
+  h2('2. Documentos de habilitação — status e vias de obtenção');
+  var cat=[
+   ['Jurídica (art. 66)','Comprovante de Inscrição no CNPJ (Cartão CNPJ)','A',''],
+   ['Jurídica (art. 66)','Contrato social / atos constitutivos — Junta Comercial ('+uf+')','U',U.junta||''],
+   ['Fiscal, social e trabalhista (art. 68)','CND de Débitos Federais e Dívida Ativa da União (Receita/PGFN)','P','https://servicos.receitafederal.gov.br/servico/certidoes/'],
+   ['Fiscal, social e trabalhista (art. 68)','CRF — Certificado de Regularidade do FGTS (Caixa)','P','https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf#in='+cj],
+   ['Fiscal, social e trabalhista (art. 68)','CNDT — Certidão Negativa de Débitos Trabalhistas (TST)','P','https://cndt-certidao.tst.jus.br/'],
+   ['Fiscal, social e trabalhista (art. 68)','Regularidade Fiscal Estadual (SEFAZ '+uf+')','U',U.sefaz||''],
+   ['Fiscal, social e trabalhista (art. 68)','Regularidade Fiscal Municipal (sede do fornecedor)','U',''],
+   ['Fiscal, social e trabalhista (art. 68)','Simples Nacional / SIMEI — Consulta Optantes','L','https://www8.receita.fazenda.gov.br/simplesnacional/aplicacoes.aspx?id=21'],
+   ['Econômico-financeira (art. 69)','Certidão de Falência / Recuperação Judicial (TJ '+uf+')','U',''],
+   ['Econômico-financeira (art. 69)','Balanço patrimonial / demonstrações contábeis (documento do fornecedor)','L',''],
+   ['Cadastro / SICAF','SICAF — CRC, níveis de habilitação, restrição para contratar, linha de fornecimento','P','https://www3.comprasnet.gov.br/sicaf-web/public/pages/consultas/consultarCRC.jsf'],
+   ['Integridade / sanções','CEIS · CNEP · CEPIM · CEAF · Acordos de Leniência (Portal da Transparência)','K','https://portaldatransparencia.gov.br/sancoes/consulta'],
+   ['Integridade / sanções','TCU — Lista de inidôneos + Consulta Consolidada de PJ','P','https://certidoes-apf.apps.tcu.gov.br/'],
+   ['Integridade / sanções','CNJ — Improbidade Administrativa e Inelegibilidade','L','https://www.cnj.jus.br/improbidade_adm/consultar_requerido.php'],
+   ['Integridade / sanções','Cadin — débitos com órgãos federais e FGTS (PGFN)','P','https://cadin.pgfn.gov.br/'],
+   ['Histórico de contratações','PNCP — editais, atas e contratos publicados','L','https://pncp.gov.br/app/contratos']
+  ];
+  var g='';
+  cat.forEach(function(it){ if(it[0]!==g){g=it[0];doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(5,80,174);nl(3);doc.text(g,M,y);nl(13);} item(it[1],it[2],it[3]); });
+  nl(2);rule();
+  // 3. legenda / status
+  h2('3. Legenda de status/método');
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(70);
+  ['[obtido (Receita)] = já consultado automaticamente neste dossiê.',
+   '[consulta assistida (navegador real)] = o assistente obtém em navegador real, sem burlar CAPTCHA; se aparecer, o humano resolve.',
+   '[requer chave — assistente executa] = API do Portal da Transparência exige chave; o assistente executa com a chave.',
+   '[link direto] = consulte no portal indicado (link já direciona; CRF já leva o CNPJ).',
+   '[por UF] = depende da sede do fornecedor ('+uf+'); use o órgão estadual/municipal indicado.'].forEach(function(t){var L=doc.splitTextToSize('• '+t,W);doc.text(L,M,y);nl(10*L.length);});
+  nl(6);
+  doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130);
+  var foot=doc.splitTextToSize('Documento de apoio ao processo de habilitação (Lei nº 14.133/2021). A identificação é da Receita (BrasilAPI); os demais itens são vias oficiais de obtenção — as certidões/consultas valem pelo documento emitido no órgão competente. Não substitui a análise jurídica do edital.',W);
+  doc.text(foot,M,y);
+  doc.save('Dossie_Habilitacao_'+cj+'.pdf');
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
