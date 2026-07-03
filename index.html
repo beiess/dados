@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v9</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v10</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -102,6 +102,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <div class="tab" id=t6 onclick="setTab(6)">🧑‍⚖️ Painel 6 — Responsáveis</div>
   <div class="tab" id=t7 onclick="setTab(7)">🏛️ Painel 8 — Servidores do Estado (MG)</div>
   <div class="tab" id=t8 onclick="setTab(8)">🏢 Painel 9 — Receita Federal (CNPJ)</div>
+  <div class="tab" id=t9 onclick="setTab(9)">🗂️ Painel 10 — Automação de Documentos</div>
   <button onclick="openCols(event)">☰ colunas</button>
   <button onclick="limparFiltros()">limpar filtros</button>
   <button onclick="exportCSV()">⬇ CSV</button>
@@ -271,7 +272,7 @@ async function carregar(){closePop();const ids=[...sel];
   try{await loadPanel(1,ids);}catch(e){showErr(e.message);return;}
   tab=1;setTabUI();render();
 }
-function setTabUI(){['t1','t2','t3','t4','t5','t6','t7','t8'].forEach((id,i)=>document.getElementById(id).classList.toggle('on',tab===i+1));}
+function setTabUI(){['t1','t2','t3','t4','t5','t6','t7','t8','t9'].forEach((id,i)=>document.getElementById(id).classList.toggle('on',tab===i+1));}
 async function setTab(n){tab=n;setTabUI();closePop();
   if(n===3||n===7){if(panelSig[n]!=='ALL'){try{await loadPanel(n,[]);}catch(e){showErr('Painel '+(n===7?8:n)+': '+e.message);return;}}}
   else if(n===1||n===4||n===5||n===6){
@@ -386,6 +387,7 @@ function onScroll(){const t=tw();if(_shown>=_disp.length)return;
     const tb=document.getElementById('tb');if(tb)tb.insertAdjacentHTML('beforeend',_disp.slice(_shown,end).map(rowHTML).join(''));_shown=end;}}
 function render(){if(document.getElementById('app').classList.contains('hidden'))return;
   if(tab===8){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='';if(!document.getElementById('rfbq'))renderRFB();return;}
+  if(tab===9){var gb9=document.getElementById('gbar');if(gb9)gb9.innerHTML='';if(!document.getElementById('docAlvo'))renderDOC();return;}
   ensureVis();const cols=visibleCols(),fs=fstate[tab],so=sortState[tab];
   const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
   const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
@@ -593,6 +595,60 @@ async function consultaInternaRFB(tipo,q){rfbSet('<div class=msg>Buscando na bas
       rfbSet(h2);
     }
   }catch(e){rfbSet('<div class="msg err">falha: '+esc(e.message)+'</div>');}}
+// ── Painel 10 — Automação de Documentos (dado de entrada + fontes → documento(s)) ──
+const DOC_TIPOS=[{v:'cnpj',l:'CNPJ',on:true},{v:'cpf',l:'CPF',on:false},{v:'nome',l:'Nome completo',on:false},{v:'im',l:'Inscrição municipal',on:false}];
+const DOC_FONTES=[
+  {v:'crf',l:'CRF — Certificado de Regularidade do FGTS (Caixa)',on:true},
+  {v:'cartao',l:'Cartão CNPJ — Comprovante de Inscrição (Receita)',on:false},
+  {v:'cndfed',l:'CND — Débitos Federais (Receita/PGFN)',on:false},
+  {v:'cndt',l:'CNDT — Débitos Trabalhistas (TST)',on:false},
+  {v:'cndestmg',l:'CND Estadual (SEF-MG)',on:false}];
+let docList=[];
+function renderDOC(){
+  var tipos=DOC_TIPOS.map(function(t){return '<option value="'+t.v+'"'+(t.on?'':' disabled')+'>'+t.l+(t.on?'':' (em breve)')+'</option>';}).join('');
+  var fontes=DOC_FONTES.map(function(f){return '<label style="display:block;padding:2px 0"><input type=checkbox class=docfonte value="'+f.v+'"'+(f.on?' checked':' disabled')+'> '+esc(f.l)+(f.on?' <span style="color:#1a7f37;font-size:11px">automação</span>':' <span class=na style="font-size:11px">(em breve)</span>')+'</label>';}).join('');
+  tw().innerHTML='<div style="padding:14px 4px;max-width:940px">'
+    +'<div class=card style="max-width:none;box-shadow:none;border:1px solid var(--b)"><div class=bd>'
+    +'<div class=msg style="padding:0 0 8px">Central para gerar documentos a partir de um dado de entrada e fontes selecionadas — reunindo tudo num PDF. 1ª funcionalidade: <b>CNPJ → CRF (FGTS)</b> por automação.</div>'
+    +'<div class=sec><h4>1. Tipo de dado de entrada</h4><select id=docTipo style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit">'+tipos+'</select></div>'
+    +'<div class=sec><h4>2. Documentos / fontes a consultar</h4>'+fontes+'</div>'
+    +'<div class=sec><h4>3. Alvo — CNPJ(s), um por linha</h4>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+        +'<button onclick="docPuxarP3()">Puxar fornecedores (P3)</button>'
+        +'<button onclick="document.getElementById(\'docAlvo\').value=\'\';docCount()">Limpar</button>'
+        +'<span id=docCnt class=na style="align-self:center"></span></div>'
+      +'<textarea id=docAlvo oninput="docCount()" placeholder="CNPJ (14 dígitos), um por linha. Ex.: 00000000000191" style="width:100%;height:150px;padding:8px;border:1px solid var(--b);border-radius:8px;font:12px/1.4 monospace"></textarea></div>'
+    +'<div class=sec><button onclick="docGerar()" style="background:#0d1117;color:#fff">Gerar lista de trabalho</button></div>'
+    +'<div class=sec id=docOut></div></div></div></div>';
+  docCount();
+}
+function docCount(){var e=document.getElementById('docAlvo'),c=document.getElementById('docCnt');if(!e||!c)return;
+  var n=e.value.split(/\s+/).map(function(x){return x.replace(/\D/g,'');}).filter(function(x){return x.length===14;}).length;
+  c.textContent=n+' CNPJ(s) válido(s)';}
+async function docPuxarP3(){var ta=document.getElementById('docAlvo');ta.value='Carregando fornecedores do Painel 3…';
+  try{var rows=await sbfetch('fornecedores_obra','select=documento');
+    var seen={},out=[];rows.forEach(function(r){var c=(''+(r.documento||'')).replace(/\D/g,'');if(c.length===14&&!seen[c]){seen[c]=1;out.push(c);}});
+    ta.value=out.join('\n');docCount();
+  }catch(e){ta.value='';alert('Falha ao puxar do P3: '+e.message);}}
+function docGerar(){
+  var fontes=[].slice.call(document.querySelectorAll('.docfonte:checked')).map(function(x){return x.value;});
+  var out=document.getElementById('docOut');
+  if(!fontes.length){out.innerHTML='<span class=err>Selecione ao menos um documento (fonte).</span>';return;}
+  var raw=document.getElementById('docAlvo').value.split(/\s+/).map(function(x){return x.replace(/\D/g,'');}).filter(Boolean);
+  var seen={},list=[],inval=0;raw.forEach(function(c){if(c.length===14){if(!seen[c]){seen[c]=1;list.push(c);}}else if(c.length)inval++;});
+  docList=list;
+  if(!list.length){out.innerHTML='<span class=err>Nenhum CNPJ válido (14 dígitos) informado.</span>';return;}
+  var nomes={crf:'CRF (FGTS/Caixa)',cartao:'Cartão CNPJ',cndfed:'CND Federal',cndt:'CNDT',cndestmg:'CND Estadual MG'};
+  var docs=fontes.map(function(f){return nomes[f]||f;}).join(', ');
+  var h='<div style="background:#eef6ff;border:1px solid #b6d4ff;border-radius:8px;padding:12px">';
+  h+='<b>Lista de trabalho pronta.</b><br>'+list.length+' CNPJ(s) · documento(s): '+esc(docs)+(inval?(' · '+inval+' entrada(s) inválida(s) ignorada(s)'):'')+'<br><br>';
+  h+='<b>Como executar:</b> o CRF é obtido por <b>automação de navegador real</b> (o assistente executa — sem burlar CAPTCHA). '
+    +'Peça no chat: <i>“puxe o CRF desta lista”</i> ou <i>“puxe o CRF dos fornecedores do Painel 3”</i>. Ele salva os PDFs e pode consolidar num só.<br><br>';
+  h+='<button onclick="docCopy()">📋 Copiar lista</button> <button onclick="docBaixaTxt()">⬇ baixar .txt</button>';
+  h+='<div style="max-height:180px;overflow:auto;margin-top:8px;font:12px/1.5 monospace;background:#fff;border:1px solid var(--b);border-radius:6px;padding:8px">'+list.map(fmtCNPJ).map(esc).join('<br>')+'</div></div>';
+  out.innerHTML=h;}
+function docCopy(){if(navigator.clipboard)navigator.clipboard.writeText(docList.join('\n'));}
+function docBaixaTxt(){var b=new Blob([docList.join('\n')],{type:'text/plain'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='lista_cnpj_'+docList.length+'.txt';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);}
 document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
 </script></body></html>

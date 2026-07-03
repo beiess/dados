@@ -123,6 +123,20 @@
 | refresh | Nenhum a carregar — é on-demand. Para busca por nome/CNAE em TODA a base seria preciso a opção 2/3 (subconjunto/infra dedicada). |
 | armadilhas | API por CNPJ (não busca por razão/CNAE em todas as 60M). "Busca aprofundada" = QSA + cruzamento com P3/P4/P1. Dado de PJ é público (A8); CPF de sócio mascarado. |
 
+## Painel 10 — Automação de Documentos (CRF/FGTS como 1ª fonte)
+| campo | valor |
+|---|---|
+| fonte | Certificado de Regularidade do FGTS — CRF (Caixa Econômica Federal) |
+| fonte_url | `https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf` (JSF, sessão) |
+| fonte_tipo | Consulta web pública **protegida por bot-manager (Radware) + hCaptcha** no acesso via robô |
+| metodo | **Automação de navegador REAL** (extensão Chrome do assistente) — o navegador legítimo passa a checagem anti-robô SEM CAPTCHA; **NÃO se burla CAPTCHA** (se aparecer, humano resolve aquele passo). NÃO faz via `curl`/servidor (é bloqueado) nem client-side (CORS/JSF). |
+| data_coleta | por consulta (certidão tem validade ~30 dias) |
+| grau_confianca | **A** (certidão oficial, com nº e validade) |
+| chaves_canonicas | `cnpj` (14) |
+| entrada | CNPJ avulso ou lista; "Puxar fornecedores (P3)" preenche com os CNPJs do Painel 3 |
+| refresh | App (Painel 10) monta a lista de trabalho; o **assistente executa** a automação e gera os PDFs (podendo consolidar). |
+| armadilhas | Portal atrás de bot-manager: só navegador real. Lote grande (ex.: 5.987 do P3) é sequencial → paced. Arquitetura extensível p/ novas entradas (CPF/nome/IM) e fontes (Cartão CNPJ, CND Federal, CNDT, CND-MG). |
+
 ## Fontes canônicas de referência (CLAUDE.md)
 - **compras.gov.br** — `dadosabertos.compras.gov.br` (API REST, envelope paginado). Swagger em `/swagger-ui/index.html`.
 - **Contratos.gov.br** — `contratos.comprasnet.gov.br` (OpenAPI `/docs/api-docs.json`).
