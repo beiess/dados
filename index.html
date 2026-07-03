@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.1</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -613,11 +613,12 @@ function renderDOC(){
     +'<div class=msg style="padding:0 0 8px">Central para gerar documentos a partir de um dado de entrada e fontes selecionadas — reunindo tudo num PDF. 1ª funcionalidade: <b>CNPJ → CRF (FGTS)</b> por automação.</div>'
     +'<div class=sec style="background:#f6f8fa;border:1px solid var(--b);border-radius:8px;padding:10px"><h4>⚙️ Gerar CRF — CNPJ único</h4>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-        +'<input id=docUm placeholder="CNPJ (14 dígitos)" style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit;min-width:220px" onkeydown="if(event.key===\'Enter\')docGerarUm()">'
+        +'<input id=docUm placeholder="CPF (11) ou CNPJ (14 dígitos)" style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit;min-width:220px" onkeydown="if(event.key===\'Enter\')docAuto()">'
         +'<button onclick="docCartaoPDF()" style="background:#1a7f37;color:#fff" title="gera e baixa o PDF na hora, no navegador, sem instalar nada (dados abertos da Receita via BrasilAPI)">📄 Cartão CNPJ (PDF)</button>'
         +'<button onclick="docDossiePDF()" style="background:#0550ae;color:#fff" title="PDF consolidado: identificação (Receita) + checklist de habilitação Lei 14.133 com links pré-preenchidos por CNPJ/UF e status/método">📋 Dossiê Habilitação 14.133 (PDF)</button>'
         +'<button onclick="docGerarUm()" style="background:#0d1117;color:#fff">⚙️ Gerar CRF (automação)</button>'
         +'<button onclick="docAbrirCaixa()" title="abre a consulta da Caixa já com o CNPJ; com o userscript CRF instalado, baixa o PDF sozinho">⤓ Baixar CRF (auto) ↗</button>'
+        +'<button onclick="docDDcpf()" style="background:#8250df;color:#fff" title="CPF: cruza a pessoa na base interna (servidor P1, responsável P6, sócio, sanção) e gera PDF de due diligence">🔎 Due diligence (CPF)</button>'
       +'</div><div id=docUmOut></div></div>'
     +'<div class=sec><h4>1. Tipo de dado de entrada</h4><select id=docTipo style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit">'+tipos+'</select></div>'
     +'<div class=sec><h4>2. Documentos / fontes a consultar</h4>'+fontes+'</div>'
@@ -677,6 +678,66 @@ function docAbrirCaixa(){
   if(navigator.clipboard)navigator.clipboard.writeText(v);
   window.open('https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf#in='+v,'_blank');
   s.innerHTML='<div class=msg style="padding:6px 0">Consulta da Caixa aberta com o CNPJ. <b>Com o userscript CRF instalado</b> (Tampermonkey — arquivo em <code>AUTOMACOES/crf-fgts/crf-fgts.user.js</code>), ele preenche, consulta, abre o certificado e dispara a impressão sozinho — é só <b>Salvar como PDF</b>. Sem o userscript, o CNPJ já foi copiado: cole em “Inscrição” → Consultar → Certificado → Visualizar → Imprimir.</div>';
+}
+// entrada por CPF/CNPJ: roteia pelo nº de dígitos
+function docAuto(){var v=((document.getElementById('docUm')||{}).value||'').replace(/\D/g,'');
+  if(v.length===11)return docDDcpf(); if(v.length===14)return docDossiePDF();
+  document.getElementById('docUmOut').innerHTML='<span class=err>Informe CPF (11 dígitos) ou CNPJ (14 dígitos).</span>';}
+// Due diligence por CPF: cruza a pessoa na base interna (P1 servidor + P6 responsável) e gera PDF. CPF exibido MASCARADO.
+async function docDDcpf(){
+  var v=((document.getElementById('docUm')||{}).value||'').replace(/\D/g,'');
+  var s=document.getElementById('docUmOut');
+  if(v.length!==11){s.innerHTML='<span class=err>Informe um CPF de 11 dígitos (due diligence de pessoa). Para empresa, use CNPJ.</span>';return;}
+  s.innerHTML='<div class=msg>Cruzando o CPF na base interna…<div class=barwrap><div class=bar></div></div></div>';
+  try{
+    var r=await Promise.all([
+      sbfetch('painel1_servidores','select=ibge,'+P1C.join(',')+'&cpf=eq.'+v),
+      sbfetch('painel6_responsaveis','select='+P6C.join(',')+'&cpf=eq.'+v)]);
+    var p1=r[0],p6=r[1];
+    var nome=(p1[0]&&p1[0].nome)||(p6[0]&&p6[0].nome)||'';
+    var sanc=p1.some(function(x){return (x.sancionado||'').trim();});
+    var mand=p1.some(function(x){return (x.mandato_eletivo||'').trim();});
+    var soc=p1.some(function(x){return (x.socio_empresa||'').trim();});
+    var muns=[].concat.apply([],[[...new Set(p1.map(function(x){return munNome(x.ibge);}))]]);
+    var h='<div class=sec><h4>Due diligence — '+esc(nome||('CPF '+mask(v)))+' <span class=doc>'+mask(v)+'</span></h4><div class=ml>';
+    h+='• Vínculos como servidor municipal (P1): <b>'+p1.length+'</b>'+(muns.length?(' — '+muns.slice(0,6).map(esc).join(', ')+(muns.length>6?'…':'')):'')+'<br>';
+    h+='• Responsabilidades em licitação/órgão (P6): <b>'+p6.length+'</b><br>';
+    h+='• Sinais: '+(sanc?'<b style="color:#cf222e">SANCIONADO</b> ':'')+(mand?'<b style="color:#7d4e00">MANDATO ELETIVO</b> ':'')+(soc?'<b style="color:#0969da">SÓCIO DE EMPRESA</b> ':'')+((!sanc&&!mand&&!soc)?'nenhum':'')+'</div></div>';
+    if(p1.length||p6.length){ buildDDcpfPDF(v,nome,p1,p6); h+='<div class=msg style="padding:4px 0">✅ PDF de due diligence gerado e baixado.</div>'; }
+    else { h+='<div class=msg style="padding:4px 0">Nada consta na base interna para este CPF (não é servidor/responsável). Fontes externas por CPF (antecedentes/benefícios) exigem credencial Conecta + base legal LGPD.</div>'; }
+    s.innerHTML=h;
+  }catch(e){ s.innerHTML='<div class="msg err">Falha: '+esc(e.message)+'</div>'; }
+}
+function buildDDcpfPDF(v,nome,p1,p6){
+  if(!window.jspdf||!window.jspdf.jsPDF)return; var J=window.jspdf.jsPDF, doc=new J({unit:'pt',format:'a4'});
+  var M=40,W=515,y=48;
+  function nl(n){y+=(n||14); if(y>800){doc.addPage();y=48;}}
+  function rule(){doc.setDrawColor(210);doc.line(M,y,M+W,y);nl(12);}
+  function h1(t){doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(20);doc.text(t,M,y);nl(18);}
+  function h2(t){doc.ln;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(5,80,174);doc.text(t,M,y);nl(14);}
+  function p(t,c,sz){doc.setFont('helvetica','normal');doc.setFontSize(sz||8.5);doc.setTextColor(c?c[0]:70,c?c[1]:70,c?c[2]:70);var L=doc.splitTextToSize(''+t,W);doc.text(L,M,y);nl(11*L.length);}
+  h1('Due Diligence de Pessoa — cruzamento na base');
+  p((nome||'(nome não disponível)')+'   CPF '+mask(v),[40,40,40],10);
+  p('Gerado em '+(new Date()).toLocaleString('pt-BR')+'. Cruzamento na base interna (Painel 1 servidores + Painel 6 responsáveis). CPF mascarado (LGPD).',[120,120,120],8);rule();
+  var sanc=[].concat.apply([],p1.map(function(x){return (x.sancionado||'').trim()?[x.sancionado]:[];}));
+  var mand=[].concat.apply([],p1.map(function(x){return (x.mandato_eletivo||'').trim()?[x.mandato_eletivo]:[];}));
+  var soc=[].concat.apply([],p1.map(function(x){return (x.socio_empresa||'').trim()?[x.socio_empresa]:[];}));
+  h2('Sinais de atenção');
+  p((sanc.length?('SANCIONADO: '+[...new Set(sanc)].join(' | ')):'Sancionado: nada consta'),sanc.length?[180,0,0]:[26,127,55]);
+  p((mand.length?('Mandato eletivo: '+[...new Set(mand)].join(' | ')):'Mandato eletivo: nada consta'),[70,70,70]);
+  p((soc.length?('Sócio de empresa (QSA): '+[...new Set(soc)].slice(0,8).join(' | ')):'Sócio de empresa: nada consta'),[70,70,70]);
+  rule();
+  h2('Vínculos como servidor municipal — Painel 1 ('+p1.length+')');
+  if(p1.length) p1.slice(0,40).forEach(function(x){p('- '+munNome(x.ibge)+' | '+(x.orgao||'')+' | '+(x.cargo_funcao||x.setor||'')+(x.remuneracao?(' | R$ '+x.remuneracao):''));});
+  else p('- nada consta');
+  rule();
+  h2('Responsabilidades em licitação/órgão — Painel 6 ('+p6.length+')');
+  if(p6.length) p6.slice(0,40).forEach(function(x){p('- '+munNome(x.cod_ibge)+' | '+(x.orgao||'')+' | '+(x.tipo_responsabilidade||'')+' | '+(x.origem||''));});
+  else p('- nada consta');
+  rule();
+  doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130);
+  doc.text(doc.splitTextToSize('Documento interno de apoio (due diligence). Base: painéis internos (fontes oficiais). CPF mascarado. Não inclui antecedentes criminais/benefícios (fontes externas por CPF exigem credencial e base legal LGPD).',W),M,y);
+  doc.save('DueDiligence_'+v.slice(0,3)+'xxxxx'+v.slice(9)+'.pdf');
 }
 // Cartão CNPJ em PDF — 100% client-side (dados abertos Receita via BrasilAPI + jsPDF). Download instantâneo, zero instalação.
 function docCartaoPDF(){
