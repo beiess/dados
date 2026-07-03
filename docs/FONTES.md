@@ -137,6 +137,34 @@
 | refresh | App (Painel 10) monta a lista de trabalho; o **assistente executa** a automação e gera os PDFs (podendo consolidar). |
 | armadilhas | Portal atrás de bot-manager: só navegador real. Lote grande (ex.: 5.987 do P3) é sequencial → paced. Arquitetura extensível p/ novas entradas (CPF/nome/IM) e fontes (Cartão CNPJ, CND Federal, CNDT, CND-MG). |
 
+## Agente de contratação — fontes de habilitação (Lei 14.133/2021)
+Objetivo: dado um CNPJ (avulso/lista), obter todos os documentos de habilitação e consolidar num PDF.
+Método por fonte (recon 2026-07-02): **A**=in-app aberto · **K**=API com chave · **P**=protegido/ponte
+(navegador real, sem burlar CAPTCHA) · **L**=link direto · **U**=por UF da sede.
+
+| Documento / consulta | Fonte | Endpoint / URL | Método |
+|---|---|---|---|
+| Cartão CNPJ / identificação (razão, CNAE, QSA, situação) | Receita/**BrasilAPI** | `brasilapi.com.br/api/cnpj/v1/<cnpj>` (CORS ✓) | **A** (feito) |
+| Cadastro fornecedor / SICAF cadastral | Compras.gov.br | `dadosabertos.compras.gov.br/modulo-fornecedor/1_consultarFornecedor?cnpj=` | **P** (deu 406/sem CORS no navegador → eu executo) |
+| Histórico contratos/atas/editais | **PNCP** | `pncp.gov.br/api/consulta` (CORS ✓; filtros por ÓRGÃO, não por fornecedor) | L/A parcial |
+| Sanções CEIS·CNEP·CEPIM·CEAF·Leniência | Portal da Transparência | `api.portaldatransparencia.gov.br/api-de-dados/{ceis,cnep,cepim,ceaf,acordos-leniencia}?codigoSancionado=<CNPJ>` | **K** (401 sem chave; cadastrar e-mail; provável sem CORS → eu executo) |
+| CND Débitos Federais + Dívida Ativa União | Receita/PGFN | `servicos.receitafederal.gov.br/servico/certidoes/` | **P** |
+| CRF — Regularidade FGTS | Caixa | `consulta-crf.caixa.gov.br/...#in=<cnpj>` | **P** (feito; userscript/eu executo) |
+| CNDT — Débitos Trabalhistas | TST | `cndt-certidao.tst.jus.br/` | **P** |
+| Regularidade Estadual / Municipal | SEFAZ/Prefeitura | por UF/município | **U** |
+| Simples Nacional / SIMEI (optantes) | Receita | `www8.receita.fazenda.gov.br/simplesnacional/aplicacoes.aspx?id=21` | **L** |
+| Falência / Recuperação Judicial | TJ da sede | por UF | **U** |
+| SICAF-CRC / restrição / linha | Compras.gov.br | `www3.comprasnet.gov.br/sicaf-web/public/pages/consultas/consultarCRC.jsf` | **P** |
+| TCU — inidôneos + Consulta Consolidada PJ | TCU | `certidoes-apf.apps.tcu.gov.br/` | **P** |
+| CNJ — Improbidade/Inelegibilidade | CNJ | `www.cnj.jus.br/improbidade_adm/consultar_requerido.php` | **L** |
+| Cadin | PGFN | `cadin.pgfn.gov.br/` | **P** (auth) |
+| Junta Comercial (contrato social) | Junta da UF | ex. JUCESP/JUCEMG | **U** |
+| MTE — trabalho análogo à escravidão | MTE | lista/PDF | **P/L** |
+
+App: **Painel 10 → 📋 Dossiê Habilitação 14.133 (PDF)** — monta o PDF consolidado (identificação Receita
+real + checklist com links pré-preenchidos por CNPJ/UF + status). Conteúdo das fontes K/P é preenchido
+pelo assistente (chave/navegador real) sob demanda; consolidação em PDF único.
+
 ## Fontes canônicas de referência (CLAUDE.md)
 - **compras.gov.br** — `dadosabertos.compras.gov.br` (API REST, envelope paginado). Swagger em `/swagger-ui/index.html`.
 - **Contratos.gov.br** — `contratos.comprasnet.gov.br` (OpenAPI `/docs/api-docs.json`).
