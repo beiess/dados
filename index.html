@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v10</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v10.1</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -610,6 +610,12 @@ function renderDOC(){
   tw().innerHTML='<div style="padding:14px 4px;max-width:940px">'
     +'<div class=card style="max-width:none;box-shadow:none;border:1px solid var(--b)"><div class=bd>'
     +'<div class=msg style="padding:0 0 8px">Central para gerar documentos a partir de um dado de entrada e fontes selecionadas — reunindo tudo num PDF. 1ª funcionalidade: <b>CNPJ → CRF (FGTS)</b> por automação.</div>'
+    +'<div class=sec style="background:#f6f8fa;border:1px solid var(--b);border-radius:8px;padding:10px"><h4>⚙️ Gerar CRF — CNPJ único</h4>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+        +'<input id=docUm placeholder="CNPJ (14 dígitos)" style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit;min-width:220px" onkeydown="if(event.key===\'Enter\')docGerarUm()">'
+        +'<button onclick="docGerarUm()" style="background:#0d1117;color:#fff">⚙️ Gerar CRF (automação)</button>'
+        +'<button onclick="docAbrirCaixa()" title="abrir a consulta oficial da Caixa e copiar o CNPJ (você mesmo baixa)">Abrir na Caixa ↗</button>'
+      +'</div><div id=docUmOut></div></div>'
     +'<div class=sec><h4>1. Tipo de dado de entrada</h4><select id=docTipo style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit">'+tipos+'</select></div>'
     +'<div class=sec><h4>2. Documentos / fontes a consultar</h4>'+fontes+'</div>'
     +'<div class=sec><h4>3. Alvo — CNPJ(s), um por linha</h4>'
@@ -649,6 +655,26 @@ function docGerar(){
   out.innerHTML=h;}
 function docCopy(){if(navigator.clipboard)navigator.clipboard.writeText(docList.join('\n'));}
 function docBaixaTxt(){var b=new Blob([docList.join('\n')],{type:'text/plain'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='lista_cnpj_'+docList.length+'.txt';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);}
+function docGerarUm(){
+  var v=((document.getElementById('docUm')||{}).value||'').replace(/\D/g,'');
+  var s=document.getElementById('docUmOut');
+  if(v.length!==14){s.innerHTML='<span class=err>Informe um CNPJ de 14 dígitos.</span>';return;}
+  if(docList.indexOf(v)<0)docList.push(v);
+  var cmd='executar a automação crf-fgts para '+v;
+  if(navigator.clipboard)navigator.clipboard.writeText(cmd);
+  s.innerHTML='<div style="background:#dafbe1;border:1px solid #56d364;border-radius:8px;padding:10px;margin-top:8px">'
+    +'✅ CNPJ <b>'+esc(fmtCNPJ(v))+'</b> na fila de automação. <b>Comando copiado</b> — cole no chat com o assistente:<br>'
+    +'<code style="display:inline-block;margin-top:4px;background:#fff;border:1px solid var(--b);border-radius:6px;padding:4px 8px">'+esc(cmd)+'</code><br>'
+    +'<span class=na style="font-size:11px">A geração do PDF é executada pela automação de navegador real (o assistente roda; sem burlar CAPTCHA). Ou use “Abrir na Caixa ↗” para baixar você mesmo.</span></div>';
+}
+function docAbrirCaixa(){
+  var v=((document.getElementById('docUm')||{}).value||'').replace(/\D/g,'');
+  var s=document.getElementById('docUmOut');
+  if(v.length!==14){s.innerHTML='<span class=err>Informe um CNPJ de 14 dígitos.</span>';return;}
+  if(navigator.clipboard)navigator.clipboard.writeText(v);
+  window.open('https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf','_blank');
+  s.innerHTML='<div class=msg style="padding:6px 0">Consulta da Caixa aberta em nova aba e CNPJ copiado. Cole no campo “Inscrição”, clique Consultar → Certificado → Visualizar → Imprimir/Salvar PDF.</div>';
+}
 document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
 </script></body></html>
