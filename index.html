@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v10.1</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v10.2</span></h1>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -614,7 +614,7 @@ function renderDOC(){
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
         +'<input id=docUm placeholder="CNPJ (14 dígitos)" style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit;min-width:220px" onkeydown="if(event.key===\'Enter\')docGerarUm()">'
         +'<button onclick="docGerarUm()" style="background:#0d1117;color:#fff">⚙️ Gerar CRF (automação)</button>'
-        +'<button onclick="docAbrirCaixa()" title="abrir a consulta oficial da Caixa e copiar o CNPJ (você mesmo baixa)">Abrir na Caixa ↗</button>'
+        +'<button onclick="docAbrirCaixa()" title="abre a consulta da Caixa já com o CNPJ; com o userscript CRF instalado, baixa o PDF sozinho">⤓ Baixar CRF (auto) ↗</button>'
       +'</div><div id=docUmOut></div></div>'
     +'<div class=sec><h4>1. Tipo de dado de entrada</h4><select id=docTipo style="padding:8px;border:1px solid var(--b);border-radius:8px;font:inherit">'+tipos+'</select></div>'
     +'<div class=sec><h4>2. Documentos / fontes a consultar</h4>'+fontes+'</div>'
@@ -672,8 +672,8 @@ function docAbrirCaixa(){
   var s=document.getElementById('docUmOut');
   if(v.length!==14){s.innerHTML='<span class=err>Informe um CNPJ de 14 dígitos.</span>';return;}
   if(navigator.clipboard)navigator.clipboard.writeText(v);
-  window.open('https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf','_blank');
-  s.innerHTML='<div class=msg style="padding:6px 0">Consulta da Caixa aberta em nova aba e CNPJ copiado. Cole no campo “Inscrição”, clique Consultar → Certificado → Visualizar → Imprimir/Salvar PDF.</div>';
+  window.open('https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf#in='+v,'_blank');
+  s.innerHTML='<div class=msg style="padding:6px 0">Consulta da Caixa aberta com o CNPJ. <b>Com o userscript CRF instalado</b> (Tampermonkey — arquivo em <code>AUTOMACOES/crf-fgts/crf-fgts.user.js</code>), ele preenche, consulta, abre o certificado e dispara a impressão sozinho — é só <b>Salvar como PDF</b>. Sem o userscript, o CNPJ já foi copiado: cole em “Inscrição” → Consultar → Certificado → Visualizar → Imprimir.</div>';
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
