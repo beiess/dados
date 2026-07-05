@@ -1,0 +1,172 @@
+<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Painel 2N — Cadastro Institucional Nacional (PNCP) — protótipo</title>
+<style>
+:root{--b:#d0d7de}*{box-sizing:border-box}
+body{font:13px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f6f8fa;color:#1f2328}
+header{padding:10px 16px;background:#0d1117;color:#fff;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{margin:0;font-size:15px}header .sp{flex:1}
+header input{padding:7px 9px;border-radius:7px;border:1px solid #30363d;background:#161b22;color:#fff;font:inherit}
+.tabs{display:flex;gap:8px;padding:8px 16px;background:#fff;border-bottom:1px solid var(--b);align-items:center;flex-wrap:wrap}
+button{padding:7px 11px;border:1px solid var(--b);border-radius:8px;background:#fff;cursor:pointer;font:inherit}
+.gbar{display:flex;gap:8px;align-items:center;padding:6px 16px;background:#fbfcfd;border-bottom:1px solid var(--b);flex-wrap:wrap;font-size:12px}
+.gbar .lbl{color:#57606a;font-weight:600}
+select{padding:6px 8px;border:1px solid var(--b);border-radius:7px;background:#fff;font:inherit}
+#cnt{font-size:12px;color:#57606a}
+.wrap{padding:10px 12px 40px}
+.tree{border:1px solid var(--b);border-radius:8px;background:#fff;max-height:80vh;overflow:auto}
+.node{border-bottom:1px solid #eef1f4}
+.row{display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;user-select:none}
+.row:hover{background:#f6f8fa}
+.tg{width:14px;color:#0969da;font-weight:700;text-align:center}
+.uf .nm{font-weight:700}.mun{padding-left:20px}.mun .nm{font-weight:600}
+.org{padding-left:44px}.org .nm{color:#0550ae}
+.set{padding-left:74px;color:#57606a;cursor:default}
+.badge{font-size:11px;color:#8250df;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:4px}
+.pill.M{background:#ddf4ff;color:#0969da}.pill.E{background:#fff8c5;color:#7d4e00}.pill.F{background:#dafbe1;color:#1a7f37}.pill.D{background:#ffebe9;color:#cf222e}
+.hidden{display:none}.msg{padding:22px;color:#57606a}
+.cnpj{color:#8c959f;font-variant-numeric:tabular-nums;font-size:11px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:100;justify-content:center;align-items:flex-start;overflow:auto;padding:36px 12px}
+#modal.on{display:flex}
+.card{background:#fff;border-radius:12px;max-width:760px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,.3)}
+.card h3{margin:0;padding:13px 18px;background:#0d1117;color:#fff;border-radius:12px 12px 0 0;font-size:15px;display:flex;gap:10px;align-items:center}
+.card h3 .x{margin-left:auto;cursor:pointer;font-size:20px;line-height:1}
+.card .bd{padding:14px 18px}
+.card table{width:100%;font-size:12px;border-collapse:collapse}.card td,.card th{padding:5px 8px;border:1px solid var(--b);text-align:left;vertical-align:top}
+.card th{background:#f6f8fa;font-size:11px;text-transform:uppercase;color:#57606a;width:32%}
+.na{color:#c0c4ca}
+</style></head><body>
+<header>
+  <h1>🏛️ Painel 2N — Cadastro Institucional Nacional <span style="opacity:.5;font-size:11px">protótipo · PNCP</span></h1>
+  <input id=q placeholder="busca (município, órgão, CNPJ)…" oninput=render()>
+  <span class=sp></span>
+  <span id=who style="font-size:12px;opacity:.8">fonte: PNCP</span>
+</header>
+<div class=tabs>
+  <button onclick="expandAll(true)">⊕ expandir UFs</button>
+  <button onclick="expandAll(false)">⊖ recolher</button>
+  <button onclick="exportCSV()">⬇ CSV (visível)</button>
+  <label style="font-size:12px;color:#57606a">carregar JSON: <input type=file id=fp accept=".json" onchange=loadFile(event)></label>
+  <span class=sp></span><span id=cnt></span>
+</div>
+<div class=gbar>
+  <span class=lbl>Filtros:</span>
+  UF <select id=fuf onchange=render()><option value="">todas</option></select>
+  Esfera <select id=fesf onchange=render()><option value="">todas</option><option>Municipal</option><option>Estadual</option><option>Federal</option><option>Distrital</option></select>
+  Poder <select id=fpod onchange=render()><option value="">todos</option><option>Executivo</option><option>Legislativo</option><option>Judiciário</option><option>Ministério Público</option></select>
+  <span class=lbl style="margin-left:auto">cascata: UF › Município › Órgão › Setores</span>
+</div>
+<div class=wrap><div class=tree id=tree><div class=msg>Carregando <code>data_full/cadastro_nacional.json</code>… (se abrir via <code>file://</code> e não carregar, use “carregar JSON”).</div></div></div>
+<div id=modal onclick="if(event.target.id=='modal')fechar()"><div class=card id=card></div></div>
+<script>
+let DATA=null, OPEN={};   // OPEN: chaves expandidas
+const $=s=>document.querySelector(s);
+const norm=s=>(s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+
+function boot(){
+  fetch('data_full/cadastro_nacional.json',{cache:'no-store'})
+    .then(r=>r.ok?r.json():Promise.reject()).then(setData)
+    .catch(()=>$('#tree').innerHTML='<div class=msg>Não consegui carregar automaticamente (provável <code>file://</code>). Clique em “carregar JSON” e escolha <code>data_full/cadastro_nacional.json</code>.</div>');
+}
+function loadFile(ev){const f=ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>setData(JSON.parse(rd.result));rd.readAsText(f);}
+function setData(d){
+  DATA=d;
+  const sel=$('#fuf'); sel.length=1;
+  Object.keys(d.ufs).sort().forEach(uf=>{const o=document.createElement('option');o.value=uf;o.textContent=uf+' — '+(d.ufs[uf].nome||'');sel.appendChild(o);});
+  const m=d.meta||{};
+  $('#cnt').textContent=`${m.ufs||'?'} UF · ${(m.municipios||0).toLocaleString('pt-BR')} municípios · ${(m.orgaos||0).toLocaleString('pt-BR')} órgãos · ${(m.unidades||0).toLocaleString('pt-BR')} setores`;
+  render();
+}
+function match(uf,mun,org){
+  const q=norm($('#q').value);
+  const fesf=$('#fesf').value, fpod=$('#fpod').value;
+  if(fesf && org.esfera!==fesf) return false;
+  if(fpod && org.poder!==fpod) return false;
+  if(!q) return true;
+  return norm(mun.nome).includes(q)||norm(org.razaoSocial).includes(q)||norm(org.cnpj_).includes(q)||norm(mun.ibge).includes(q);
+}
+function render(){
+  if(!DATA)return;
+  const fuf=$('#fuf').value;
+  let html='', nOrg=0, nMun=0;
+  const ufs=Object.keys(DATA.ufs).sort().filter(u=>!fuf||u===fuf);
+  for(const uf of ufs){
+    const U=DATA.ufs[uf]; let ufBody='', ufOrg=0, ufMun=0;
+    for(const ibge of Object.keys(U.municipios).sort((a,b)=>U.municipios[a].nome.localeCompare(U.municipios[b].nome))){
+      const M=U.municipios[ibge]; M.ibge=ibge; let munBody='', munOrg=0;
+      for(const cnpj of Object.keys(M.orgaos)){
+        const O=M.orgaos[cnpj]; O.cnpj_=cnpj;
+        if(!match(uf,M,O)) continue;
+        munOrg++;
+        const esf=(O.esfera||'')[0]||'';
+        const nset=Object.keys(O.unidades||{}).length;
+        const okey='o:'+cnpj;
+        munBody+=`<div class=node><div class="row org" onclick="tog('${okey}',event)" ondblclick="ficha('${uf}','${ibge}','${cnpj}')">
+          <span class=tg>${OPEN[okey]?'▾':'▸'}</span>
+          <span class=nm onclick="ficha('${uf}','${ibge}','${cnpj}');event.stopPropagation()">${O.razaoSocial||cnpj}</span>
+          <span class="pill ${esf}">${O.esfera||'?'}</span><span class=cnpj>${cnpj}</span>
+          <span class=sp style="flex:1"></span><span class=badge>${nset} setor${nset==1?'':'es'}</span></div>`;
+        if(OPEN[okey]){
+          munBody+='<div class="'+(OPEN[okey]?'':'hidden')+'">';
+          for(const cu of Object.keys(O.unidades||{})) munBody+=`<div class="row set"><span class=tg></span>${cu} — ${O.unidades[cu]||''}</div>`;
+          munBody+='</div>';
+        }
+        munBody+='</div>';
+      }
+      if(!munOrg) continue;
+      ufMun++; ufOrg+=munOrg;
+      const mkey='m:'+ibge;
+      ufBody+=`<div class=node><div class="row mun" onclick="tog('${mkey}',event)">
+        <span class=tg>${OPEN[mkey]?'▾':'▸'}</span><span class=nm>${M.nome}</span>
+        <span class=cnpj>IBGE ${ibge}</span><span class=sp style="flex:1"></span><span class=badge>${munOrg} órgão${munOrg==1?'':'s'}</span></div>
+        <div class="${OPEN[mkey]?'':'hidden'}">${munBody}</div></div>`;
+    }
+    if(!ufMun) continue;
+    nMun+=ufMun; nOrg+=ufOrg;
+    const ukey='u:'+uf;
+    html+=`<div class=node><div class="row uf" onclick="tog('${ukey}',event)">
+      <span class=tg>${OPEN[ukey]?'▾':'▸'}</span><span class=nm>${uf} — ${U.nome||''}</span>
+      <span class=sp style="flex:1"></span><span class=badge>${ufMun} municípios · ${ufOrg} órgãos</span></div>
+      <div class="${OPEN[ukey]?'':'hidden'}">${ufBody}</div></div>`;
+  }
+  $('#tree').innerHTML=html||'<div class=msg>Nada encontrado com os filtros atuais.</div>';
+  $('#cnt').textContent=`${ufs.length} UF · ${nMun.toLocaleString('pt-BR')} municípios · ${nOrg.toLocaleString('pt-BR')} órgãos (visíveis)`;
+}
+function tog(k,ev){OPEN[k]=!OPEN[k];render();if(ev)ev.stopPropagation();}
+function expandAll(v){OPEN={};if(v)Object.keys(DATA.ufs).forEach(u=>OPEN['u:'+u]=true);render();}
+function ficha(uf,ibge,cnpj){
+  const O=DATA.ufs[uf].municipios[ibge].orgaos[cnpj], r=O.rfb||{}, f=O.fontePNCP||{};
+  const na=v=>v?v:'<span class=na>—</span>';
+  const sets=Object.entries(O.unidades||{}).map(([k,v])=>`<tr><td>${k}</td><td>${v||''}</td></tr>`).join('')||'<tr><td colspan=2 class=na>sem setores no recorte</td></tr>';
+  $('#card').innerHTML=`<h3>${O.razaoSocial||cnpj}<span class=x onclick=fechar()>×</span></h3><div class=bd>
+    <table>
+      <tr><th>CNPJ</th><td>${cnpj}</td></tr>
+      <tr><th>Município / UF</th><td>${DATA.ufs[uf].municipios[ibge].nome} — ${uf} (IBGE ${ibge})</td></tr>
+      <tr><th>Poder / Esfera</th><td>${na(O.poder)} / ${na(O.esfera)}</td></tr>
+      <tr><th>Natureza jurídica</th><td>${na(r.naturezaJuridica)}</td></tr>
+      <tr><th>Situação</th><td>${na(r.situacao)}</td></tr>
+      <tr><th>Endereço</th><td>${na([r.logradouro,r.bairro,r.cep].filter(Boolean).join(' · '))}</td></tr>
+      <tr><th>E-mail</th><td>${na(r.email)}</td></tr>
+      <tr><th>Telefone</th><td>${na(r.telefone)}</td></tr>
+      <tr><th>Site institucional</th><td>${O.site?`<a href="${O.site}" target=_blank>${O.site}</a>`:'<span class=na>a enriquecer</span>'}</td></tr>
+      <tr><th>Fonte PNCP</th><td>publicou: ${f.publicou?'sim':'—'} · 1ª ${na(f.primeiraPublicacao)} · última ${na(f.ultimaPublicacao)} · ${na(f.nModalidades)} modalidade(s)</td></tr>
+    </table>
+    <h4 style="margin:14px 0 4px;font-size:11px;text-transform:uppercase;color:#57606a">Setores / Unidades (${Object.keys(O.unidades||{}).length})</h4>
+    <table><thead><tr><th>Código</th><th>Nome</th></tr></thead><tbody>${sets}</tbody></table>
+  </div>`;
+  $('#modal').classList.add('on');
+}
+function fechar(){$('#modal').classList.remove('on');}
+function exportCSV(){
+  if(!DATA)return;
+  const fuf=$('#fuf').value; const rows=[['uf','municipio','cod_ibge','cnpj','razao_social','poder','esfera','n_setores','email','telefone','site','primeira_pub','ultima_pub']];
+  for(const uf of Object.keys(DATA.ufs).sort()){ if(fuf&&uf!==fuf)continue; const U=DATA.ufs[uf];
+    for(const ibge of Object.keys(U.municipios)){ const M=U.municipios[ibge]; M.ibge=ibge;
+      for(const cnpj of Object.keys(M.orgaos)){ const O=M.orgaos[cnpj]; O.cnpj_=cnpj; if(!match(uf,M,O))continue; const r=O.rfb||{},f=O.fontePNCP||{};
+        rows.push([uf,M.nome,ibge,cnpj,O.razaoSocial,O.poder,O.esfera,Object.keys(O.unidades||{}).length,r.email||'',r.telefone||'',O.site||'',f.primeiraPublicacao||'',f.ultimaPublicacao||'']);}}}
+  const csv='﻿'+rows.map(r=>r.map(c=>`"${(c==null?'':c).toString().replace(/"/g,'""')}"`).join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='cadastro_institucional_br.csv';a.click();
+}
+boot();
+</script></body></html>

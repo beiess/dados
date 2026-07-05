@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""Cadastro Institucional Nacional — varre o PNCP e monta a cascata
+UF -> Município -> Órgão(CNPJ) -> Unidades/Setores, enriquecendo por CNPJ na RFB.
+
+Fonte primária (quem publicou): PNCP consulta `/v1/contratacoes/publicacao`
+(dedup por CNPJ). Setores completos: `/api/pncp/v1/orgaos/{cnpj}/unidades`.
+Enriquecimento: minhareceita.org (email/telefone/endereço/natureza) — cache resumível.
+
+Idempotente/resumível: mantém cache JSON de CNPJs já enriquecidos; a varredura pode ser
+repetida (dedup por CNPJ + datas min/max de publicação).
+
+Uso:
+  python3 tools/pncp_cadastro_nacional.py --inicio 20260601 --fim 20260603 \
+      --modalidades 6,8 [--uf GO] [--max-paginas 5] [--sem-rfb] [--limit-orgaos 50]
+Saídas em data_full/: cadastro_nacional.json (cascata) + cadastro_nacional.csv (achatado, 1 linha=órgão).
+"""
+import os, sys, csv, json, time, argparse, urllib.request, urllib.error
+
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+PNCP_CONSULTA = "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao"
+PNCP_UNIDADES = "https://pncp.gov.br/api/pncp/v1/orgaos/{cnpj}/unidades"
+RFB = "https://minhareceita.org/{cnpj}"
+HERE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.dirname(HERE)
+OUTDIR = os.path.join(BASE, "data_full")
+CACHE = os.path.join(OUTDIR, ".rfb_cache.json")
+STATE = os.path.join(OUTDIR, ".sweep_state.json")  # checkpoint da varredura (resumível)
+PODER = {"L": "Legislativo", "E": "Executivo", "J": "Judiciário", "M": "Ministério Público"}
+ESFERA = {"M": "Municipal", "E": "Estadual", "F": "Federal", "D": "Distrital"}
+
+
+def log(m):
+    print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
+
+
+def get(url, timeout=90, tries=4):
+    last = None
+    for t in range(tries):
+        try:
+            r = urllib.request.Request(url, headers={"User-Agent": UA})
+            with urllib.request.urlopen(r, timeout=timeout) as resp:
+                return json.load(resp)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            last = e
+        except Exception as e:
+            last = e
+        time.sleep(2 * (t + 1))
+    log(f"  falha em {url[:80]}: {last}")
+    return None
+
+
+def _absorve(orgs, rec, mod):
+    oe, un = rec.get("orgaoEntidade") or {}, rec.get("unidadeOrgao") or {}
+    cnpj = (oe.get("cnpj") or "").strip()
+    if not cnpj:
+        return
+    dt = (rec.get("dataPublicacaoPncp") or "")[:10]
+    o = orgs.get(cnpj)
+    if o is None:
+        o = {"cnpj": cnpj, "razaoSocial": oe.get("razaoSocial"),
+             "poderId": oe.get("poderId"), "esferaId": oe.get("esferaId"),
+             "ufSigla": un.get("ufSigla"), "ufNome": un.get("ufNome"),
+             "municipioNome": un.get("municipioNome"), "codigoIbge": un.get("codigoIbge"),
+             "unidades": {}, "modalidades": [], "primeiraPub": dt, "ultimaPub": dt}
+        orgs[cnpj] = o
+    cu = un.get("codigoUnidade")
+    if cu is not None:
+        o["unidades"][str(cu)] = un.get("nomeUnidade")
+    if mod not in o["modalidades"]:
+        o["modalidades"].append(mod)
+    if dt and (not o["primeiraPub"] or dt < o["primeiraPub"]):
+        o["primeiraPub"] = dt
+    if dt and dt > o["ultimaPub"]:
+        o["ultimaPub"] = dt
+
+
+def _save_state(orgs, mi, pagina):
+    os.makedirs(OUTDIR, exist_ok=True)
+    tmp = STATE + ".tmp"
+    json.dump({"cursor": {"mi": mi, "pagina": pagina}, "orgs": orgs},
+              open(tmp, "w", encoding="utf-8"), ensure_ascii=False)
+    os.replace(tmp, STATE)  # escrita atômica
+
+
+def sweep(inicio, fim, modalidades, uf, max_paginas, resume):
+    """Varre PNCP deduplicando por CNPJ. Checkpoint a cada 200 páginas; resumível."""
+    orgs, start_mi, start_pag = {}, 0, 1
+    if resume and os.path.exists(STATE):
+        st = json.load(open(STATE, encoding="utf-8"))
+        orgs = st["orgs"]
+        start_mi, start_pag = st["cursor"]["mi"], st["cursor"]["pagina"]
+        log(f"RESUME: {len(orgs)} órgãos, retomando modalidade idx {start_mi} pág {start_pag}")
+    npag = 0
+    for mi in range(start_mi, len(modalidades)):
+        mod = modalidades[mi]
+        pagina = start_pag if mi == start_mi else 1
+        total_pag = None
+        while True:
+            url = (f"{PNCP_CONSULTA}?dataInicial={inicio}&dataFinal={fim}"
+                   f"&codigoModalidadeContratacao={mod}&pagina={pagina}&tamanhoPagina=50")
+            if uf:
+                url += f"&uf={uf}"
+            d = get(url)
+            if not d or "data" not in d:
+                break
+            if total_pag is None:
+                total_pag = d.get("totalPaginas", 1)
+                log(f"  modalidade {mod}: {d.get('totalRegistros', 0)} reg / {total_pag} pág (órgãos até agora: {len(orgs)})")
+            for rec in d.get("data", []):
+                _absorve(orgs, rec, mod)
+            npag += 1
+            if npag % 200 == 0:
+                _save_state(orgs, mi, pagina)
+                log(f"  checkpoint: {npag} pág varridas, {len(orgs)} órgãos distintos")
+            pagina += 1
+            if pagina > (total_pag or 1) or (max_paginas and pagina > max_paginas):
+                break
+        _save_state(orgs, mi + 1, 1)
+    return orgs
+
+
+def full_unidades(cnpj):
+    """Lista completa de setores do órgão via PNCP."""
+    d = get(PNCP_UNIDADES.format(cnpj=cnpj), timeout=40)
+    out = {}
+    for u in (d or []):
+        out[str(u.get("codigoUnidade"))] = u.get("nomeUnidade")
+    return out
+
+
+def enrich_rfb(cnpj, cache):
+    if cnpj in cache:
+        return cache[cnpj]
+    d = get(RFB.format(cnpj=cnpj), timeout=40)
+    if not d:
+        cache[cnpj] = None
+        return None
+    tel = (d.get("ddd_telefone_1") or "").strip() or (d.get("ddd_telefone_2") or "").strip()
+    r = {"email": d.get("email") or None, "telefone": tel or None,
+         "situacao": d.get("descricao_situacao_cadastral"),
+         "naturezaJuridica": d.get("natureza_juridica"),
+         "logradouro": " ".join(x for x in [d.get("logradouro"), d.get("numero")] if x) or None,
+         "bairro": d.get("bairro"), "cep": d.get("cep"),
+         "municipio": d.get("municipio"), "uf": d.get("uf"),
+         "enteResponsavel": d.get("ente_federativo_responsavel")}
+    cache[cnpj] = r
+    return r
+
+
+def build(orgs, args, cache):
+    ufs = {}
+    items = list(orgs.items())
+    if args.limit_orgaos:
+        items = items[:args.limit_orgaos]
+    for i, (cnpj, o) in enumerate(items, 1):
+        if not args.sem_setores:
+            fu = full_unidades(cnpj)
+            if fu:
+                o["unidades"] = fu
+        rfb = None if args.sem_rfb else enrich_rfb(cnpj, cache)
+        uf = o["ufSigla"] or "??"
+        muni = o["codigoIbge"] or "0"
+        U = ufs.setdefault(uf, {"nome": o["ufNome"], "municipios": {}})
+        M = U["municipios"].setdefault(muni, {"nome": o["municipioNome"], "orgaos": {}})
+        M["orgaos"][cnpj] = {
+            "razaoSocial": o["razaoSocial"],
+            "poder": PODER.get(o["poderId"], o["poderId"]),
+            "esfera": ESFERA.get(o["esferaId"], o["esferaId"]),
+            "unidades": o["unidades"],
+            "rfb": rfb, "site": None,
+            "fontePNCP": {"publicou": True, "primeiraPublicacao": o["primeiraPub"],
+                          "ultimaPublicacao": o["ultimaPub"], "nModalidades": len(o["modalidades"])},
+        }
+        if i % 25 == 0:
+            log(f"  enriquecidos {i}/{len(items)} órgãos")
+            _save_cache(cache)
+    return ufs
+
+
+def _save_cache(cache):
+    os.makedirs(OUTDIR, exist_ok=True)
+    json.dump(cache, open(CACHE, "w"), ensure_ascii=False)
+
+
+def write_outputs(ufs):
+    os.makedirs(OUTDIR, exist_ok=True)
+    n_uf = len(ufs)
+    n_muni = sum(len(u["municipios"]) for u in ufs.values())
+    n_org = sum(len(m["orgaos"]) for u in ufs.values() for m in u["municipios"].values())
+    n_uni = sum(len(o["unidades"]) for u in ufs.values() for m in u["municipios"].values()
+                for o in m["orgaos"].values())
+    doc = {"meta": {"geradoEm": time.strftime("%Y-%m-%d %H:%M:%S"), "fonte": "PNCP + RFB",
+                    "ufs": n_uf, "municipios": n_muni, "orgaos": n_org, "unidades": n_uni}, "ufs": ufs}
+    jpath = os.path.join(OUTDIR, "cadastro_nacional.json")
+    json.dump(doc, open(jpath, "w", encoding="utf-8"), ensure_ascii=False)
+    cpath = os.path.join(OUTDIR, "cadastro_nacional.csv")
+    with open(cpath, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow(["uf", "municipio", "codigo_ibge", "cnpj", "razao_social", "poder", "esfera",
+                    "n_setores", "email", "telefone", "situacao", "natureza_juridica", "site",
+                    "primeira_pub", "ultima_pub"])
+        for uf, U in sorted(ufs.items()):
+            for ibge, M in U["municipios"].items():
+                for cnpj, o in M["orgaos"].items():
+                    r = o.get("rfb") or {}
+                    w.writerow([uf, M["nome"], ibge, cnpj, o["razaoSocial"], o["poder"], o["esfera"],
+                                len(o["unidades"]), r.get("email"), r.get("telefone"), r.get("situacao"),
+                                r.get("naturezaJuridica"), o["site"],
+                                o["fontePNCP"]["primeiraPublicacao"], o["fontePNCP"]["ultimaPublicacao"]])
+    log(f"OK — {n_uf} UF · {n_muni} municípios · {n_org} órgãos · {n_uni} setores")
+    log(f"  -> {jpath}")
+    log(f"  -> {cpath}")
+    return doc["meta"]
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--inicio", required=True, help="yyyyMMdd")
+    ap.add_argument("--fim", required=True, help="yyyyMMdd")
+    ap.add_argument("--modalidades", default="6,8", help="csv de códigos (default 6,8)")
+    ap.add_argument("--uf", default=None, help="filtrar por UF (opcional)")
+    ap.add_argument("--max-paginas", type=int, default=0, help="cap de páginas/modalidade (0=todas)")
+    ap.add_argument("--limit-orgaos", type=int, default=0, help="cap de órgãos a enriquecer (0=todos)")
+    ap.add_argument("--sem-rfb", action="store_true", help="não enriquecer na RFB")
+    ap.add_argument("--sem-setores", action="store_true", help="não buscar setores completos no PNCP")
+    ap.add_argument("--resume", action="store_true", help="retomar de checkpoint (.sweep_state.json)")
+    args = ap.parse_args()
+    mods = [int(x) for x in args.modalidades.split(",") if x.strip()]
+    cache = json.load(open(CACHE)) if os.path.exists(CACHE) else {}
+    log(f"varrendo PNCP {args.inicio}..{args.fim} modalidades={mods} uf={args.uf or 'todas'}")
+    orgs = sweep(args.inicio, args.fim, mods, args.uf, args.max_paginas, args.resume)
+    log(f"publicadores distintos (CNPJ): {len(orgs)}")
+    ufs = build(orgs, args, cache)
+    _save_cache(cache)
+    write_outputs(ufs)
+
+
+if __name__ == "__main__":
+    main()
