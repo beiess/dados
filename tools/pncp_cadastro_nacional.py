@@ -33,7 +33,14 @@ def log(m):
     print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
 
 
-def get(url, timeout=90, tries=4):
+class NetErr(Exception):
+    """Falha de rede/DNS persistente (distinta de resposta HTTP de erro)."""
+
+
+def get(url, timeout=90, tries=8, raise_net=False):
+    """Retorna JSON. HTTP 404 -> None. HTTP 4xx com corpo -> devolve o JSON de erro
+    (ex.: {message,status}). Erro de REDE/DNS após as tentativas -> None, ou levanta
+    NetErr se raise_net=True (usado na paginação p/ abortar de forma resumível)."""
     last = None
     for t in range(tries):
         try:
@@ -43,10 +50,16 @@ def get(url, timeout=90, tries=4):
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
+            try:
+                return json.loads(e.read())      # corpo de erro da API (400 etc.) -> não é queda de rede
+            except Exception:
+                last = e
+                break
+        except Exception as e:                    # DNS/timeout/conn reset — pode ser sono do laptop
             last = e
-        except Exception as e:
-            last = e
-        time.sleep(2 * (t + 1))
+        time.sleep(min(60, 3 * (t + 1)))
+    if raise_net:
+        raise NetErr(f"{url[:90]}: {last}")
     log(f"  falha em {url[:80]}: {last}")
     return None
 
@@ -102,9 +115,13 @@ def sweep(inicio, fim, modalidades, uf, max_paginas, resume):
                    f"&codigoModalidadeContratacao={mod}&pagina={pagina}&tamanhoPagina=50")
             if uf:
                 url += f"&uf={uf}"
-            d = get(url)
+            try:
+                d = get(url, raise_net=True)
+            except NetErr as e:
+                _save_state(orgs, mi, pagina)   # resumível exatamente daqui
+                raise NetErr(f"modalidade {mod} pág {pagina}: {e}")
             if not d or "data" not in d:
-                break
+                break   # fim normal / modalidade sem resultados (não é queda de rede)
             if total_pag is None:
                 total_pag = d.get("totalPaginas", 1)
                 log(f"  modalidade {mod}: {d.get('totalRegistros', 0)} reg / {total_pag} pág (órgãos até agora: {len(orgs)})")
@@ -230,7 +247,11 @@ def main():
     mods = [int(x) for x in args.modalidades.split(",") if x.strip()]
     cache = json.load(open(CACHE)) if os.path.exists(CACHE) else {}
     log(f"varrendo PNCP {args.inicio}..{args.fim} modalidades={mods} uf={args.uf or 'todas'}")
-    orgs = sweep(args.inicio, args.fim, mods, args.uf, args.max_paginas, args.resume)
+    try:
+        orgs = sweep(args.inicio, args.fim, mods, args.uf, args.max_paginas, args.resume)
+    except NetErr as e:
+        log(f"QUEDA DE REDE — checkpoint salvo; rode de novo com --resume. ({e})")
+        sys.exit(1)
     log(f"publicadores distintos (CNPJ): {len(orgs)}")
     ufs = build(orgs, args, cache)
     _save_cache(cache)
