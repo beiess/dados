@@ -2,6 +2,8 @@
 *.log
 *.progress
 .DS_Store
+__pycache__/
 .supabase_env
 data_full/
 index_local.html
+p2n_preview.html
