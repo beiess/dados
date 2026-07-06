@@ -104,6 +104,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <div class="tab" id=t7 onclick="setTab(7)">🏛️ Painel 8 — Servidores do Estado (MG)</div>
   <div class="tab" id=t8 onclick="setTab(8)">🏢 Painel 9 — Receita Federal (CNPJ)</div>
   <div class="tab" id=t9 onclick="setTab(9)">🗂️ Painel 10 — Automação de Documentos</div>
+  <div class="tab" id=t11 onclick="setTab(11)">👷 Painel 11 — Pessoas ligadas a Obras</div>
   <button onclick="openCols(event)">☰ colunas</button>
   <button onclick="limparFiltros()">limpar filtros</button>
   <button onclick="exportCSV()">⬇ CSV</button>
@@ -132,7 +133,8 @@ const P5C=["cod_ibge","seq_orgao","seq_unidade","cod_orgao","cod_unidade",...P5D
 const P6C=["cod_ibge","orgao","nome","tipo_responsabilidade","cpf","email","origem","no_painel1"];
 const P7C=["masp","nome","no_painel1","situacao_atual","cargo_efetivo_atual","comissao_atual","funcao_gratif_atual","carga_horaria","sigla_lotacao_atual","desc_lotacao_atual","sigla_dotacao_atual","desc_dotacao_atual","data_inicio","data_aposentadoria","data_desligamento","n_vinculos","vinculos_adm","cargos_efetivos_periodo","comissoes_periodo","funcoes_gratif_periodo","orgaos_lotacao_periodo","situacoes_periodo","mudou_situacao","n_meses","primeiro_mes","ultimo_mes","presente_em"];
 const POBC=["municipio","razao_social","cnpj","poder","esfera","n_obras","valor_estimado_obras","n_setores_obras","setores_obras","modalidades_obras","primeira_obra","ultima_obra","email","telefone","site","situacao_cadastral","exemplos_objeto","uf"];
-function colsOf(){return tab===10?POBC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C))))));}
+const PESC=["nome","tipo_responsabilidade","email","orgao"];  // Painel 11 — pessoas ligadas a obras (nome, setor/função, email)
+function colsOf(){return tab===10?POBC:(tab===11?PESC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C)))))));}
 const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1,sancionado:1,mandato_eletivo:1,socio_empresa:1,objeto:1,cargo_efetivo_atual:1,desc_lotacao_atual:1,desc_dotacao_atual:1,vinculos_adm:1,cargos_efetivos_periodo:1,comissoes_periodo:1,funcoes_gratif_periodo:1,orgaos_lotacao_periodo:1,situacoes_periodo:1,situacao_atual:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};
@@ -246,7 +248,7 @@ function mall(on){sel=new Set(on?munis.map(m=>m.ibge):[]);closePop();toggleMuni(
 function closePop(){['mpop','fpop','cpop'].forEach(id=>{var e=document.getElementById(id);if(e)e.remove();});}
 let panelSig={1:'',2:'',3:'',4:'',5:'',6:'',7:''}, curSig='';
 // Painel 7 (obras) usa índice interno 10 — inicializa suas fatias de estado
-dados[10]=[];fstate[10]={};colw[10]={};sortState[10]=null;visState[10]=null;groupBy[10]=[];expanded[10]=new Set();capped[10]=0;panelSig[10]='';
+[10,11].forEach(t=>{dados[t]=[];fstate[t]={};colw[t]={};sortState[t]=null;visState[t]=null;groupBy[t]=[];expanded[t]=new Set();capped[t]=0;panelSig[t]='';});
 // carrega UM painel (por município, ou MG-wide no caso do P3). Sem order= no servidor (ordenação é no cliente).
 async function loadPanel(n,ids){
   const todos=ids.length>300, key=(n===1?'ibge':'cod_ibge');
@@ -269,6 +271,8 @@ async function loadPanel(n,ids){
     dados[6]=await sbfetch('painel6_responsaveis','select='+P6C.join(',')+inq,prog);capped[6]=_lastCapped;
   }else if(n===10){loading('Carregando Painel 7 (obras e serviços de engenharia)…');
     dados[10]=await sbfetch('obras_engenharia_orgaos','select='+POBC.join(',')+inq,prog);capped[10]=_lastCapped;
+  }else if(n===11){loading('Carregando Painel 11 (pessoas ligadas a obras — com email)…');
+    dados[11]=await sbfetch('painel6_responsaveis','select='+PESC.join(',')+',cod_ibge&email=not.is.null'+inq,prog);capped[11]=_lastCapped;
   }else if(n===3){loading('Carregando Painel 3 (fornecedores de obra)…');
     dados[3]=await sbfetch('fornecedores_obra','select='+P3C.join(','),prog);capped[3]=_lastCapped;
   }else if(n===7){loading('Carregando Painel 8 (servidores do estado de MG — pode levar alguns segundos)…');
@@ -279,15 +283,15 @@ async function carregar(){closePop();const ids=[...sel];
   if(!ids.length){showErr('Selecione ao menos um município.');return;}
   document.getElementById('msel').textContent='Municípios ('+ids.length+') ▾';
   curSig=ids.slice().sort().join(',');
-  dados[1]=[];dados[4]=[];dados[5]=[];dados[6]=[];dados[10]=[];panelSig[4]=panelSig[5]=panelSig[6]=panelSig[10]='';
+  dados[1]=[];dados[4]=[];dados[5]=[];dados[6]=[];dados[10]=[];dados[11]=[];panelSig[4]=panelSig[5]=panelSig[6]=panelSig[10]=panelSig[11]='';
   try{await loadPanel(1,ids);}catch(e){showErr(e.message);return;}
   tab=1;setTabUI();render();
 }
-const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10};
+const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11};
 function setTabUI(){Object.entries(TABIDS).forEach(([id,n])=>{const e=document.getElementById(id);if(e)e.classList.toggle('on',tab===n);});}
 async function setTab(n){tab=n;setTabUI();closePop();
   if(n===3||n===7){if(panelSig[n]!=='ALL'){try{await loadPanel(n,[]);}catch(e){showErr('Painel '+(n===7?8:n)+': '+e.message);return;}}}
-  else if(n===1||n===4||n===5||n===6||n===10){
+  else if(n===1||n===4||n===5||n===6||n===10||n===11){
     if(!sel.size && panelSig[n]!=='XREF'){showErr('Selecione município(s) em “Municípios ▾” e clique Carregar.');return;}
     if(panelSig[n]!==curSig && panelSig[n]!=='XREF' && sel.size){try{await loadPanel(n,[...sel]);}catch(e){showErr(e.message);return;}}
   }
@@ -352,7 +356,7 @@ async function exportServer(){
   try{await loadPanel(tab,[...sel]);}catch(e){capOverride=0;showErr(e.message);return;}
   capOverride=0;render();exportCSV();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
-let allOpen={1:false,2:false,3:false,4:false,5:false,6:false,7:false,10:false};
+let allOpen={1:false,2:false,3:false,4:false,5:false,6:false,7:false,10:false,11:false};
 // célula de uma linha-folha (usa as colunas visíveis)
 function leafHTML(r){const cols=visibleCols();
   return '<tr>'+cols.map(c=>{let v=r[c]||'';
@@ -409,7 +413,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
   _disp=buildDisplay(flt);_shown=Math.min(_disp.length,CHUNK);
   const body=_disp.slice(0,_shown).map(rowHTML).join('')||'<tr><td>sem dados</td></tr>';
   const t=tw();t.innerHTML='<table>'+cg+head+'<tbody id=tb>'+body+'</tbody></table>';t.onscroll=onScroll;
-  const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos',5:'linhas de despesa',6:'responsáveis',7:'servidores do estado',10:'órgãos que contratam obra'}[tab];
+  const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos',5:'linhas de despesa',6:'responsáveis',7:'servidores do estado',10:'órgãos que contratam obra',11:'pessoas ligadas a obras'}[tab];
   const cap=capped[tab]?(' ⚠ baixados '+capped[tab].toLocaleString('pt-BR')+' (teto); use “⬇ do servidor” p/ exportar TUDO'):'';
   const gi=groupBy[tab].length?(' · '+_disp.filter(d=>d.k==='g'&&d.lv===0).length.toLocaleString('pt-BR')+' grupos'):'';
   document.getElementById('cnt').textContent=flt.length.toLocaleString('pt-BR')+' '+nm+gi+cap;
