@@ -132,8 +132,8 @@ const P5DB=["orgao","unidade_orcamentaria","funcao","subfuncao","programa","acao
 const P5C=["cod_ibge","seq_orgao","seq_unidade","cod_orgao","cod_unidade",...P5DB];
 const P6C=["cod_ibge","orgao","nome","tipo_responsabilidade","cpf","email","origem","no_painel1"];
 const P7C=["masp","nome","no_painel1","situacao_atual","cargo_efetivo_atual","comissao_atual","funcao_gratif_atual","carga_horaria","sigla_lotacao_atual","desc_lotacao_atual","sigla_dotacao_atual","desc_dotacao_atual","data_inicio","data_aposentadoria","data_desligamento","n_vinculos","vinculos_adm","cargos_efetivos_periodo","comissoes_periodo","funcoes_gratif_periodo","orgaos_lotacao_periodo","situacoes_periodo","mudou_situacao","n_meses","primeiro_mes","ultimo_mes","presente_em"];
-const POBC=["municipio","razao_social","cnpj","poder","esfera","n_obras","valor_estimado_obras","n_setores_obras","setores_obras","modalidades_obras","primeira_obra","ultima_obra","email","telefone","site","situacao_cadastral","exemplos_objeto","uf"];
-const PESC=["nome","tipo_responsabilidade","email","orgao"];  // Painel 11 — pessoas ligadas a obras (nome, setor/função, email)
+const POBC=["municipio","razao_social","cnpj","poder","esfera","n_obras","valor_estimado_obras","n_setores_obras","setores_obras","modalidades_obras","primeira_obra","ultima_obra","email","emails_setoriais","telefone","site","situacao_cadastral","exemplos_objeto","uf"];
+const PESC=["nome","setor","email","origem","orgao","municipio"];  // Painel 11 — pessoas ligadas a obras (tabela pessoas_obras, deduplicada)
 function colsOf(){return tab===10?POBC:(tab===11?PESC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C)))))));}
 const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1,sancionado:1,mandato_eletivo:1,socio_empresa:1,objeto:1,cargo_efetivo_atual:1,desc_lotacao_atual:1,desc_dotacao_atual:1,vinculos_adm:1,cargos_efetivos_periodo:1,comissoes_periodo:1,funcoes_gratif_periodo:1,orgaos_lotacao_periodo:1,situacoes_periodo:1,situacao_atual:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};
@@ -147,8 +147,8 @@ const TIMEOUT=45000;
 const NUMC={remuneracao:1,valor_empenho_obra:1,valor_licitacao:1,capital_social:1,n_empenhos_obra:1,qtd_licitacoes_obra:1,qtd_aditivos:1,valor_original:1,valor_atualizado:1,valor:1,n_vinculos:1,n_meses:1};
 const TOTC={1:["remuneracao"],2:[],3:["valor_empenho_obra","valor_licitacao"],4:["valor_original","valor_atualizado"],5:["valor"],6:[],7:[],10:["valor_estimado_obras"]};
 // Painel 7 (obras) — larguras, multilinha, numéricos
-Object.assign(WID,{municipio:170,razao_social:260,cnpj:140,poder:110,esfera:110,n_obras:80,valor_estimado_obras:150,n_setores_obras:90,setores_obras:300,modalidades_obras:220,primeira_obra:100,ultima_obra:100,site:180,situacao_cadastral:150,exemplos_objeto:420,uf:60});
-Object.assign(ML,{setores_obras:1,modalidades_obras:1,exemplos_objeto:1});
+Object.assign(WID,{municipio:170,razao_social:260,cnpj:140,poder:110,esfera:110,n_obras:80,valor_estimado_obras:150,n_setores_obras:90,setores_obras:300,modalidades_obras:220,primeira_obra:100,ultima_obra:100,site:180,situacao_cadastral:150,exemplos_objeto:420,uf:60,emails_setoriais:340,origem:120,setor:240});
+Object.assign(ML,{setores_obras:1,modalidades_obras:1,exemplos_objeto:1,emails_setoriais:1,setor:1});
 Object.assign(NUMC,{n_obras:1,valor_estimado_obras:1,n_setores_obras:1});
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let tab=1,dados={1:[],2:[],3:[],4:[],5:[],6:[],7:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
@@ -271,8 +271,8 @@ async function loadPanel(n,ids){
     dados[6]=await sbfetch('painel6_responsaveis','select='+P6C.join(',')+inq,prog);capped[6]=_lastCapped;
   }else if(n===10){loading('Carregando Painel 7 (obras e serviços de engenharia)…');
     dados[10]=await sbfetch('obras_engenharia_orgaos','select='+POBC.join(',')+inq,prog);capped[10]=_lastCapped;
-  }else if(n===11){loading('Carregando Painel 11 (pessoas ligadas a obras — com email)…');
-    dados[11]=await sbfetch('painel6_responsaveis','select='+PESC.join(',')+',cod_ibge&email=not.is.null'+inq,prog);capped[11]=_lastCapped;
+  }else if(n===11){loading('Carregando Painel 11 (pessoas ligadas a obras)…');
+    dados[11]=await sbfetch('pessoas_obras','select='+PESC.join(',')+',cod_ibge'+inq,prog);capped[11]=_lastCapped;
   }else if(n===3){loading('Carregando Painel 3 (fornecedores de obra)…');
     dados[3]=await sbfetch('fornecedores_obra','select='+P3C.join(','),prog);capped[3]=_lastCapped;
   }else if(n===7){loading('Carregando Painel 8 (servidores do estado de MG — pode levar alguns segundos)…');

@@ -6,6 +6,10 @@ App estático (GitHub Pages) que consulta o Supabase:
 - **Painel 7 — Obras e Serviços de Engenharia**: órgãos/setores que **contratam obras** (lead B2G), com
   contato (email/telefone/site), nº de obras, valor, modalidades e as secretarias/setores que publicaram.
   Fonte: PNCP + classificação heurística de obra + RFB. Ver [docs/PAINEL_OBRAS_ENGENHARIA.md](docs/PAINEL_OBRAS_ENGENHARIA.md).
+  Tem `emails_setoriais` (email por secretaria, do cadastro por CNPJ; múltiplos separados por vírgula).
+- **Painel 11 — Pessoas ligadas a Obras**: pessoas (nome · função/setor · email) dos órgãos **executivos**
+  que contratam obra. Fonte: `painel6_responsaveis` (com email) + engenheiros do `painel1_servidores`,
+  deduplicado por pessoa. Tabela `pessoas_obras` (ver `db/schema_p11.sql`, carga `tools/build_pessoas_obras.py`).
 
 Navegação por município, busca, filtros e troca entre os painéis.
 

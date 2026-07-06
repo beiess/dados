@@ -45,13 +45,22 @@ def fetch_all(table, select, extra=""):
     return out
 
 
-def first_email(s):
-    """primeiro email de um campo 'a@x | b@y' (o principal do órgão)."""
+def emails_virgula(s):
+    """todos os emails de um campo 'a@x | b@y' distintos, separados por VÍRGULA."""
     if not s: return None
-    for part in str(s).split("|"):
-        p = part.strip()
-        if "@" in p: return p
-    return None
+    seen, out = set(), []
+    for part in str(s).replace("|", ";").replace(",", ";").split(";"):
+        e = part.strip()
+        if "@" in e and e.lower() not in seen:
+            seen.add(e.lower()); out.append(e)
+    return ", ".join(out) or None
+
+
+def setoriais_virgula(s):
+    """'SETOR: a@x | OUTRO: b@y'  ->  'SETOR: a@x, OUTRO: b@y' (email por secretaria)."""
+    if not s: return None
+    partes = [p.strip() for p in str(s).split("|") if "@" in p]
+    return ", ".join(partes) or None
 
 
 def main():
@@ -63,22 +72,26 @@ def main():
     log("lendo obras_engenharia_orgaos…")
     obras = fetch_all("obras_engenharia_orgaos", "cnpj,email,telefone")
     log(f"  {len(obras)} órgãos-de-obra")
-    n_mail, n_tel = 0, 0
+    n_mail, n_tel, n_set = 0, 0, 0
     for o in obras:
         c = cad.get(o["cnpj"])
         if not c: continue
         patch = {}
-        if not o.get("email"):
-            em = first_email(c.get("email"))
-            if em:
-                patch["email"] = em
-                n_mail += 1
+        em = emails_virgula(c.get("email"))              # todos os emails do cadastro -> separados por vírgula
+        if em and em != o.get("email"):
+            patch["email"] = em
+            if not o.get("email"): n_mail += 1
+        # email POR SECRETARIA (sempre atualiza; é o refinamento pedido)
+        setoriais = setoriais_virgula(c.get("emails_setoriais"))
+        if setoriais:
+            patch["emails_setoriais"] = setoriais
+            n_set += 1
         if not o.get("telefone") and c.get("contato"):
             tel = str(c["contato"]).split("|")[0].strip()
             if tel: patch["telefone"] = tel; n_tel += 1
         if patch and not DRY:
             sb(f"obras_engenharia_orgaos?cnpj=eq.{o['cnpj']}", data=patch, method="PATCH", prefer="return=minimal")
-    log(f"OK — email preenchido em {n_mail} órgãos · telefone em +{n_tel}{' (DRY)' if DRY else ''}")
+    log(f"OK — email em {n_mail} órgãos · emails_setoriais em {n_set} · telefone +{n_tel}{' (DRY)' if DRY else ''}")
     log(f"cobertura de email agora: {sum(1 for o in obras if o.get('email')) + n_mail}/{len(obras)} "
         f"({100*(sum(1 for o in obras if o.get('email'))+n_mail)/len(obras):.0f}%)")
 
