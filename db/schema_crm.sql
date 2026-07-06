@@ -11,7 +11,7 @@
 create table if not exists empresas (
   id uuid primary key default gen_random_uuid(),
   nome text not null,
-  cnpj text,
+  cnpj text unique,
   tipo text not null default 'matriz' check (tipo in ('matriz','filial')),
   matriz_id uuid references empresas(id),        -- filial aponta p/ matriz; matriz = NULL
   cidade text, uf text,
@@ -19,16 +19,35 @@ create table if not exists empresas (
   criado_em timestamptz default now()
 );
 
+-- Seed das empresas reais do grupo (dado público de PJ). PII de colaborador NÃO vai no git —
+-- funcionários são carregados por tools/load_crm_colaboradores.py a partir da planilha do RH.
+insert into empresas (nome, cnpj, tipo) values
+  ('Instituto de Desenvolvimento Público Plenum Brasil LTDA', '21650715000160', 'matriz')
+  on conflict (cnpj) do nothing;
+insert into empresas (nome, cnpj, tipo, matriz_id)
+  select 'PlenumGestão LTDA', '41209777000148', 'filial', m.id
+  from empresas m where m.cnpj = '21650715000160'
+  on conflict (cnpj) do nothing;
+
 -- ========================= FUNCIONÁRIOS (usuários) =========================
+-- Estrutura alinhada à planilha real "COLABORADORES 2026" (RH/Interno).
 create table if not exists funcionarios (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid unique references auth.users(id) on delete set null,  -- login (Supabase Auth)
   nome text not null,
   email text,
   empresa_id uuid not null references empresas(id),
-  funcao text not null default 'vendedor' check (funcao in ('admin','gerente','vendedor')),
-  area_atuacao text,                             -- ex.: "Obras", "Sudeste", "Setor público"
-  comissao_base_pct numeric default 0,           -- % base individual
+  funcao text not null default 'vendedor' check (funcao in ('admin','gerente','vendedor')),  -- papel no app
+  setor text,                                    -- Comercial / Administrativo / Financeiro / Aux. de Limpeza
+  cargo text,                                    -- ex.: "Vendedor V", "Gerente de Relacionamento", "Diretor Administrativo"
+  nivel text,                                    -- escada do cargo (ex.: I..V) — usada em regra de comissão por nível
+  area_atuacao text check (area_atuacao in ('Legislativo','Gestão Pública') or area_atuacao is null),
+  -- ^ segmento de vendas. LIGA AO PAINEL: 'Gestão Pública' -> órgãos executivos (prefeituras/obras);
+  --   'Legislativo' -> câmaras/legislativo. Usar para rotear leads por área.
+  comissao_base_pct numeric default 0,           -- % base individual (pode vir do nível/cargo)
+  -- campos de RH (opcionais, da planilha)
+  salario numeric, dt_admissao date, sexo text, localizacao text,  -- OBS: BH/DF
+  situacao text default 'ativo',
   ativo boolean default true,
   criado_em timestamptz default now()
 );
@@ -88,6 +107,9 @@ create table if not exists clientes (
   ref_cod_ibge text,
   razao_social text not null,
   tipo text default 'novo' check (tipo in ('base','novo')),   -- cliente de base × novo
+  area_atuacao text check (area_atuacao in ('Legislativo','Gestão Pública') or area_atuacao is null),
+  -- ^ segmento do lead (deriva do poder do órgão no painel: executivo->Gestão Pública; legislativo->Legislativo).
+  --   Casa com funcionarios.area_atuacao para rotear o lead ao vendedor da área certa.
   uf text, municipio text,
   email text, telefone text, emails_setoriais text, site text,
   criado_por uuid references funcionarios(id) default app_me_id(),
