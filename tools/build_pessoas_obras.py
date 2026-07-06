@@ -75,6 +75,14 @@ def juntar(vals, sep="; "):
     return sep.join(out) or None
 
 
+def melhor_cpf(vals):
+    """CPF do grupo: prefere o completo (11 dígitos) ao mascarado; senão o 1º não-vazio."""
+    cheio = [v for v in vals if v and sum(c.isdigit() for c in str(v)) == 11]
+    if cheio: return cheio[0]
+    naovazio = [v for v in vals if v and str(v).strip()]
+    return naovazio[0] if naovazio else None
+
+
 def main():
     if not U or not K: sys.exit("defina SUPABASE_URL e SUPABASE_KEY (service_role)")
     coleta = time.strftime("%Y-%m-%d")
@@ -87,7 +95,7 @@ def main():
     rows = []
     # ---- A) Responsáveis (executivo, com email) ----
     log("lendo responsáveis com email (painel6)…")
-    resp = fetch_all("painel6_responsaveis", "nome,orgao,tipo_responsabilidade,email,cod_ibge", "&email=not.is.null")
+    resp = fetch_all("painel6_responsaveis", "nome,cpf,orgao,tipo_responsabilidade,email,cod_ibge", "&email=not.is.null")
     log(f"  {len(resp)} responsáveis com email (total MG); filtrando p/ executivo ∩ obra…")
     grpA = {}
     for r in resp:
@@ -95,17 +103,18 @@ def main():
         if ib not in ibges or not is_executivo(r.get("orgao")): continue
         key = (ib, (r.get("orgao") or "").strip(), unac(r.get("nome")))
         g = grpA.setdefault(key, {"nome": r.get("nome"), "orgao": r.get("orgao"), "cod_ibge": ib,
-                                  "tipos": [], "emails": []})
-        g["tipos"].append(r.get("tipo_responsabilidade")); g["emails"].append(r.get("email"))
+                                  "tipos": [], "emails": [], "cpfs": []})
+        g["tipos"].append(r.get("tipo_responsabilidade")); g["emails"].append(r.get("email")); g["cpfs"].append(r.get("cpf"))
     for g in grpA.values():
-        rows.append({"nome": g["nome"], "setor": juntar(g["tipos"]), "email": emails_virgula(g["emails"]),
+        rows.append({"nome": g["nome"], "cpf": melhor_cpf(g["cpfs"]), "setor": juntar(g["tipos"]),
+                     "email": emails_virgula(g["emails"]),
                      "orgao": g["orgao"], "municipio": muni_de.get(g["cod_ibge"]), "cod_ibge": g["cod_ibge"],
                      "origem": "Responsável", "data_coleta": coleta, "grau_confianca": "B"})
     log(f"  -> {len(rows)} responsáveis (executivo, agrupados por pessoa)")
 
     # ---- B) Engenheiros (servidores) ----
     log("lendo servidores com cargo de ENGENHEIRO (painel1)…")
-    eng = fetch_all("painel1_servidores", "nome,orgao,setor,cargo_funcao,email,ibge",
+    eng = fetch_all("painel1_servidores", "nome,cpf,orgao,setor,cargo_funcao,email,ibge",
                     "&cargo_funcao=ilike.*engenheir*")
     log(f"  {len(eng)} servidores engenheiros (total MG); filtrando p/ municípios com obra…")
     grpB = {}
@@ -115,11 +124,13 @@ def main():
         if ib not in ibges: continue
         key = (ib, (r.get("orgao") or "").strip(), unac(r.get("nome")))
         g = grpB.setdefault(key, {"nome": r.get("nome"), "orgao": r.get("orgao"), "cod_ibge": ib,
-                                  "setores": [], "cargos": [], "emails": []})
-        g["setores"].append(r.get("setor")); g["cargos"].append(r.get("cargo_funcao")); g["emails"].append(r.get("email"))
+                                  "setores": [], "cargos": [], "emails": [], "cpfs": []})
+        g["setores"].append(r.get("setor")); g["cargos"].append(r.get("cargo_funcao"))
+        g["emails"].append(r.get("email")); g["cpfs"].append(r.get("cpf"))
     for g in grpB.values():
         setor = juntar(g["setores"]) or juntar(g["cargos"])
-        rows.append({"nome": g["nome"], "setor": setor, "email": emails_virgula(g["emails"]),
+        rows.append({"nome": g["nome"], "cpf": melhor_cpf(g["cpfs"]), "setor": setor,
+                     "email": emails_virgula(g["emails"]),
                      "orgao": g["orgao"], "municipio": muni_de.get(g["cod_ibge"]), "cod_ibge": g["cod_ibge"],
                      "origem": "Engenheiro", "data_coleta": coleta, "grau_confianca": "B"})
     log(f"  -> {len(rows) - n0} engenheiros (agrupados por pessoa)")

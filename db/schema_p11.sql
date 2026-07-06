@@ -11,6 +11,7 @@ drop table if exists pessoas_obras;
 create table pessoas_obras (
   id bigint generated always as identity primary key,
   nome text,
+  cpf text,                 -- chave interna; MASCARADO na exposição (LGPD/LAI, CLAUDE.md)
   setor text,               -- função (responsável) OU setor de lotação (engenheiro)
   email text,               -- 1+ emails separados por vírgula
   orgao text,
