@@ -28,8 +28,8 @@ concurrency:
 jobs:
   sweep:
     name: "varredura mod ${{ matrix.modalidade }}"
-    runs-on: ubuntu-latest
-    timeout-minutes: 350
+    runs-on: self-hosted     # Mac (IP BR) — PNCP bloqueia IPs de datacenter do GitHub
+    timeout-minutes: 600
     strategy:
       fail-fast: false
       max-parallel: 2          # PNCP throttla sob acessos simultâneos (429/timeout) — gentil
@@ -42,14 +42,11 @@ jobs:
       MAXPAG: ${{ github.event.inputs.max_paginas || (github.event_name == 'push' && '5' || '0') }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - name: Varrer modalidade ${{ matrix.modalidade }} (resumível)
         run: |
           ok=0
           for attempt in 1 2 3 4 5 6 7 8; do
-            if python tools/pncp_cadastro_nacional.py \
+            if python3 tools/pncp_cadastro_nacional.py \
                  --inicio "$INICIO" --fim "$FIM" \
                  --modalidades ${{ matrix.modalidade }} \
                  --max-paginas "$MAXPAG" --sem-rfb --sem-setores --resume; then
@@ -69,15 +66,12 @@ jobs:
   merge-load:
     name: "merge + carga Supabase"
     needs: sweep
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - uses: actions/download-artifact@v4
         with:
           pattern: state-*
@@ -85,7 +79,7 @@ jobs:
           merge-multiple: true
       - name: Merge -> cascata nacional
         run: |
-          python tools/merge_cadastro_nacional.py 'states/state-*.json'
+          python3 tools/merge_cadastro_nacional.py 'states/state-*.json'
           echo "---- resumo ----"
           wc -l data_full/cadastro_nacional.csv
       - uses: actions/upload-artifact@v4
@@ -97,7 +91,7 @@ jobs:
           retention-days: 14
       - name: Carregar no Supabase
         if: ${{ env.SUPABASE_URL != '' }}
-        run: python tools/load_cadastro_nacional.py
+        run: python3 tools/load_cadastro_nacional.py
       - name: Sem secrets (pulou carga)
         if: ${{ env.SUPABASE_URL == '' }}
         run: echo "::notice::SUPABASE_URL/KEY ausentes — carga pulada. Baixe o artefato 'cadastro-nacional' ou configure os secrets."
