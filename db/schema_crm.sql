@@ -365,3 +365,12 @@ alter table campanhas add column if not exists desconto_org_pct numeric default 
   -- % de desconto POR servidor adicional já capturado da MESMA organização
 alter table capturas add column if not exists modalidade text
   check (modalidade in ('presencial','online') or modalidade is null);
+
+-- ============================================================================
+-- MIGRAÇÃO v2.2 — busca por nome no Painel 1 em milissegundos (typeahead)
+-- pg_trgm permite ilike '%texto%' indexado. Custo: ~100–150MB de disco (GIN).
+-- Se o plano free reclamar de espaço, remova com: drop index ix_p1_nome_trgm;
+-- ============================================================================
+create extension if not exists pg_trgm;
+create index if not exists ix_p1_nome_trgm
+  on painel1_servidores using gin (nome gin_trgm_ops);
