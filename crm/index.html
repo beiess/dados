@@ -471,6 +471,43 @@
   .cttag.serv{background:color-mix(in srgb,var(--st-pros) 16%,var(--surface));color:var(--st-pros)}
   .cttag.sec{background:var(--leg-wash);color:var(--leg)}
   .ext.pdf{background:#C25048}.ext.xls{background:#3E9A68}.ext.doc{background:#4A76C4}.ext.img{background:#C08A28}
+
+  /* ===== ações à esquerda, marcação, telefone em evidência, busca/aplicar ===== */
+  .svacts{display:inline-flex;gap:6px;align-items:center;flex:none}
+  .svacts .svcapbtn{margin-left:0}
+  .addbtn.mini{padding:2px 8px;border-radius:6px;font-size:10.5px;border:1px solid var(--border);background:var(--surface-2)}
+  .svsel{display:inline-flex;align-items:center}
+  .svsel input{accent-color:var(--gold);width:14px;height:14px;cursor:pointer;margin:0}
+  .svsel input:disabled{opacity:.25;cursor:not-allowed}
+  .svline .snm{font-size:12.5px;font-weight:650}
+  .telchip{font-family:var(--mono);font-size:10.5px;background:color-mix(in srgb,var(--ink) 8%,var(--surface));border:1px solid var(--border);border-radius:6px;padding:1px 7px;white-space:nowrap;color:var(--muted)}
+  .snm.hit{background:var(--accent-wash);border-radius:5px;padding:0 5px;color:var(--accent)}
+  .ctnome a{font-weight:650;color:var(--ink)}
+  .search{display:flex;align-items:center}
+  .search input{border:none;background:none;color:var(--ink);font:inherit;outline:none;min-width:170px}
+  .search input::placeholder{color:var(--faint)}
+  .fapply{background:var(--gold);color:#0A0F1A;border:none;border-radius:100px;padding:7px 15px;font-weight:650;font-size:12px;cursor:pointer;align-self:center}
+  .fapply:hover{background:var(--gold-2)}
+  .selcount{align-self:center;font-size:11.5px;color:var(--accent);font-weight:600}
+
+  /* ===== cascata organizada: grid do servidor, contagens, blocos com hierarquia ===== */
+  .svline{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+  .svmain{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+  .svline .snm{white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  .scargo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
+  .sv-email{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media(max-width:1000px){.sv-email{display:none}}
+  .cnt2{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:0 6px;white-space:nowrap;flex:none}
+  .bt{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .btacts{margin-left:auto;display:inline-flex;gap:6px}
+  .edetail .eblock{background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:12px}
+  .edetail .eblock+.eblock{margin-top:10px}
+  .lv-ent>.trow{padding-top:10px;padding-bottom:10px}
+  .lv-tipo>.trow{cursor:pointer}
+
+  .loterow{display:flex;gap:12px;align-items:center;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12px;flex-wrap:wrap}
+  .loterow .rm{border:none;background:none;color:var(--faint);cursor:pointer;margin-left:auto}
+  .loterow .rm:hover{color:var(--crit)}
 </style>
 
 <div id="login">
@@ -504,7 +541,7 @@
       <button class="newcampbtn" id="newCampBtn">＋ Nova campanha</button>
       <div class="segs"><button class="segbtn on">Todas</button><button class="segbtn">Gestão Pública</button><button class="segbtn">Legislativo</button></div>
       <div class="spacer"></div>
-      <div class="search">🔎&nbsp; Buscar cliente, órgão, cidade…</div>
+      <div class="search">🔎&nbsp;<input id="q-serv" placeholder="Buscar servidor pelo nome…" autocomplete="off"></div>
       <span class="seclock" title="Cópia, seleção e impressão bloqueadas — segredo de negócio">🔒 Sigilo ativo</span>
       <button class="iconbtn" id="hcbtn" title="Tema claro / escuro" aria-label="Alternar tema">◐</button>
       <div class="adminbox"><span>Admin: editar</span><button class="sw" id="adm" aria-label="Modo edição do administrador"></button></div>
@@ -550,6 +587,8 @@
         <label class="fsel">Tema<select id="f-tema"><option value="">Todos</option></select></label>
         <span class="fb-spacer"></span>
         <span class="fcount" id="fcount"></span>
+        <span class="selcount" id="selcount"></span>
+        <button class="fapply" id="fapply">Aplicar filtros</button>
         <button class="fclear" id="fclear">Limpar</button>
       </div>
 
@@ -756,7 +795,21 @@
       <div class="frow"><label>% Comissão</label><input type="number" id="c-pct" value="5" min="0" max="100"></div>
       <div class="frow"><label>Valor unitário (R$)</label><input type="text" id="c-valor-unit" value="12.000"></div>
     </div>
-    <div class="capnote" style="margin:-6px 0 6px">Escopo, percentual e valor unitário valem para toda a campanha — a captura do vendedor herda estes parâmetros (não são editáveis na captura).</div>
+    <div class="capnote" style="margin:-6px 0 6px">Escopo, percentual e valor unitário valem para toda a campanha — a captura herda estes parâmetros. Com lotes cadastrados, o valor vem do LOTE vigente (por data) e da modalidade.</div>
+    <div class="frow"><label>📦 Lotes do produto — data-limite · valor presencial · valor online</label>
+      <div id="c-lotes"></div>
+      <div class="addline">
+        <input type="text" id="c-lote-nome" placeholder="Lote 1" style="max-width:90px">
+        <input type="date" id="c-lote-data" title="Data-limite do lote">
+        <input type="text" id="c-lote-pres" placeholder="R$ presencial" style="max-width:120px">
+        <input type="text" id="c-lote-onl" placeholder="R$ online" style="max-width:110px">
+        <button class="addbtn" id="c-lote-add">＋ Lote</button>
+      </div>
+    </div>
+    <div class="frow2">
+      <div class="frow"><label>Desconto por servidor adicional da mesma organização (%)</label><input type="number" id="c-desc-org" value="10" min="0" max="100"></div>
+      <div class="frow"><label>&nbsp;</label><span class="capnote">1º servidor da organização paga o valor do lote; do 2º em diante o desconto acumula por captura já feita na mesma entidade.</span></div>
+    </div>
     <div class="frow"><label>📎 Anexos exibidos na página</label>
       <div class="chipedit" id="c-anexos"></div>
       <div class="addline"><input type="text" id="c-anexo-nome" placeholder="Nome do arquivo (ex.: Proposta.pdf)"><button class="addbtn" id="c-anexo-add">＋ Anexar</button></div>
@@ -777,7 +830,7 @@
           <div class="frow"><label>CNAE</label><input id="crit-cnae" placeholder="ex.: 8411-6/00"></div>
         </div>
         <div class="critresult">
-          <div class="critcount"><b id="crit-n">0</b>&nbsp;entidades correspondem<button type="button" id="crit-clear">limpar critérios</button></div>
+          <div class="critcount"><b id="crit-n">0</b>&nbsp;entidades · <b class="num" id="crit-ns" style="color:var(--accent)">0</b>&nbsp;servidores <span class="ctmeta">(começa com todos — os critérios refinam)</span><button type="button" id="crit-clear">limpar critérios</button></div>
           <div class="critprev" id="crit-prev"></div>
         </div>
       </div>
@@ -804,6 +857,10 @@
         <option value="proposta">Proposta</option><option value="negociacao">Negociação</option>
         <option value="fechamento">Fechamento (ganha)</option><option value="posvenda">Pós-venda</option>
       </select></div>
+    </div>
+    <div class="frow2">
+      <div class="frow"><label>Modalidade</label><select id="cap-mod"><option value="presencial">Presencial</option><option value="online">Online</option></select></div>
+      <div class="frow"><label>&nbsp;</label><span class="capnote" id="cap-lote-note"></span></div>
     </div>
     <div class="frow"><label>Responsável pelo lead</label>
       <div class="caplock" id="cap-resp-lock"><span id="cap-resp-av"></span><b id="cap-resp-nome"></b><span class="lk" id="cap-resp-note">🔒 quem captura é o responsável · só gerente/admin transfere</span></div>
@@ -871,6 +928,7 @@
 
   // celular (9 dígitos após DDD) vira hiperlink p/ conversa no WhatsApp; fixo fica texto
   const WAICON='<svg class="wai" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 0 0-6.05 10.52L1 15l3.6-.93A7 7 0 1 0 8 1Zm3.4 9.6c-.15.42-.86.8-1.2.83-.32.03-.62.15-2.08-.43-1.76-.7-2.87-2.5-2.96-2.61-.09-.12-.7-.94-.7-1.8 0-.85.44-1.27.6-1.44a.63.63 0 0 1 .46-.22l.33.01c.1 0 .25-.04.39.3l.54 1.3c.05.1.08.22.02.35l-.22.33-.31.34c-.1.1-.2.2-.09.4.11.19.5.82 1.07 1.33.73.65 1.35.85 1.54.95.2.1.3.08.42-.05l.63-.74c.15-.19.27-.14.45-.08l1.44.68c.15.08.25.11.29.18.04.06.04.36-.11.77Z"/></svg>';
+  const TELX=t=>{t=String(t||'').trim();if(!t||t==='—')return '';const w=WAPP(t);return /class="wa"/.test(w)?w:`<span class="telchip">☎ ${t}</span>`;};
   const WAPP=s=>String(s||'').replace(/\((\d{2})\)\s?(9\d{4})-?(\d{4})/g,(m,dd,p1,p2)=>`<a class="wa" href="https://wa.me/55${dd}${p1}${p2}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">${WAICON}${m}</a>`);
 
   // metadados p/ filtros (estado, cidade, esfera, responsável, tema) — usados pela árvore e pela tabela
@@ -1063,21 +1121,32 @@
     if(v.cargo) info.push({tipo:'Responsabilidade',val:v.cargo});
     (v.extras||[]).forEach(x=>info.push({tipo:x.tipo,val:x.valor,rede:x.rede||undefined}));
     SVREG.push({nome:v.nome,cargo:v.cargo||'',orgao:(ctx&&ctx.orgao)||'',orgId:(ctx&&ctx.orgId)||'',area:(ctx&&ctx.area)||null,setor:(ctx&&ctx.setor)||'',unidade:(ctx&&ctx.unidade)||'',sid:(v.id||''),eid:(ctx&&(ctx.entId||ctx.orgId))||'',setid:(ctx&&ctx.setorId)||'',info});
-    return `<div class="svline"><span class="cttag serv">Servidor</span><button type="button" class="snm" data-sv="${i}">${v.nome}</button><span class="scargo">· ${v.cargo}</span><button type="button" class="svcapbtn" data-svcapi="${i}" title="Capturar para campanha">⊕ capturar</button><span class="svcap" data-svcap="${i}"></span><span class="grow2"></span><span class="ctval"><a href="mailto:${v.email||''}">${v.email||'—'}</a></span><span class="ctmeta">${WAPP(v.tel||'')}</span></div>`;
+    const tel=(v.tel&&v.tel!=='—')?String(v.tel).trim():'';
+    return `<div class="svline"><span class="svacts"><label class="svsel" title="${tel?'Marcar servidor (tem contato)':'Sem número de contato'}"><input type="checkbox" data-svsel="${i}" ${tel?'':'disabled'}></label><button type="button" class="svcapbtn" data-svcapi="${i}" title="Capturar para campanha">⊕ capturar</button><button type="button" class="addbtn mini" data-add="contato-sv" data-svi="${i}" title="Adicionar contato ao servidor">＋ contato</button></span><span class="svmain"><button type="button" class="snm" data-sv="${i}">${v.nome}</button>${TELX(tel)}${v.cargo?`<span class="scargo">· ${v.cargo}</span>`:''}<span class="svcap" data-svcap="${i}"></span></span><span class="ctval sv-email"><a href="mailto:${v.email||''}">${v.email||'—'}</a></span></div>`;
   }
-  function renderOrg(sec,orgao,area,orgId){ // secretaria (1º) -> unidade (2º) -> servidor (folha); cadência de cor por tema
+  function renderOrg(sec,orgao,area,orgId){ // secretaria FECHADA c/ contagem -> unidade -> servidor; achata o agrupador implícito
     const cor=TEMACOR[sec.tema]||'var(--st-pros)';
     const tema=sec.tema?`<span class="temachip">${sec.tema}</span>`:'';
     const email=sec.email?`<span class="emailchip">✉ ${sec.email}</span>`:'';
-    const unis=(sec.unidades&&sec.unidades.length)?sec.unidades.map(u=>{
-      const us=(u.servidores&&u.servidores.length)?u.servidores.map(sv=>svLine(sv,{orgao,orgId,area,setor:sec.nome,unidade:u.nome,entId:orgId,setorId:u.id})).join('')
-               :`<div class="ctmeta" style="padding:2px">Sem servidor listado.</div>`;
-      return `<div class="tnode orgnode lv-uni open"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm2">↳ ${u.nome}</span><span class="grow2"></span><span class="temachip">2º nível</span></div>
-        <div class="tchildren">${us}<div class="addrow"><button class="addbtn" data-add="servidor" data-orgao="${orgao}" data-setor="${sec.nome}" data-unidade="${u.nome}" data-entid="${orgId||''}" data-setid="${u.id||''}">＋ Servidor</button></div></div></div>`;
-    }).join('')
-      :`<div class="ctmeta" style="padding:2px">Sem unidade/servidor mapeado.</div>`;
-    return `<div class="tnode orgnode lv-sec open" style="--sc:${cor}"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm">🏛 ${sec.nome}</span> ${tema}<span class="grow2"></span>${email}</div>
-      <div class="tchildren">${unis}<div class="addrow"><button class="addbtn" data-add="unidade" data-orgao="${orgao}" data-setor="${sec.nome}" data-entid="${orgId||''}" data-s1id="${sec.id||''}">＋ Unidade (2º nível)</button></div></div></div>`;
+    const unids=sec.unidades||[];
+    const nsrv=unids.reduce((s,u)=>s+((u.servidores&&u.servidores.length)||0),0);
+    const pseudo=unids.length===1&&unids[0].id===sec.id;   // só "Servidores do setor" -> renderiza direto
+    const addSrv=(setid,unome)=>`<div class="addrow"><button class="addbtn" data-add="servidor" data-orgao="${orgao}" data-setor="${sec.nome}" data-unidade="${unome||''}" data-entid="${orgId||''}" data-setid="${setid||''}">＋ Servidor</button></div>`;
+    let corpo;
+    if(!unids.length){
+      corpo=`<div class="ctmeta" style="padding:2px">Sem unidade/servidor mapeado.</div>`+addSrv(sec.id,'');
+    }else if(pseudo){
+      corpo=unids[0].servidores.map(sv=>svLine(sv,{orgao,orgId,area,setor:sec.nome,unidade:'',entId:orgId,setorId:sec.id})).join('')+addSrv(sec.id,'');
+    }else{
+      corpo=unids.map(u=>{
+        const us=(u.servidores&&u.servidores.length)?u.servidores.map(sv=>svLine(sv,{orgao,orgId,area,setor:sec.nome,unidade:u.nome,entId:orgId,setorId:u.id})).join('')
+                 :`<div class="ctmeta" style="padding:2px">Sem servidor listado.</div>`;
+        return `<div class="tnode orgnode lv-uni open"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm2">↳ ${u.nome}</span><span class="cnt2">${(u.servidores||[]).length}</span><span class="grow2"></span></div>
+          <div class="tchildren">${us}${addSrv(u.id,u.nome)}</div></div>`;
+      }).join('');
+    }
+    return `<div class="tnode orgnode lv-sec" style="--sc:${cor}"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm">🏛 ${sec.nome}</span> ${tema}<span class="cnt2">👥 ${nsrv}</span><span class="grow2"></span>${email}<span class="btacts"><button type="button" class="addbtn mini" data-add="unidade" data-orgao="${orgao}" data-setor="${sec.nome}" data-entid="${orgId||''}" data-s1id="${sec.id||''}">＋ unidade</button></span></div>
+      <div class="tchildren">${corpo}</div></div>`;
   }
   const ENTMAP={}; // id -> {nome, area, st} para capturar atuação
   const ENTDATA={}; // id -> nó completo (detalhe construído sob demanda)
@@ -1090,7 +1159,7 @@
                                      :`<span class="vend">Vendedor: ${av(rp[0])}<b>${rp}</b></span>`;
       ENTDATA[n.id]=n;
       ENTMAP[n.id]={nome:n.nome,area:n.area,st:n.st};
-      return `<div class="tnode lv-ent" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${rp}" style="--sc:${s[1]};--scw:${s[2]}">
+      return `<div class="tnode lv-ent" data-eid="${n.id}" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${rp}" style="--sc:${s[1]};--scw:${s[2]}">
         <div class="trow" style="${pad}"><span class="tchev">›</span>
           <span class="ent-nm">${n.nome}</span> ${areaChip(n.area)}
           <span class="grow"></span>${vend}
@@ -1098,7 +1167,7 @@
         <div class="edetail" data-lazy="${n.id}"></div></div>`;
     }
     const tpill = n.t==='tipo' ? `<span class="tpill">tipo de órgão</span>` : '';
-    return `<div class="tnode lv-${n.t} open">
+    return `<div class="tnode lv-${n.t}${n.t==='tipo'?'':' open'}">
       <div class="trow" style="${pad}"><span class="tchev">›</span><span class="tlabel">${n.nome}</span>${tpill}
         <span class="grow2"></span><span class="tcount">${countEnts(n)}</span></div>
       <div class="tchildren">${n.children.map(c=>renderNode(c,depth+1)).join('')}</div></div>`;
@@ -1108,6 +1177,7 @@
 
   // expand/collapse; add-buttons e links não togglam
   document.getElementById('view-tree').addEventListener('click',e=>{
+    if(e.target.closest('.svsel'))return;
     const capEl=e.target.closest('.svcapbtn');
     if(capEl){openCaptureSv(+capEl.dataset.svcapi);return;}
     const svEl=e.target.closest('[data-sv]');
@@ -1145,8 +1215,8 @@
     rows.querySelectorAll('tr').forEach(tr=>{tr.hidden=!okd(tr.dataset)||(curTab!=='all'&&tr.dataset.st!==curTab);});
     fcount.textContent=vis+(vis===1?' entidade':' entidades');
   }
-  Object.values(F).forEach(s=>s.addEventListener('change',applyFilters));
-  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');applyFilters();});
+  Object.values(F).forEach(s=>s.addEventListener('change',()=>applyAll()));
+  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');const q=document.getElementById('q-serv');if(q)q.value='';applyAll();});
 
   // TABS -> alterna árvore (Todos) x tabela por estágio
   document.getElementById('tabs').addEventListener('click',e=>{
@@ -1243,7 +1313,7 @@
   // ---- seleção de leads por critério (tema, responsabilidade, setor, cargo, função, palavra-chave, CNAE) ----
   const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
   const CNAE_MAP={}; const CNAE_MOCK={jf:'8411-6/00',montes:'8411-6/00',araxa:'8411-6/00',gv:'8411-6/00',uberaba:'8411-6/00',patos:'8411-6/00','fms-araxa':'8412-4/00',udi:'8411-6/00',contagem:'8411-6/00',betim:'8411-6/00',juizforacam:'8411-6/00',der:'8411-6/00',tce:'8411-6/00',ifsudeste:'8542-1/00',assess:'7112-0/00',constr:'4120-4/00'};
-  let MATCHED=[]; const critTema=new Set(['Obras']);
+  let MATCHED=[]; const critTema=new Set();
   function buildLeadset(){
     const arr=[];
     (function walk(list){list.forEach(node=>{
@@ -1277,6 +1347,7 @@
       return true;
     });
     document.getElementById('crit-n').textContent=MATCHED.length;
+    document.getElementById('crit-ns').textContent=MATCHED.reduce((s,l)=>s+((l.cargos&&l.cargos.length)||0),0);
     document.getElementById('crit-prev').innerHTML = MATCHED.length
       ? MATCHED.slice(0,16).map(l=>`<span class="previtem">${l.nome}</span>`).join('')+(MATCHED.length>16?`<span class="previtem">+${MATCHED.length-16}</span>`:'')
       : '<span class="ctmeta">Nenhuma entidade — ajuste os critérios.</span>';
@@ -1329,11 +1400,29 @@
       box.innerHTML=`<div class="box"><span class="campchip">${camp?camp.nome.split(' · ')[0]:'Campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">Responsável: ${avmini(c.responsavel)} <b>${c.responsavel}</b></span><span style="flex:1"></span><button class="btn-ghost" id="sv-cap-open">${isGestor()?'Remanejar':'Ver / atualizar'}</button></div>`;}
     document.getElementById('sv-cap-open').onclick=()=>{closeSv();openCaptureSv(i);};
   }
+  function loteVigente(c){
+    const ls=(c.lotes||[]).slice().sort((a,b)=>String(a.data||'9999').localeCompare(String(b.data||'9999')));
+    const hoje=new Date().toISOString().slice(0,10);
+    return ls.find(l=>String(l.data||'9999')>=hoje)||ls[ls.length-1]||null;
+  }
   function renderCapParams(){
     const c=campById(document.getElementById('cap-camp').value); if(!c)return;
-    const com=Math.round(c.valorUnit*c.pct/100);
+    const modSel=document.getElementById('cap-mod'), mod=modSel?modSel.value:'presencial';
+    const lote=loteVigente(c);
+    const base=lote?((mod==='online'?+lote.online:+lote.pres)||+c.valorUnit||0):(+c.valorUnit||0);
+    const r=SVREG[CAPI]||{};
+    const ja=(window.CAPS||[]).filter(x=>x.ativo&&x.campanha_id===c.id&&x.entidade_id===r.eid&&x.servidor_id!==r.sid).length;
+    const desc=Math.min(90,(+c.descOrg||0)*ja);
+    const valor=Math.round(base*(100-desc)/100);
+    const com=Math.round(valor*(+c.pct||0)/100);
+    window.CAPCALC={valor,mod,lote:lote?(lote.nome||'lote'):null,desc,ja};
     const el=document.getElementById('cap-params'); el.title='Definidos pelo admin no cadastro da campanha';
-    el.innerHTML=`<span>Escopo <b>${c.escopo}</b></span><span>Comissão <b>${c.pct}%</b></span><span>Valor unitário <b>R$ ${c.valorUnit.toLocaleString('pt-BR')}</b></span><span>Comissão prevista <b>R$ ${com.toLocaleString('pt-BR')}</b></span>`;
+    el.innerHTML=(lote?`<span>Lote <b>${lote.nome||'—'}</b> até <b>${lote.data?String(lote.data).split('-').reverse().join('/'):'—'}</b></span>`:'')+
+      `<span>${mod==='online'?'💻 Online':'🏛 Presencial'} <b>R$ ${base.toLocaleString('pt-BR')}</b></span>`+
+      (desc?`<span>Desconto org. <b>−${desc}%</b> (${ja} já capturado${ja>1?'s':''})</span>`:'')+
+      `<span>Valor <b>R$ ${valor.toLocaleString('pt-BR')}</b></span><span>Escopo <b>${c.escopo}</b></span><span>Comissão ${c.pct}% <b>R$ ${com.toLocaleString('pt-BR')}</b></span>`;
+    const note=document.getElementById('cap-lote-note');
+    if(note)note.textContent=desc?`Mesma organização: ${ja} captura(s) ativa(s) → −${desc}% aplicado.`:(lote?'Valor do lote vigente pela data.':'Sem lotes — usa o valor unitário da campanha.');
   }
   function checkConc(){
     const c=CAPTURES[capKey(CAPI)], warnEl=document.getElementById('cap-warn'), save=document.getElementById('cap-save');
@@ -1364,6 +1453,7 @@
     const b=document.querySelector('.svcapbtn[data-svcapi="'+i+'"]'); if(b)b.textContent='⊕ vínculo';
   }
   document.getElementById('cap-camp').addEventListener('change',renderCapParams);
+  document.getElementById('cap-mod').addEventListener('change',renderCapParams);
   document.getElementById('cap-save').addEventListener('click',()=>{
     if(document.getElementById('cap-save').disabled)return;
     const r=SVREG[CAPI]; if(!r)return;
@@ -1374,9 +1464,11 @@
     CAPTURES[_k]=Object.assign(CAPTURES[_k]||{},{campId,responsavel:resp,estagio:st,obs});
     updateSvBadge(CAPI);
     if(window.dbSaveCap)window.dbSaveCap(CAPI,campId,resp,st,obs);
-    const camp=campById(campId), com=Math.round(camp.valorUnit*camp.pct/100);
+    const camp=campById(campId), cc=window.CAPCALC||{};
+    const baseV=cc.valor||camp.valorUnit||0, com=Math.round(baseV*(+camp.pct||0)/100);
     const rec={id:'sv-'+CAPI,cli:r.nome,area:r.area,st,
-      val:'R$ '+camp.valorUnit.toLocaleString('pt-BR'), vsub:'valor unitário · '+camp.nome.split(' · ')[0],
+      val:'R$ '+baseV.toLocaleString('pt-BR'),
+      vsub:(cc.mod==='online'?'online':'presencial')+(cc.lote?(' · '+cc.lote):'')+(cc.desc?(' · −'+cc.desc+'%'):'')+' · '+camp.nome.split(' · ')[0],
       atores:[[iniOf(resp),resp,'Responsável · '+camp.escopo,'Responsável · 100%',100,1]],
       tl:[[(ST[st]?ST[st][0]:st)+' — captura registrada',(obs||'—'),'agora · '+resp,0],['Servidor do órgão',r.cargo+' · '+r.orgao,'origem · painel',1]],
       comm:[[resp+' · 100%','R$ '+com.toLocaleString('pt-BR')]],
@@ -1589,6 +1681,7 @@
   let CTYPES=['Institucional','Secretaria','Ouvidoria','Gabinete','Comercial','Outro'];
   const ADDDEFS={
     contato:{t:'Adicionar contato',f:[['tipo','Tipo de contato','sel','ct'],['valor','Email / valor','txt','contato@orgao.gov.br'],['meta','Telefone · site (opcional)','txt','(31) 0000-0000']]},
+    'contato-sv':{t:'Adicionar contato ao servidor',f:[['tipo','Tipo de contato','sel','ct'],['valor','Telefone / email / valor','txt','(31) 90000-0000'],['meta','Complemento (opcional)','txt','']]},
     tipocontato:{t:'Novo tipo de contato',f:[['nome','Nome do tipo','txt','ex.: WhatsApp institucional']]},
     servidor:{t:'Adicionar servidor',f:[['nome','Nome','txt','Nome completo'],['cargo','Cargo','txt','ex.: Engenheiro Civil'],['email','Email','txt','servidor@orgao.gov.br'],['tel','Telefone','txt','(31) 90000-0000']]},
     unidade:{t:'Adicionar unidade (2º nível)',f:[['nome','Nome da unidade','txt','ex.: Departamento de Projetos']]},
@@ -1600,7 +1693,8 @@
     const kind=btn.dataset.add||'empresa', def=ADDDEFS[kind]; if(!def)return;
     ADCTX={kind,btn};
     document.getElementById('ad-title').textContent=def.t;
-    document.getElementById('ad-sub').textContent=[btn.dataset.orgao,btn.dataset.setor,btn.dataset.unidade].filter(Boolean).join(' · ');
+    const svn=(btn.dataset.svi!=null&&SVREG[+btn.dataset.svi])?SVREG[+btn.dataset.svi].nome:'';
+    document.getElementById('ad-sub').textContent=[svn,btn.dataset.orgao,btn.dataset.setor,btn.dataset.unidade].filter(Boolean).join(' · ');
     document.getElementById('ad-fields').innerHTML=def.f.map(([k,lab,tp,x])=>{
       if(tp==='sel'){const opts=x==='ct'?CTYPES:x==='tm'?Object.keys(TEMACOR):['Matriz','Filial'];
         return `<div class="frow"><label>${lab}</label><select data-adf="${k}">${opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;}
@@ -1614,18 +1708,34 @@
     if(!ADCTX)return; const V={};
     document.querySelectorAll('#ad-fields [data-adf]').forEach(el=>V[el.dataset.adf]=el.value.trim());
     const kind=ADCTX.kind, btn=ADCTX.btn, row=btn.closest('.addrow');
+    const put=(container,html)=>{
+      if(!container)return;
+      if(row&&container.contains(row))row.insertAdjacentHTML('beforebegin',html);
+      else{const ar=container.querySelector(':scope > .addrow');
+        if(ar)ar.insertAdjacentHTML('beforebegin',html); else container.insertAdjacentHTML('beforeend',html);}
+    };
     if(kind==='contato'&&V.valor){
-      row.insertAdjacentHTML('beforebegin',`<div class="ctline"><span class="cttag ${/secretaria|ouvidoria/i.test(V.tipo)?'sec':''}">${V.tipo}</span><span class="ctval"><a href="mailto:${V.valor}">${V.valor}</a></span><span class="ctmeta">${WAPP(V.meta||'')}</span></div>`);
+      put(btn.closest('.eblock'),`<div class="ctline"><span class="svacts"><label class="svsel"><input type="checkbox" data-ctsel ${/\(\d{2}\)/.test(V.meta||'')?'':'disabled'}></label><button type="button" class="addbtn mini" data-add="contato" data-entid="${btn.dataset.entid||''}" title="Adicionar contato">＋ contato</button></span><span class="cttag ${/secretaria|ouvidoria/i.test(V.tipo)?'sec':''}">${V.tipo}</span><b class="ctnome"><a href="mailto:${V.valor}">${V.valor}</a></b><span class="ctmeta">${WAPP(V.meta||'')}</span></div>`);
+    } else if(kind==='contato-sv'&&V.valor){
+      const svi=+btn.dataset.svi, r=SVREG[svi];
+      if(r){const it={tipo:V.tipo,val:V.valor}; r.info.push(it);
+        if(window.dbSaveInfo)window.dbSaveInfo(svi,it);
+        if(/\(\d{2}\)/.test(V.valor)){const line=btn.closest('.svline');
+          if(line){const nm=line.querySelector('.snm');
+            if(nm&&!line.querySelector('.wa,.telchip'))nm.insertAdjacentHTML('afterend',TELX(V.valor));
+            const cb=line.querySelector('[data-svsel]'); if(cb)cb.disabled=false;}}}
     } else if(kind==='tipocontato'&&V.nome){ CTYPES.push(V.nome); }
     else if(kind==='servidor'&&V.nome){
-      const box=btn.closest('.tchildren'), ph=box.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
-      row.insertAdjacentHTML('beforebegin',svLine({nome:V.nome,cargo:V.cargo,email:V.email,tel:V.tel},{orgao:btn.dataset.orgao,setor:btn.dataset.setor,unidade:btn.dataset.unidade,area:null,orgId:''}));
+      const box=btn.closest('.tchildren'), ph=box&&box.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
+      put(box,svLine({nome:V.nome,cargo:V.cargo,email:V.email,tel:V.tel},{orgao:btn.dataset.orgao,setor:btn.dataset.setor,unidade:btn.dataset.unidade,area:null,orgId:'',entId:btn.dataset.entid||'',setorId:btn.dataset.setid||''}));
     } else if(kind==='unidade'&&V.nome){
-      const box=btn.closest('.tchildren'), ph=box.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
-      row.insertAdjacentHTML('beforebegin',`<div class="tnode orgnode lv-uni open"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm2">↳ ${V.nome}</span><span class="grow2"></span><span class="temachip">2º nível</span></div><div class="tchildren"><div class="ctmeta" style="padding:2px">Sem servidor listado.</div><div class="addrow"><button class="addbtn" data-add="servidor" data-orgao="${btn.dataset.orgao||''}" data-setor="${btn.dataset.setor||''}" data-unidade="${V.nome}">＋ Servidor</button></div></div></div>`);
+      const secNode=btn.closest('.lv-sec'), tc=secNode&&secNode.querySelector(':scope > .tchildren');
+      if(secNode)secNode.classList.add('open');
+      const ph=tc&&tc.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
+      put(tc,`<div class="tnode orgnode lv-uni open"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm2">↳ ${V.nome}</span><span class="cnt2">0</span><span class="grow2"></span></div><div class="tchildren"><div class="ctmeta" style="padding:2px">Sem servidor listado.</div><div class="addrow"><button class="addbtn" data-add="servidor" data-orgao="${btn.dataset.orgao||''}" data-setor="${btn.dataset.setor||''}" data-unidade="${V.nome}" data-entid="${btn.dataset.entid||''}">＋ Servidor</button></div></div></div>`);
     } else if(kind==='secretaria'&&V.nome){
-      const eb=btn.closest('.eblock'), ph=eb.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
-      row.insertAdjacentHTML('beforebegin',renderOrg({nome:V.nome,tema:V.tema,email:V.email,unidades:[]},btn.dataset.orgao||'',btn.dataset.area||null,''));
+      const eb=btn.closest('.eblock'), ph=eb&&eb.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
+      put(eb,renderOrg({nome:V.nome,tema:V.tema,email:V.email,unidades:[]},btn.dataset.orgao||'',btn.dataset.area||null,btn.dataset.entid||''));
     } else if(kind==='empresa'&&V.nome){
       ORGS.push({t:V.tipo==='Matriz'?'mz':'fl',tipo:V.tipo,nome:V.nome,cnpj:V.cnpj||'—'}); renderTeam();
     }
@@ -1683,7 +1793,7 @@
 
     say('Carregando campanhas e regras…');
     const cps=await q('campanhas','*');
-    CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status}));
+    CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
     const rvs=await q('regras_versoes','*');
     RULEV.length=0; rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—'}));
 
@@ -1703,6 +1813,7 @@
     sets.forEach(s=>{if(s.nivel===1)(setsByEnt[s.entidade_id]=setsByEnt[s.entidade_id]||[]).push(s);
                      else (unitsByParent[s.parent_id]=unitsByParent[s.parent_id]||[]).push(s);});
     srvs.forEach(v=>{srvById[v.id]=v;(srvBySetor[v.setor_id]=srvBySetor[v.setor_id]||[]).push(v);});
+    window.SRVN={}; srvs.forEach(v=>{(window.SRVN[v.entidade_id]=window.SRVN[v.entidade_id]||[]).push(norm(v.nome||''));});
     ctsx.forEach(c=>{if(c.servidor_id)(ctBySrv[c.servidor_id]=ctBySrv[c.servidor_id]||[]).push(c);
                      else if(c.entidade_id)(ctByEnt[c.entidade_id]=ctByEnt[c.entidade_id]||[]).push(c);});
     ents.forEach(e=>entById[e.id]=e);
@@ -1800,13 +1911,14 @@
   // detalhe da entidade (lazy — construído no 1º clique)
   function buildDetail(d){
     const n=ENTDATA[d.dataset.lazy]; if(!n)return; d.dataset.built='1';
-    const cts=(n.contatos||[]).map(c=>`<div class="ctline"><span class="cttag ${c.cls}">${c.tipo}</span><span class="ctval"><a href="mailto:${c.val}">${c.val}</a></span><span class="ctmeta">${WAPP(c.meta||'')}</span></div>`).join('');
+    const cts=(n.contatos||[]).map(c=>{const hasTel=/\(\d{2}\)/.test(c.meta||'');
+      return `<div class="ctline"><span class="svacts"><label class="svsel" title="${hasTel?'Marcar contato':'Sem telefone'}"><input type="checkbox" data-ctsel ${hasTel?'':'disabled'}></label><button type="button" class="addbtn mini" data-add="contato" data-orgao="${n.nome}" data-entid="${n.id}" title="Adicionar contato">＋ contato</button></span><span class="cttag ${c.cls}">${c.tipo}</span><b class="ctnome"><a href="mailto:${c.val}">${c.val}</a></b><span class="ctmeta">${WAPP(c.meta||'')}</span></div>`;}).join('');
     const estr=(n.estrutura&&n.estrutura.length)?n.estrutura.map(sec=>renderOrg(sec,n.nome,n.area,n.id)).join('')
                :`<div class="ctmeta" style="padding:2px">Estrutura organizacional não mapeada ainda.</div>`;
-    d.innerHTML=`<div class="eblock"><div class="bt">📇 Contato institucional</div>${cts}
-        <div class="addrow"><button class="addbtn" data-add="contato" data-orgao="${n.nome}" data-entid="${n.id}">＋ Contato</button><button class="addbtn" data-add="tipocontato">＋ Tipo de contato</button></div></div>
-      <div class="eblock"><div class="bt">🏛 Estrutura organizacional <span class="bt-sub">— secretarias até o 2º nível</span></div>${estr}
-        <div class="addrow"><button class="addbtn" data-add="secretaria" data-orgao="${n.nome}" data-area="${n.area||''}" data-entid="${n.id}">＋ Secretaria / unidade</button></div></div>`;
+    const nsec=(n.estrutura||[]).length;
+    const ntot=(n.estrutura||[]).reduce((s,x)=>s+(x.unidades||[]).reduce((a,u)=>a+((u.servidores&&u.servidores.length)||0),0),0);
+    d.innerHTML=`<div class="eblock"><div class="bt">🏛 Estrutura &amp; servidores <span class="bt-sub">${nsec} secretaria${nsec===1?'':'s'} · ${ntot} servidor${ntot===1?'':'es'}</span><span class="btacts"><button type="button" class="addbtn mini" data-add="secretaria" data-orgao="${n.nome}" data-area="${n.area||''}" data-entid="${n.id}">＋ Secretaria</button></span></div>${estr}</div>
+      <div class="eblock"><div class="bt">📇 Contato institucional<span class="btacts"><button type="button" class="addbtn mini" data-add="contato" data-orgao="${n.nome}" data-entid="${n.id}">＋ Contato</button><button type="button" class="addbtn mini" data-add="tipocontato">＋ Tipo</button></span></div>${cts}</div>`;
     d.querySelectorAll('.svcapbtn').forEach(b=>{const i=+b.dataset.svcapi; if(CAPTURES[capKey(i)])updateSvBadge(i);});
   }
 
@@ -1837,6 +1949,8 @@
     document.getElementById('c-pct').value=c?c.pct:5;
     document.getElementById('c-valor-unit').value=c&&c.valorUnit?c.valorUnit.toLocaleString('pt-BR'):'';
     cAnexos=c?(c.anexos||[]).slice():[]; cLinks=c?(c.links||[]).slice():[];
+    cLotes=c?(c.lotes||[]).slice():[]; renderCLotes();
+    document.getElementById('c-desc-org').value=c?(c.descOrg||0):10;
   };
   window.dbSaveCamp=async function(){
     try{
@@ -1846,11 +1960,12 @@
       const payload={nome:val('c-nome')||'Campanha',inicio:val('c-ini')||null,fim:val('c-fim')||null,
         meta_valor:numval('c-meta')||null,segmento:val('c-seg'),escopo_rateio:val('c-escopo'),
         pct_comissao:+val('c-pct')||5,valor_unitario:numval('c-valor-unit'),
-        anexos:cAnexos,links:cLinks,criterios:crit,status:'ativa',regra_versao:vigente?vigente.versao:null};
+        anexos:cAnexos,links:cLinks,criterios:crit,status:'ativa',regra_versao:vigente?vigente.versao:null,
+        lotes:cLotes,desconto_org_pct:+val('c-desc-org')||0};
       if(CAMP_EDIT_ID){const{error}=await sbc.from('campanhas').update(payload).eq('id',CAMP_EDIT_ID);if(error)throw error;}
       else{const{data,error}=await sbc.from('campanhas').insert(payload).select('id').single();if(error)throw error;CAMP_EDIT_ID=data.id;}
       const cps=await q('campanhas','*');
-      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status}));
+      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
       renderCampHeader(); warn('Campanha gravada no banco ✓');
     }catch(e){warn('⚠ Campanha não gravada: '+(e.message||e));}
   };
@@ -1860,11 +1975,13 @@
     const respId=(TEAM.find(t=>t.n===resp)||{}).id, k=capKey(i), cur=CAPTURES[k];
     try{
       if(cur&&cur.dbId){
-        const{error}=await sbc.from('capturas').update({campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs}).eq('id',cur.dbId);
+        const cc=window.CAPCALC||{};
+        const{error}=await sbc.from('capturas').update({campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc.mod||null,valor_contrato:cc.valor||null}).eq('id',cur.dbId);
         if(error)throw error;
         await sbc.from('atividades').insert({captura_id:cur.dbId,tipo:'mudanca_estagio',descricao:obs||null,estagio_para:dbStage(st)});
       }else{
-        const{data,error}=await sbc.from('capturas').insert({servidor_id:r.sid,entidade_id:r.eid,campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs}).select('id').single();
+        const cc2=window.CAPCALC||{};
+        const{data,error}=await sbc.from('capturas').insert({servidor_id:r.sid,entidade_id:r.eid,campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc2.mod||null,valor_contrato:cc2.valor||null}).select('id').single();
         if(error)throw error; CAPTURES[k].dbId=data.id;
         await sbc.from('atividades').insert({captura_id:data.id,tipo:'captura',descricao:obs||null,estagio_para:dbStage(st)});
       }
@@ -1917,6 +2034,20 @@
     catch(e){warn('⚠ Info não gravada: '+(e.message||e));}
   };
 
+  // ---------- lotes do produto (campanha) ----------
+  let cLotes=[];
+  function renderCLotes(){
+    document.getElementById('c-lotes').innerHTML=cLotes.map((l,i)=>`<div class="loterow"><b>${l.nome||('Lote '+(i+1))}</b><span class="num">até ${l.data?String(l.data).split('-').reverse().join('/'):'—'}</span><span class="num">🏛 R$ ${(+l.pres||0).toLocaleString('pt-BR')}</span><span class="num">💻 R$ ${(+l.online||0).toLocaleString('pt-BR')}</span><button type="button" class="rm" data-i="${i}" aria-label="Remover">✕</button></div>`).join('')
+      ||'<span class="ctmeta">Nenhum lote — a captura usa o valor unitário.</span>';
+  }
+  document.getElementById('c-lote-add').addEventListener('click',()=>{
+    const nome=val('c-lote-nome')||('Lote '+(cLotes.length+1));
+    cLotes.push({nome,data:val('c-lote-data')||null,pres:numval('c-lote-pres'),online:numval('c-lote-onl')});
+    ['c-lote-nome','c-lote-pres','c-lote-onl'].forEach(id=>document.getElementById(id).value='');
+    renderCLotes();
+  });
+  document.getElementById('c-lotes').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cLotes.splice(+b.dataset.i,1);renderCLotes();}});
+
   // ---------- LOGIN ----------
   const LGD=document.getElementById('login'), APPW=document.getElementById('appwrap');
   async function doLogin(){
@@ -1939,4 +2070,39 @@
   }
   boot();
 
+
+  // ===== busca por servidor (topo) + aplicar filtros + marcação =====
+  function applyAll(){
+    document.querySelectorAll('.snm.hit').forEach(x=>x.classList.remove('hit'));
+    applyFilters();
+    const q=document.getElementById('q-serv'), qs=q?norm(q.value.trim()):'';
+    if(qs){
+      let shown=0;
+      document.querySelectorAll('#view-tree .lv-ent').forEach(el=>{
+        if(el.style.display==='none')return;
+        const idx=(window.SRVN&&window.SRVN[el.dataset.eid])||[];
+        let has=idx.some(x=>x.includes(qs));
+        if(!has)has=[...el.querySelectorAll('.snm')].some(b=>norm(b.textContent).includes(qs));
+        el.style.display=has?'':'none';
+        if(has&&shown<30){shown++;
+          el.classList.add('open');
+          const d=el.querySelector(':scope > .edetail');
+          if(d&&d.dataset.lazy&&!d.dataset.built&&typeof buildDetail==='function')buildDetail(d);
+          el.querySelectorAll('.snm').forEach(b=>b.classList.toggle('hit',norm(b.textContent).includes(qs)));}
+      });
+      ['.lv-tipo','.lv-poder','.lv-esfera'].forEach(cls=>document.querySelectorAll('#view-tree '+cls).forEach(g=>{
+        let any=false;g.querySelectorAll('.lv-ent').forEach(e2=>{if(e2.style.display!=='none')any=true;});
+        g.style.display=any?'':'none';}));
+      const nv=[...document.querySelectorAll('#view-tree .lv-ent')].filter(e2=>e2.style.display!=='none').length;
+      document.getElementById('fcount').textContent=nv+(nv===1?' entidade':' entidades');
+    }
+  }
+  document.getElementById('fapply').addEventListener('click',applyAll);
+  document.getElementById('q-serv').addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});
+  document.getElementById('view-tree').addEventListener('change',e=>{
+    if(e.target.matches('[data-svsel],[data-ctsel]')){
+      const nsel=document.querySelectorAll('#view-tree input[data-svsel]:checked,#view-tree input[data-ctsel]:checked').length;
+      document.getElementById('selcount').textContent=nsel?('✓ '+nsel+' marcado'+(nsel>1?'s':'')):'';
+    }
+  });
 </script>
