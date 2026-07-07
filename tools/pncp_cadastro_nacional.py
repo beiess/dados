@@ -48,7 +48,10 @@ def get(url, timeout=180, tries=8, raise_net=False):
         try:
             r = urllib.request.Request(url, headers={"User-Agent": UA})
             with urllib.request.urlopen(r, timeout=timeout) as resp:
-                return json.load(resp)
+                if resp.status == 204:
+                    return {}          # sem registros nessa janela (não é erro) -> fim do window
+                body = resp.read()
+                return json.loads(body) if body.strip() else {}
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
