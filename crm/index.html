@@ -515,6 +515,15 @@
   .fsel input{font-family:var(--sans);font-size:12.5px;font-weight:550;color:var(--ink);border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:6px 9px;min-width:150px;letter-spacing:normal;text-transform:none}
   .fsel input::placeholder{color:var(--faint);font-weight:400}
   .fsel input:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+  .namesug{position:fixed;z-index:120;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh-2);max-height:300px;overflow-y:auto;padding:4px;min-width:260px}
+  .sugitem{display:block;width:100%;text-align:left;background:none;border:none;border-radius:7px;padding:7px 10px;cursor:pointer;color:var(--ink);font:inherit}
+  .sugitem:hover{background:var(--accent-wash)}
+  .sugitem b{display:block;font-size:12.5px;font-weight:650}
+  .sugitem span{font-size:10.5px;color:var(--faint)}
+  .namechips{display:flex;gap:6px;flex-wrap:wrap;align-self:center;max-width:360px}
+  .namechip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-wash);color:var(--accent);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:600}
+  .namechip button{border:none;background:none;color:inherit;cursor:pointer;padding:0;font-size:11px}
 </style>
 
 <div id="login">
@@ -592,7 +601,8 @@
         <label class="fsel">Esfera administrativa<select id="f-esf"><option value="">Todas</option></select></label>
         <label class="fsel">Responsável<select id="f-resp"><option value="">Todos</option></select></label>
         <label class="fsel">Tema<select id="f-tema"><option value="">Todos</option></select></label>
-        <label class="fsel">Nome do servidor<input id="f-nome" placeholder="ex.: Marcos Francisco" autocomplete="off"></label>
+        <label class="fsel">Nome do servidor<input id="f-nome" placeholder="digite 3+ letras e selecione…" autocomplete="off"></label>
+        <div class="namechips" id="namechips"></div>
         <span class="fb-spacer"></span>
         <span class="fcount" id="fcount"></span>
         <span class="selcount" id="selcount"></span>
@@ -740,6 +750,7 @@
 
 <div id="wm" aria-hidden="true"></div>
 <div id="toast"><span class="lk">🔒</span><span id="toast-msg">Cópia bloqueada — segredo de negócio Plenum.</span></div>
+<div id="namesug" class="namesug" hidden></div>
 <div id="printblock"><div class="bg">🔒</div><h2>Impressão bloqueada</h2><p>Este painel contém dados estratégicos protegidos por segredo de negócio da Plenum. A exportação/impressão está desativada. Registro de tentativa vinculado ao seu usuário.</p></div>
 
 <!-- MODAL FICHA DO SERVIDOR -->
@@ -1224,7 +1235,7 @@
     fcount.textContent=vis+(vis===1?' entidade':' entidades');
   }
   Object.values(F).forEach(s=>s.addEventListener('change',()=>applyAll()));
-  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');['q-serv','f-nome'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyAll();});
+  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');['q-serv','f-nome'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});NAMESEL.length=0;renderNameChips();applyAll();});
 
   // TABS -> alterna árvore (Todos) x tabela por estágio
   document.getElementById('tabs').addEventListener('click',e=>{
@@ -1822,6 +1833,8 @@
                      else (unitsByParent[s.parent_id]=unitsByParent[s.parent_id]||[]).push(s);});
     srvs.forEach(v=>{srvById[v.id]=v;(srvBySetor[v.setor_id]=srvBySetor[v.setor_id]||[]).push(v);});
     window.SRVN={}; srvs.forEach(v=>{(window.SRVN[v.entidade_id]=window.SRVN[v.entidade_id]||[]).push(norm(v.nome||''));});
+    window.ALLSRV=srvs.map(v=>({n:v.nome||'',nn:norm(v.nome||''),eid:v.entidade_id}));
+    window.IBGE2MUN={}; ents.forEach(e=>{if(e.cod_ibge&&!window.IBGE2MUN[e.cod_ibge])window.IBGE2MUN[e.cod_ibge]=e.municipio||'';});
     ctsx.forEach(c=>{if(c.servidor_id)(ctBySrv[c.servidor_id]=ctBySrv[c.servidor_id]||[]).push(c);
                      else if(c.entidade_id)(ctByEnt[c.entidade_id]=ctByEnt[c.entidade_id]||[]).push(c);});
     ents.forEach(e=>entById[e.id]=e);
@@ -1951,7 +1964,7 @@
           {orgao:nd.nome,setor,unidade:'',entId:nd.id,setorId:'',area:nd.area})).join('');
         return `<div class="tnode orgnode lv-sec" style="--sc:var(--st-pros)"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm">📋 ${setor}</span><span class="cnt2">👥 ${g[setor].length}</span><span class="grow2"></span></div><div class="tchildren">${lines}</div></div>`;
       }).join(''));
-      if(window.P1HL){body.querySelectorAll('.snm').forEach(b=>{if(norm(b.textContent).includes(window.P1HL)){b.classList.add('hit');const s=b.closest('.lv-sec');if(s)s.classList.add('open');}});}
+      if(window.P1HL&&window.P1HL.length){body.querySelectorAll('.snm').forEach(b=>{const t=norm(b.textContent);if(window.P1HL.some(hh=>t.includes(hh))){b.classList.add('hit');const s=b.closest('.lv-sec');if(s)s.classList.add('open');}});}
       const tot=offset+((data&&data.length)||0);
       if(data&&data.length===1000){
         st.innerHTML=`${tot}+ registros · <button type="button" class="addbtn mini p1more">＋ carregar mais</button>`;
@@ -2126,33 +2139,39 @@
     document.querySelectorAll('.snm.hit').forEach(x=>x.classList.remove('hit'));
     applyFilters();
     const raw=((document.getElementById('f-nome')||{}).value||(document.getElementById('q-serv')||{}).value||'').trim(), qs=raw?norm(raw):'';
-    window.P1HL=qs||'';
+    const HL=NAMESEL.length?NAMESEL.map(s=>norm(s.n)):(qs?[qs]:[]);
+    window.P1HL=HL;
+    if(!HL.length)return;
     let p1set=null;
-    if(qs&&qs.length>=4&&typeof sbc!=='undefined'){
+    if(!NAMESEL.length&&qs.length>=4&&typeof sbc!=='undefined'){
       try{const{data}=await sbc.from('painel1_servidores').select('ibge').ilike('nome','%'+raw.replace(/[%_]/g,'')+'%').limit(500);
         p1set=new Set((data||[]).map(x=>String(x.ibge)));}catch(e){}
     }
-    if(qs){
-      let shown=0;
-      document.querySelectorAll('#view-tree .lv-ent').forEach(el=>{
-        if(el.style.display==='none')return;
-        const idx=(window.SRVN&&window.SRVN[el.dataset.eid])||[];
-        let has=idx.some(x=>x.includes(qs));
+    let shown=0;
+    document.querySelectorAll('#view-tree .lv-ent').forEach(el=>{
+      if(el.style.display==='none')return;
+      const eid=el.dataset.eid, ibge=String(el.dataset.ibge||'');
+      const idx=(window.SRVN&&window.SRVN[eid])||[];
+      let has;
+      if(NAMESEL.length){
+        has=NAMESEL.some(s=>(s.eid&&s.eid===eid)||(s.ibge&&s.ibge===ibge)||idx.some(x=>x.includes(norm(s.n))));
+      }else{
+        has=idx.some(x=>x.includes(qs));
         if(!has)has=[...el.querySelectorAll('.snm')].some(b=>norm(b.textContent).includes(qs));
-        if(!has&&p1set&&p1set.has(String(el.dataset.ibge)))has=true;
-        el.style.display=has?'':'none';
-        if(has&&shown<30){shown++;
-          el.classList.add('open');
-          const d=el.querySelector(':scope > .edetail');
-          if(d&&d.dataset.lazy&&!d.dataset.built&&typeof buildDetail==='function')buildDetail(d);
-          el.querySelectorAll('.snm').forEach(b=>b.classList.toggle('hit',norm(b.textContent).includes(qs)));}
-      });
-      ['.lv-tipo','.lv-poder','.lv-esfera'].forEach(cls=>document.querySelectorAll('#view-tree '+cls).forEach(g=>{
-        let any=false;g.querySelectorAll('.lv-ent').forEach(e2=>{if(e2.style.display!=='none')any=true;});
-        g.style.display=any?'':'none';}));
-      const nv=[...document.querySelectorAll('#view-tree .lv-ent')].filter(e2=>e2.style.display!=='none').length;
-      document.getElementById('fcount').textContent=nv+(nv===1?' entidade':' entidades');
-    }
+        if(!has&&p1set&&p1set.has(ibge))has=true;
+      }
+      el.style.display=has?'':'none';
+      if(has&&shown<30){shown++;
+        el.classList.add('open');
+        const d=el.querySelector(':scope > .edetail');
+        if(d&&d.dataset.lazy&&!d.dataset.built&&typeof buildDetail==='function')buildDetail(d);
+        el.querySelectorAll('.snm').forEach(b=>{const t=norm(b.textContent);b.classList.toggle('hit',HL.some(hh=>t.includes(hh)));});}
+    });
+    ['.lv-tipo','.lv-poder','.lv-esfera'].forEach(cls=>document.querySelectorAll('#view-tree '+cls).forEach(g=>{
+      let any=false;g.querySelectorAll('.lv-ent').forEach(e2=>{if(e2.style.display!=='none')any=true;});
+      g.style.display=any?'':'none';}));
+    const nv=[...document.querySelectorAll('#view-tree .lv-ent')].filter(e2=>e2.style.display!=='none').length;
+    document.getElementById('fcount').textContent=nv+(nv===1?' entidade':' entidades');
   }
   document.getElementById('fapply').addEventListener('click',applyAll);
   document.getElementById('q-serv').addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});
@@ -2164,5 +2183,51 @@
       const nsel=document.querySelectorAll('#view-tree input[data-svsel]:checked,#view-tree input[data-ctsel]:checked').length;
       document.getElementById('selcount').textContent=nsel?('✓ '+nsel+' marcado'+(nsel>1?'s':'')):'';
     }
+  });
+
+  // ===== busca por LISTAGEM (typeahead) e SELEÇÃO INCREMENTAL (chips) =====
+  const NAMESEL=[]; let sugTimer=null;
+  function renderNameChips(){
+    document.getElementById('namechips').innerHTML=NAMESEL.map((s,i)=>`<span class="namechip" title="${s.mun||''}">${s.n}<button type="button" data-i="${i}" aria-label="Remover">✕</button></span>`).join('');
+  }
+  document.getElementById('namechips').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    NAMESEL.splice(+b.dataset.i,1); renderNameChips(); applyAll();
+  });
+  async function suggest(inp){
+    const raw=inp.value.trim(), box=document.getElementById('namesug');
+    if(raw.length<3){box.hidden=true;return;}
+    const nn=norm(raw);
+    const loc=(window.ALLSRV||[]).filter(s=>s.nn.includes(nn)).slice(0,8)
+      .map(s=>({n:s.n,eid:s.eid,ibge:String((entById[s.eid]||{}).cod_ibge||''),mun:(entById[s.eid]||{}).municipio||'',org:'CRM'}));
+    let p1=[];
+    if(typeof sbc!=='undefined'){
+      try{const{data}=await sbc.from('painel1_servidores').select('nome,ibge').ilike('nome','%'+raw.replace(/[%_]/g,'')+'%').limit(12);
+        p1=(data||[]).map(x=>({n:x.nome,eid:null,ibge:String(x.ibge||''),mun:(window.IBGE2MUN||{})[x.ibge]||('IBGE '+x.ibge),org:'P1'}));}catch(e){}
+    }
+    if(inp.value.trim()!==raw)return;                      // usuário continuou digitando
+    const seen=new Set(), items=[];
+    loc.concat(p1).forEach(s=>{const k=norm(s.n)+'|'+(s.ibge||s.eid);if(!seen.has(k)){seen.add(k);items.push(s);}});
+    if(!items.length){box.hidden=true;return;}
+    box.innerHTML=items.slice(0,12).map((s,i)=>`<button type="button" class="sugitem" data-i="${i}"><b>${s.n}</b><span>${s.mun||'—'} · ${s.org==='P1'?'Painel 1':'base CRM'}</span></button>`).join('');
+    box._items=items;
+    const r=inp.getBoundingClientRect();
+    box.style.left=Math.min(r.left,window.innerWidth-320)+'px'; box.style.top=(r.bottom+4)+'px'; box.style.minWidth=Math.max(260,r.width)+'px';
+    box.hidden=false;
+  }
+  document.getElementById('namesug').addEventListener('click',e=>{
+    const b=e.target.closest('.sugitem'); if(!b)return;
+    const s=document.getElementById('namesug')._items[+b.dataset.i];
+    if(s&&!NAMESEL.some(x=>norm(x.n)===norm(s.n)&&x.ibge===s.ibge))NAMESEL.push(s);
+    ['q-serv','f-nome'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('namesug').hidden=true;
+    renderNameChips(); applyAll();
+  });
+  ['q-serv','f-nome'].forEach(id=>{const el=document.getElementById(id); if(!el)return;
+    el.addEventListener('input',()=>{clearTimeout(sugTimer);sugTimer=setTimeout(()=>suggest(el),300);});
+  });
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('#namesug')&&!e.target.closest('#q-serv')&&!e.target.closest('#f-nome'))
+      document.getElementById('namesug').hidden=true;
   });
 </script>
