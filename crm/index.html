@@ -524,6 +524,8 @@
   .namechips{display:flex;gap:6px;flex-wrap:wrap;align-self:center;max-width:360px}
   .namechip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-wash);color:var(--accent);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:600}
   .namechip button{border:none;background:none;color:inherit;cursor:pointer;padding:0;font-size:11px}
+
+  .sugwait{padding:8px 10px;font-size:11px;color:var(--faint);font-family:var(--mono)}
 </style>
 
 <div id="login">
@@ -2194,26 +2196,36 @@
     const b=e.target.closest('button'); if(!b)return;
     NAMESEL.splice(+b.dataset.i,1); renderNameChips(); applyAll();
   });
+  let SUGSEQ=0;
+  function sugPaint(inp,items,pend){
+    const box=document.getElementById('namesug');
+    box._items=items;
+    box.innerHTML=items.slice(0,14).map((s,i)=>`<button type="button" class="sugitem" data-i="${i}"><b>${s.n}</b><span>${s.mun||'—'} · ${s.org==='P1'?'Painel 1':'base CRM'}</span></button>`).join('')
+      +(pend?'<div class="sugwait">⏳ buscando no Painel 1 (1,36M registros)…</div>':'')
+      +(!items.length&&!pend?'<div class="sugwait">nenhum servidor encontrado</div>':'');
+    const r=inp.getBoundingClientRect();
+    box.style.left=Math.min(r.left,window.innerWidth-320)+'px'; box.style.top=(r.bottom+4)+'px'; box.style.minWidth=Math.max(280,r.width)+'px';
+    box.hidden=false;
+  }
   async function suggest(inp){
     const raw=inp.value.trim(), box=document.getElementById('namesug');
     if(raw.length<3){box.hidden=true;return;}
-    const nn=norm(raw);
-    const loc=(window.ALLSRV||[]).filter(s=>s.nn.includes(nn)).slice(0,8)
-      .map(s=>({n:s.n,eid:s.eid,ibge:String((entById[s.eid]||{}).cod_ibge||''),mun:(entById[s.eid]||{}).municipio||'',org:'CRM'}));
-    let p1=[];
-    if(typeof sbc!=='undefined'){
-      try{const{data}=await sbc.from('painel1_servidores').select('nome,ibge').ilike('nome','%'+raw.replace(/[%_]/g,'')+'%').limit(12);
-        p1=(data||[]).map(x=>({n:x.nome,eid:null,ibge:String(x.ibge||''),mun:(window.IBGE2MUN||{})[x.ibge]||('IBGE '+x.ibge),org:'P1'}));}catch(e){}
-    }
-    if(inp.value.trim()!==raw)return;                      // usuário continuou digitando
+    const seq=++SUGSEQ, nn=norm(raw);
+    // 1) locais: instantâneo
     const seen=new Set(), items=[];
-    loc.concat(p1).forEach(s=>{const k=norm(s.n)+'|'+(s.ibge||s.eid);if(!seen.has(k)){seen.add(k);items.push(s);}});
-    if(!items.length){box.hidden=true;return;}
-    box.innerHTML=items.slice(0,12).map((s,i)=>`<button type="button" class="sugitem" data-i="${i}"><b>${s.n}</b><span>${s.mun||'—'} · ${s.org==='P1'?'Painel 1':'base CRM'}</span></button>`).join('');
-    box._items=items;
-    const r=inp.getBoundingClientRect();
-    box.style.left=Math.min(r.left,window.innerWidth-320)+'px'; box.style.top=(r.bottom+4)+'px'; box.style.minWidth=Math.max(260,r.width)+'px';
-    box.hidden=false;
+    const add=s=>{const k=norm(s.n)+'|'+(s.ibge||s.eid);if(!seen.has(k)){seen.add(k);items.push(s);}};
+    (window.ALLSRV||[]).filter(s=>s.nn.includes(nn)).slice(0,8)
+      .forEach(s=>add({n:s.n,eid:s.eid,ibge:String((entById[s.eid]||{}).cod_ibge||''),mun:(entById[s.eid]||{}).municipio||'',org:'CRM'}));
+    sugPaint(inp,items,typeof sbc!=='undefined');
+    // 2) Painel 1: assíncrono; só a ÚLTIMA requisição renderiza
+    if(typeof sbc==='undefined')return;
+    try{
+      const{data,error}=await sbc.from('painel1_servidores').select('nome,ibge')
+        .ilike('nome','%'+raw.replace(/[%_]/g,'')+'%').limit(12);
+      if(seq!==SUGSEQ)return;                              // chegou atrasada — outra busca assumiu
+      if(!error)(data||[]).forEach(x=>add({n:x.nome,eid:null,ibge:String(x.ibge||''),mun:(window.IBGE2MUN||{})[x.ibge]||('IBGE '+x.ibge),org:'P1'}));
+      sugPaint(inp,items,false);
+    }catch(e){if(seq===SUGSEQ)sugPaint(inp,items,false);}
   }
   document.getElementById('namesug').addEventListener('click',e=>{
     const b=e.target.closest('.sugitem'); if(!b)return;
