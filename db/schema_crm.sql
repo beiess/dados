@@ -354,3 +354,14 @@ create policy apr_ins on apuracoes for insert to authenticated
 --   3) python3 tools/crm_logins.py --link israel@licitapublica.com.br   (+ provisionar CPFs)
 --   4) publicar crm/index.html (GitHub Pages)
 -- ============================================================================
+
+-- ============================================================================
+-- MIGRAÇÃO v2.1 — lotes do produto + desconto por organização + modalidade
+-- (idempotente: pode rodar de novo com segurança)
+-- ============================================================================
+alter table campanhas add column if not exists lotes jsonb default '[]';
+  -- [{nome:'Lote 1', data:'2026-08-31', pres:1200, online:790}, ...]
+alter table campanhas add column if not exists desconto_org_pct numeric default 0;
+  -- % de desconto POR servidor adicional já capturado da MESMA organização
+alter table capturas add column if not exists modalidade text
+  check (modalidade in ('presencial','online') or modalidade is null);
