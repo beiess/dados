@@ -38,7 +38,7 @@ class NetErr(Exception):
     """Falha de rede/DNS persistente (distinta de resposta HTTP de erro)."""
 
 
-def get(url, timeout=120, tries=8, raise_net=False):
+def get(url, timeout=180, tries=8, raise_net=False):
     """Retorna JSON. HTTP 404 -> None. HTTP 4xx com corpo -> devolve o JSON de erro
     (ex.: {message,status}). Erro de REDE/DNS após as tentativas -> None, ou levanta
     NetErr se raise_net=True (usado na paginação p/ abortar de forma resumível)."""
