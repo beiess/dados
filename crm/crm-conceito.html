@@ -1,0 +1,1546 @@
+<title>Plenum CRM — Conceito</title>
+<style>
+  :root{
+    --canvas:#F4F6F7; --surface:#FFFFFF; --surface-2:#FBFCFD;
+    --ink:#15191E; --muted:#63707B; --faint:#8A96A0;
+    --border:#E4E8EB; --border-2:#EEF1F3;
+    --accent:#12626E; --accent-d:#0E4E58; --accent-wash:#E7F0F1;
+    --good:#2C8A57; --warn:#B0771A; --crit:#BB4438;
+    --gp:#12626E; --gp-wash:#E7F0F1; --leg:#7A5296; --leg-wash:#F0EAF5;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sh:0 1px 2px rgba(20,30,40,.05),0 1px 3px rgba(20,30,40,.04);
+    --sh-2:0 8px 30px rgba(20,30,40,.16);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--sans);
+    font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;letter-spacing:-.005em}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+  a{color:var(--accent);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+  .app{display:grid;grid-template-columns:212px 1fr;min-height:100vh}
+  .side{background:#0F1D22;color:#C4D2D5;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:9px;padding:16px 18px 14px}
+  .brand .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(150deg,#1B7A87,#0E4E58);display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;flex:none}
+  .brand b{color:#fff;font-size:15px;font-weight:650}.brand span{display:block;font-size:10px;color:#7E9498;letter-spacing:.04em}
+  .nav{display:flex;flex-direction:column;gap:1px;padding:8px 10px;flex:1}
+  .nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;color:#AEC0C3;font-weight:500;font-size:12.5px}
+  .nav a .ico{width:15px;height:15px;flex:none;opacity:.85}.nav a:hover{background:#172A30;color:#fff}.nav a.on{background:#12626E;color:#fff}
+  .nav .sec{padding:14px 12px 5px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5F787C}
+  .me{display:flex;align-items:center;gap:9px;padding:12px 14px;border-top:1px solid #1C2F35;margin-top:auto}
+  .me .av{width:30px;height:30px;border-radius:50%;background:#7A5296;color:#fff;display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+  .me b{color:#fff;font-size:12.5px;display:block;font-weight:600}.me span{font-size:11px;color:#8299a0}
+
+  .main{display:flex;flex-direction:column;min-width:0}
+  .top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:10px 20px}
+  .camp-pick{display:flex;align-items:center;gap:9px;padding:6px 11px;border:1px solid var(--border);border-radius:9px;background:var(--surface);box-shadow:var(--sh)}
+  .camp-pick .dot{width:8px;height:8px;border-radius:50%;background:var(--good)}.camp-pick b{font-weight:650;font-size:13px}.camp-pick .chev{color:var(--faint)}
+  .segs{display:flex;gap:5px}
+  .segbtn{padding:5px 11px;border:1px solid var(--border);background:var(--surface);border-radius:999px;font-size:12px;font-weight:550;color:var(--muted)}
+  .segbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .spacer{flex:1}
+  .search{display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--faint);font-size:12.5px;min-width:180px}
+  .adminbox{display:flex;align-items:center;gap:8px;padding:5px 11px;border:1px solid var(--border);border-radius:9px;background:var(--surface)}
+  .adminbox span{font-size:12px;font-weight:600;color:var(--muted)}
+  .sw{width:34px;height:19px;border-radius:999px;background:#CDD6DA;position:relative;transition:.15s;flex:none;border:none;padding:0}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  body.admin .sw{background:var(--accent)}body.admin .sw::after{left:17px}
+
+  .content{padding:20px;display:flex;flex-direction:column;gap:16px}
+
+  /* campaign header */
+  .camp{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
+  .camp-head{display:flex;gap:18px;padding:16px 20px;border-bottom:1px solid var(--border-2)}
+  .camp-head .l{flex:1;min-width:0}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600}
+  .pill.ativa{background:#E6F1EA;color:var(--good)}
+  .camp h1{margin:9px 0 4px;font-size:20px;font-weight:680;letter-spacing:-.02em;text-wrap:balance}
+  .camp .sub{color:var(--muted);font-size:12.5px;display:flex;gap:16px;flex-wrap:wrap}.camp .sub b{color:var(--ink);font-weight:600}
+  .editbtn{display:none;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--border);background:var(--surface);border-radius:8px;font-size:12px;font-weight:600;color:var(--accent);height:fit-content}
+  body.admin .editbtn{display:inline-flex}
+  body.admin .editable{outline:1px dashed #BBCED0;outline-offset:3px;border-radius:6px}
+  .attach{display:flex;gap:26px;padding:14px 20px;flex-wrap:wrap;background:var(--surface-2)}
+  .attach .lbl{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:550;box-shadow:var(--sh)}
+  .chip .ext{font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;padding:2px 4px;border-radius:3px}
+  .ext.pdf{background:#BB4438}.ext.xls{background:#2C8A57}.ext.doc{background:#2E5AAC}.ext.img{background:#B0771A}
+  .chip.link{color:var(--accent)}.chip.link .ar{color:var(--faint);font-size:11px}
+  .chip.add{border-style:dashed;color:var(--muted);background:transparent;display:none}body.admin .chip.add{display:inline-flex}
+
+  /* TABS */
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
+  .tabs{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--border);overflow-x:auto}
+  .tab{display:flex;align-items:center;gap:8px;padding:12px 13px 11px;border:none;background:none;font-size:12.5px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;position:relative;top:1px}
+  .tab .stdot{width:8px;height:8px;border-radius:2px;background:var(--tc,var(--faint))}
+  .tab .cnt{font-family:var(--mono);font-size:10.5px;font-weight:600;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:0 6px;color:var(--muted)}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+  .tab.on .cnt{background:var(--accent-wash);border-color:transparent;color:var(--accent)}
+
+  .tblwrap{overflow-x:auto}
+  table.leads{width:100%;border-collapse:collapse;font-size:12.5px;min-width:920px}
+  .leads thead th{position:sticky;top:0;background:var(--surface);text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;z-index:2}
+  .leads th.r,.leads td.r{text-align:right}
+  .leads tbody tr{border-bottom:1px solid var(--border-2);border-left:3px solid var(--sc);background:var(--scw);cursor:pointer;transition:.1s}
+  .leads tbody tr:hover{background:color-mix(in srgb,var(--sc) 12%,#fff)}
+  .leads tbody tr.sel{background:color-mix(in srgb,var(--sc) 16%,#fff);box-shadow:inset 3px 0 0 var(--sc)}
+  .leads td{padding:9px 12px;vertical-align:middle}
+  .cli b{font-weight:650;font-size:12.5px;display:block;line-height:1.3}
+  .cli span{font-size:11px;color:var(--muted)}
+  .tag{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .tag.gp{background:var(--gp-wash);color:var(--gp)}.tag.leg{background:var(--leg-wash);color:var(--leg)}
+  .stpill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:650;padding:3px 9px;border-radius:999px;background:var(--scw);color:var(--sc);white-space:nowrap}
+  .stpill .d{width:6px;height:6px;border-radius:50%;background:var(--sc)}
+  .avs{display:flex}
+  .av{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:9.5px;font-weight:650;border:2px solid var(--scw);margin-left:-7px}
+  .av:first-child{margin-left:0}
+  .money{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;letter-spacing:-.02em;white-space:nowrap}
+  .money small{color:var(--faint);font-weight:500;font-size:10px}
+  .when{color:var(--muted);white-space:nowrap}.when b{color:var(--ink);font-weight:600}
+  .next{color:var(--ink)}.next.warn{color:var(--warn);font-weight:600}
+  .chev{color:var(--faint);font-size:14px}
+  tr[hidden]{display:none}
+
+  /* CASCADE TREE (aba Todos) */
+  .tree{padding:6px 0}
+  .trow{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;border-bottom:1px solid var(--border-2);user-select:none}
+  .trow:hover{background:var(--surface-2)}
+  .tchev{width:14px;flex:none;color:var(--faint);font-size:11px;transition:transform .12s;text-align:center}
+  .tnode.open>.trow>.tchev{transform:rotate(90deg)}
+  .tlabel{font-weight:600;font-size:12.5px}
+  .tcount{font-family:var(--mono);font-size:10.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:0 6px}
+  .tchildren{display:none}.tnode.open>.tchildren{display:block}
+  /* níveis */
+  .lv-esfera>.trow{background:#0F1D22;color:#fff;border-bottom:none}
+  .lv-esfera>.trow .tlabel{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+  .lv-esfera>.trow .tchev,.lv-esfera>.trow .tcount{color:#9FB3B7}
+  .lv-esfera>.trow .tcount{background:#182b31;border-color:#24383e}
+  .lv-poder>.trow{background:var(--surface-2)}
+  .lv-poder>.trow .tlabel{color:var(--muted);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+  .lv-tipo>.trow .tlabel{color:var(--ink);font-weight:650}
+  .lv-tipo>.trow .tpill{font-size:10px;font-weight:600;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:1px 8px}
+  /* entidade */
+  .lv-ent>.trow{border-left:3px solid var(--sc);background:color-mix(in srgb,var(--sc) 6%,#fff)}
+  .lv-ent>.trow:hover{background:color-mix(in srgb,var(--sc) 12%,#fff)}
+  .lv-ent .ent-nm{font-weight:650;font-size:12.5px}
+  .lv-ent .grow{flex:1}
+  .vend{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted)}
+  .vend .av{width:20px;height:20px;font-size:9px;margin:0;border:none}
+  .vend b{color:var(--ink);font-weight:600}
+  .vend .none{color:var(--warn);font-weight:600}
+
+  /* detalhe da entidade: contatos + servidores */
+  .edetail{background:var(--surface-2);border-bottom:1px solid var(--border-2);padding:12px 16px 14px 40px;display:none}
+  .bt-sub{font-weight:500;text-transform:none;letter-spacing:0;color:var(--faint)}
+  /* estrutura organizacional (secretarias até 2º nível) */
+  /* cadência de cor por tema: --sc definido na secretaria e herdado pela unidade */
+  .orgnode.lv-sec{border:1px solid var(--border);border-left:3px solid var(--sc,#5B7A98);border-radius:9px;margin-bottom:7px;overflow:hidden}
+  .orgrow{display:flex;align-items:center;gap:9px;padding:8px 11px;cursor:pointer;user-select:none}
+  .lv-sec>.orgrow{background:color-mix(in srgb,var(--sc,#5B7A98) 9%,#fff)}
+  .lv-sec>.orgrow .orgnm{color:color-mix(in srgb,var(--sc,#5B7A98) 62%,#15191E)}
+  .lv-uni{border-top:1px solid var(--border-2);border-left:2px solid color-mix(in srgb,var(--sc,#5B7A98) 40%,#fff)}
+  .lv-uni>.orgrow{background:color-mix(in srgb,var(--sc,#5B7A98) 4%,var(--surface-2));padding-left:16px}
+  .orgnode>.tchildren{display:none;padding:6px 10px 8px}.orgnode.open>.tchildren{display:block}
+  .orgnode.open>.orgrow>.tchev{transform:rotate(90deg)}
+  .orgnm{font-weight:650;font-size:12px}
+  .orgnm2{font-weight:600;font-size:11.5px;color:color-mix(in srgb,var(--sc,#5B7A98) 55%,#63707B)}
+  .emailchip{font-family:var(--mono);font-size:10.5px;color:var(--sc,var(--accent));background:color-mix(in srgb,var(--sc,#12626E) 11%,#fff);border-radius:6px;padding:2px 7px;white-space:nowrap}
+  .temachip{font-size:10px;font-weight:600;padding:1px 8px;border-radius:999px;background:#EEF1F3;color:var(--muted);white-space:nowrap}
+  .lv-sec>.orgrow .temachip{background:color-mix(in srgb,var(--sc,#5B7A98) 15%,#fff);color:var(--sc,#5B7A98)}
+  .svline{border-left:2px solid color-mix(in srgb,var(--sc,#5B7A98) 30%,#fff)}
+  .tnode.open>.edetail{display:block}
+  .eblock{margin-bottom:12px}
+  .eblock .bt{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .ctline,.svline{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12px;flex-wrap:wrap}
+  .cttag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-wash);color:var(--accent);white-space:nowrap}
+  .cttag.sec{background:var(--leg-wash);color:var(--leg)}.cttag.serv{background:#EAEFF3;color:#5B7A98}
+  .ctval{font-family:var(--mono);font-size:11.5px}
+  .ctval a{color:var(--accent)}
+  .ctmeta{color:var(--muted);font-size:11px}
+  .svline .snm{font-weight:600}.svline .scargo{color:var(--muted);font-size:11px}
+  .grow2{flex:1}
+  .addbtn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px dashed var(--border);background:transparent;border-radius:7px;font-size:11.5px;font-weight:600;color:var(--accent)}
+  .addbtn:hover{background:var(--accent-wash);border-style:solid}
+  .addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+
+  /* barra de filtros */
+  .filterbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh);padding:11px 14px}
+  .fb-title{align-self:center}
+  .fsel{display:flex;flex-direction:column;gap:4px;font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+  .fsel select{font-family:var(--sans);font-size:12.5px;font-weight:550;color:var(--ink);border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:6px 9px;min-width:118px;letter-spacing:normal;text-transform:none}
+  .fsel select:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .fb-spacer{flex:1}
+  .fcount{font-family:var(--mono);font-size:11.5px;color:var(--muted);align-self:center}
+  .fclear{align-self:center;padding:7px 12px;border:1px solid var(--border);background:var(--surface);border-radius:8px;font-size:12px;font-weight:600;color:var(--muted)}
+  .fclear:hover{color:var(--ink);border-color:var(--muted)}
+
+  /* nome do servidor clicável + modal de ficha */
+  .snm{font-family:inherit;border:none;background:none;padding:0;font-weight:600;font-size:12px;color:var(--ink);cursor:pointer;text-align:left}
+  .snm:hover{color:var(--accent);text-decoration:underline}
+  .scrim2{position:fixed;inset:0;background:rgba(15,29,34,.42);opacity:0;visibility:hidden;transition:.16s;z-index:60}
+  .scrim2.open{opacity:1;visibility:visible}
+  .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.98);opacity:0;visibility:hidden;transition:.18s;z-index:70;width:470px;max-width:94vw;max-height:88vh;overflow-y:auto;background:var(--surface);border-radius:14px;box-shadow:var(--sh-2);display:flex;flex-direction:column}
+  .modal.open{transform:translate(-50%,-50%);opacity:1;visibility:visible}
+  .modal .mh{padding:16px;border-bottom:1px solid var(--border-2);position:relative}
+  .modal .mh .x{position:absolute;right:14px;top:14px;border:none;background:var(--surface-2);width:28px;height:28px;border-radius:7px;color:var(--muted);font-size:14px}
+  .modal .mh h3{margin:6px 0 4px;font-size:17px;font-weight:680;letter-spacing:-.01em}
+  .sv-sub{font-size:12px;color:var(--muted)}
+  .modal .mb{padding:14px 16px 18px}
+  .infoline{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;margin-bottom:7px}
+  .infoline .cttag{background:var(--accent-wash);color:var(--accent)}
+  .infoline .iv{flex:1;font-size:12.5px;min-width:0;word-break:break-word}
+  .infoline .iv small{color:var(--muted)}
+  .infox{border:none;background:none;color:var(--faint);font-size:14px;cursor:pointer;padding:0 2px}
+  .infox:hover{color:var(--crit)}
+  .sv-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:13px;padding-top:13px;border-top:1px solid var(--border-2)}
+  .sv-add .lb{width:100%;margin-bottom:-2px}
+  .sv-add select,.sv-add input{font-family:var(--sans);font-size:12.5px;color:var(--ink);border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:8px 9px}
+  .sv-add input{flex:1;min-width:130px}
+  .sv-add select:focus,.sv-add input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  #sv-addbtn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:600;font-size:12.5px;cursor:pointer}
+  #sv-addbtn:hover{background:var(--accent-d)}
+
+  /* cadastro/edição de campanha */
+  .newcampbtn{padding:6px 11px;border:1px solid var(--accent);background:var(--accent-wash);color:var(--accent);border-radius:9px;font-size:12px;font-weight:600}
+  .modal.wide{width:620px}
+  .frow{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+  .frow>label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+  .frow input,.frow select,.frow textarea{font-family:var(--sans);font-size:13px;color:var(--ink);border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:9px 10px}
+  .frow input:focus,.frow select:focus,.frow textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .frow2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .rulepick{display:flex;gap:8px;flex-wrap:wrap}
+  .rulepick label{display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:550;cursor:pointer;background:var(--surface-2)}
+  .rulepick input{accent-color:var(--accent)}
+  .chipedit{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .chipedit .chip .rm{border:none;background:none;color:var(--faint);cursor:pointer;font-size:12px;padding:0 0 0 2px}
+  .chipedit .chip .rm:hover{color:var(--crit)}
+  .addline{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .addline input{flex:1;min-width:120px;font-family:var(--sans);font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:8px 9px}
+  .leadpick{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--surface-2)}
+  .leadpick label{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 6px;border-radius:6px;cursor:pointer}
+  .leadpick label:hover{background:var(--surface)}
+  .leadpick input{accent-color:var(--accent)}
+  .mfoot{display:flex;justify-content:flex-end;gap:10px;padding:13px 16px;border-top:1px solid var(--border-2);position:sticky;bottom:0;background:var(--surface)}
+  .btn-ghost{padding:9px 15px;border:1px solid var(--border);background:var(--surface);border-radius:8px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer}
+  .btn-ghost:hover{color:var(--ink);border-color:var(--muted)}
+  .btn-primary{padding:9px 16px;border:none;background:var(--accent);color:#fff;border-radius:8px;font-weight:600;font-size:12.5px;cursor:pointer}
+  .btn-primary:hover{background:var(--accent-d)}
+
+  /* seleção de leads por critério */
+  .critbox{border:1px solid var(--border);border-radius:9px;padding:11px;background:var(--surface-2)}
+  .critbox .frow{margin-bottom:0}
+  .critgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tchips{display:flex;gap:6px;flex-wrap:wrap}
+  .tchip{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
+  .tchip.on{color:#fff;border-color:transparent}
+  .critresult{margin-top:11px;padding-top:10px;border-top:1px solid var(--border)}
+  .critcount{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .critcount b{font-family:var(--mono);font-size:16px;color:var(--accent)}
+  .critcount button{margin-left:auto;border:none;background:none;color:var(--accent);font-size:11.5px;font-weight:600;cursor:pointer}
+  .critprev{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;max-height:104px;overflow-y:auto}
+  .previtem{font-size:11px;font-weight:550;padding:3px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);white-space:nowrap}
+
+  /* captura de atuação — parceiros */
+  .partrow{display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:12.5px}
+  .partrow select{flex:1;font-family:var(--sans);font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:7px 9px}
+  .partrow input{width:70px;font-family:var(--mono);font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:7px 8px}
+  .partrow .rmp{border:none;background:none;color:var(--faint);cursor:pointer;font-size:14px}
+  .partrow .rmp:hover{color:var(--crit)}
+  .capnote{font-size:11px;color:var(--faint);margin-top:5px}
+  #cap-obs{font-family:var(--sans);resize:vertical}
+
+  /* captura por servidor + vínculo de campanha */
+  .frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .svcapbtn{border:1px solid var(--border);background:var(--surface);color:var(--accent);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;padding:1px 7px;margin-left:6px}
+  .svcapbtn:hover{background:var(--accent-wash)}
+  .svcap{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:6px}
+  .campchip{font-size:10px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--accent-wash);color:var(--accent);white-space:nowrap}
+  .respmini{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted)}
+  .respmini .av{width:16px;height:16px;font-size:8px;margin:0;border:none}
+  .capparams{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:11px;font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+  .capparams b{color:var(--ink);font-family:var(--mono)}
+  .capwarn{background:var(--warn-wash,#F7EFDD);border:1px solid var(--warn);color:var(--warn);border-radius:9px;padding:10px 12px;font-size:12px;font-weight:550;margin-bottom:12px}
+  .caplock{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12.5px}
+  .caplock .av{width:24px;height:24px;font-size:10px;margin:0;border:none}
+  .caplock b{font-weight:600}.caplock .lk{margin-left:auto;font-size:11px;color:var(--faint)}
+  .sv-vinc{margin-bottom:14px}
+  .sv-vinc .box{border:1px solid var(--border);border-radius:9px;padding:11px;background:var(--surface-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px}
+  .sv-vinc .box .stpill{--sc:#5B7A98;--scw:#EBEFF3}
+
+  /* ===== PAINEL DE COMISSÕES ===== */
+  [hidden]{display:none!important}
+  .commhead{display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid var(--border-2)}
+  .commhead h2{margin:2px 0 0;font-size:19px;font-weight:680;letter-spacing:-.02em}
+  .commhead select{font-family:var(--sans);font-size:12.5px;font-weight:550;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:6px 9px}
+  table.commtab{width:100%;border-collapse:collapse;font-size:12.5px;min-width:920px}
+  .commtab thead th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .commtab th.r,.commtab td.r{text-align:right}
+  .commtab tbody tr.vrow{border-bottom:1px solid var(--border-2);cursor:pointer}
+  .commtab tbody tr.vrow:hover{background:var(--surface-2)}
+  .commtab td{padding:10px 12px;vertical-align:middle}
+  .vwho{display:flex;align-items:center;gap:9px}
+  .vwho .av{width:26px;height:26px;font-size:10px;margin:0;border:none}
+  .vwho b{font-weight:650}
+  .vwho span{display:block;font-size:11px;color:var(--muted)}
+  tr.vdetail>td{background:var(--surface-2);padding:4px 14px 14px;border-bottom:1px solid var(--border-2)}
+  .memline{display:flex;align-items:center;gap:10px;padding:8px 11px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:7px;font-size:12px;flex-wrap:wrap}
+  .memline b{font-weight:650}
+  .memcalc{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .stpay{font-size:10.5px;font-weight:650;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .stpay.ap{background:#E6F1EA;color:var(--good)}
+  .stpay.pr{background:#F7EFDD;color:var(--warn)}
+  .tag.base{background:#EEF1F3;color:var(--muted)}
+  .tag.novo{background:var(--accent-wash);color:var(--accent)}
+  .metabar{width:120px;height:6px;border-radius:3px;background:var(--border-2);overflow:hidden;display:inline-block;vertical-align:middle;margin-top:6px}
+  .metabar i{display:block;height:100%;background:var(--accent)}
+  .rulecards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .rulecard{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh);padding:14px 15px;position:relative}
+  .rulecard h4{margin:0 0 3px;font-size:13px;font-weight:680;display:flex;align-items:center;gap:7px}
+  .rulecard .sub{font-size:11px;color:var(--faint);margin-bottom:9px}
+  .rulecard .tier{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--border-2)}
+  .rulecard .tier:last-child{border-bottom:none}
+  .rulecard .tier b{font-family:var(--mono);font-weight:650}
+  .rulecard .editbtn{position:absolute;top:10px;right:10px;padding:3px 7px}
+  @media(max-width:1080px){.rulecards{grid-template-columns:repeat(2,1fr)}}
+
+  /* equipe & organização (cadastro · admin) */
+  .adminonly{display:none!important}
+  body.admin .adminonly{display:inline-flex!important;align-items:center;justify-content:center}
+  .teamlock{background:#F7EFDD;border:1px solid var(--warn);color:var(--warn);border-radius:10px;padding:11px 14px;font-size:12.5px;font-weight:600;margin-bottom:16px}
+  body.admin .teamlock{display:none}
+  .orgcards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px}
+  .orgcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh);padding:15px;text-align:left}
+  .orgcard .tipoemp{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .tipoemp.mz{background:var(--accent-wash);color:var(--accent)}
+  .tipoemp.fl{background:var(--leg-wash);color:var(--leg)}
+  .orgcard h4{margin:8px 0 2px;font-size:13.5px;font-weight:680;line-height:1.35}
+  .orgcard .cnpj{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .orgcard .qtd{margin-top:8px;font-size:12px;color:var(--muted)}
+  button.orgcard{cursor:pointer;border-style:dashed;color:var(--accent);font-weight:600;font-size:12.5px;font-family:var(--sans)}
+  .rulecard.editing{outline:2px solid var(--accent)}
+  .rulecard.editing .tier b{outline:1px dashed var(--accent);border-radius:4px;padding:0 5px;background:var(--accent-wash);min-width:28px;display:inline-block}
+  @media(max-width:900px){.orgcards{grid-template-columns:1fr}}
+
+  /* whatsapp (celular) + histórico/versões de comissão */
+  a.wa{display:inline-flex;align-items:center;gap:4px;color:#128C4B;font-weight:600;background:#E8F6EE;border:1px solid #BFE5CE;border-radius:6px;padding:1px 7px;font-family:var(--mono);font-size:10.5px;white-space:nowrap}
+  a.wa:hover{background:#D7F0E2}
+  a.wa .wai{width:11px;height:11px;flex:none}
+  .rulever{font-size:9.5px;font-weight:700;font-family:var(--mono);background:#EEF1F3;color:var(--muted);border-radius:5px;padding:1px 6px;white-space:nowrap}
+  .rulever.on{background:var(--accent-wash);color:var(--accent)}
+  .rulehead{display:flex;align-items:center;gap:10px;margin:2px 2px 10px}
+  .verline{display:flex;gap:10px;align-items:baseline;padding:9px 16px;border-bottom:1px dashed var(--border-2);font-size:12px;flex-wrap:wrap}
+  .verline:last-child{border-bottom:none}
+  .verline .desc{color:var(--muted);flex:1;min-width:220px}
+  .verline .por{font-size:11px;color:var(--faint)}
+
+  /* menu sanduíche + alto contraste */
+  .iconbtn{border:1px solid var(--border);background:var(--surface);border-radius:9px;width:32px;height:32px;font-size:15px;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none}
+  .iconbtn:hover{color:var(--ink);border-color:var(--muted)}
+  body.sidehide .app{grid-template-columns:1fr}
+  body.sidehide .side{display:none}
+  body.hc{--ink:#000;--muted:#2E3A44;--faint:#44525C;--border:#8C9AA4;--border-2:#B9C3CA;--surface-2:#F1F4F6}
+  body.hc .tag,body.hc .stpill,body.hc .temachip,body.hc .rulever,body.hc .cttag{font-weight:700}
+  body.hc .ctmeta,body.hc .scargo,body.hc .obrahint{color:#2E3A44}
+
+  .legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--border-2);background:var(--surface-2);font-size:11.5px;color:var(--muted)}
+  .legend .k{display:inline-flex;align-items:center;gap:6px}.legend .k i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+  /* 360 drawer */
+  .scrim{position:fixed;inset:0;background:rgba(15,29,34,.34);opacity:0;visibility:hidden;transition:.18s;z-index:40}
+  .scrim.open{opacity:1;visibility:visible}
+  .drawer{position:fixed;top:0;right:0;height:100vh;width:390px;max-width:92vw;background:var(--surface);box-shadow:var(--sh-2);z-index:50;transform:translateX(100%);transition:transform .2s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+  .drawer.open{transform:none}
+  .dh{padding:16px;border-bottom:1px solid var(--border-2)}
+  .dh .x{float:right;border:none;background:var(--surface-2);width:28px;height:28px;border-radius:7px;color:var(--muted);font-size:15px}
+  .dh h3{margin:6px 0;font-size:16px;font-weight:680;letter-spacing:-.01em;line-height:1.3}
+  .dh .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:8px}.dh .v small{font-size:11px;color:var(--muted)}
+  .stagebar{display:flex;gap:3px;margin-top:12px}
+  .stagebar i{height:4px;flex:1;border-radius:2px;background:var(--border)}
+  .sec360{padding:14px 16px;border-top:1px solid var(--border-2)}
+  .sec360 .h{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+  .sec360 .h .t{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .sec360 .h .add360{display:none;font-size:11px;font-weight:600;color:var(--accent)}body.admin .sec360 .h .add360{display:inline}
+  .actor{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+  .actor .av{width:28px;height:28px;font-size:11px;margin:0;border:none}
+  .actor .info{flex:1;min-width:0}.actor .info b{font-size:12.5px;font-weight:600;display:block}.actor .info span{font-size:11px;color:var(--muted)}
+  .actor .role{font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;background:#EAEFF3;color:#5B7A98}.actor .role.resp{background:var(--accent-wash);color:var(--accent)}
+  .rateiobar{height:5px;border-radius:3px;background:var(--border-2);margin-top:5px;overflow:hidden}.rateiobar i{display:block;height:100%;background:var(--accent)}
+  .tl{display:flex;flex-direction:column;padding-left:6px}
+  .ev{display:flex;gap:11px;padding-bottom:14px;position:relative}
+  .ev::before{content:"";position:absolute;left:4px;top:14px;bottom:-2px;width:1.5px;background:var(--border)}.ev:last-child::before{display:none}
+  .ev .d{width:9px;height:9px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);margin-top:3px;flex:none;z-index:1}.ev.mut .d{border-color:var(--faint)}
+  .ev .c b{font-size:12px;font-weight:600}.ev .c p{margin:1px 0 0;font-size:11.5px;color:var(--muted)}.ev .c time{font-family:var(--mono);font-size:10px;color:var(--faint)}
+  .commrow{display:flex;justify-content:space-between;padding:7px 0;font-size:12px}.commrow:not(:last-child){border-bottom:1px solid var(--border-2)}
+  .commrow .who{color:var(--muted)}.commrow .who b{color:var(--ink)}.commrow .amt{font-family:var(--mono);font-weight:600}
+  .commtot{display:flex;justify-content:space-between;padding-top:9px;margin-top:3px;border-top:1.5px solid var(--border);font-size:12.5px}.commtot .amt{font-family:var(--mono);font-weight:700;color:var(--accent)}
+  .commrule{font-size:11px;color:var(--faint);margin-top:9px;line-height:1.5}
+
+  .note{text-align:center;color:var(--faint);font-size:11.5px;padding:2px 0;line-height:1.6}
+  @media(max-width:820px){.app{grid-template-columns:1fr}.side{display:none}}
+
+  /* ===== SIGILO: anti-cópia / anti-print (demonstração) ===== */
+  .seclock{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--warn);background:var(--warn-wash,#F7EFDD);border-radius:9px;font-size:11.5px;font-weight:600;color:var(--warn)}
+  body.protect .cli,body.protect .money,body.protect .ctval,body.protect .snm,body.protect .when,body.protect td,body.protect .ent-nm,body.protect .actor,body.protect .tl,body.protect #o-comm{user-select:none;-webkit-user-select:none}
+  #wm{position:fixed;inset:0;z-index:9;pointer-events:none;overflow:hidden;display:none;transform:rotate(-24deg) scale(1.4);opacity:.05;align-content:center;flex-wrap:wrap;gap:26px 40px;justify-content:center}
+  body.protect #wm{display:flex}
+  #wm span{font-family:var(--mono);font-size:12px;font-weight:700;color:#0F1D22;white-space:nowrap;letter-spacing:.04em}
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);z-index:200;background:#0F1D22;color:#fff;padding:11px 16px;border-radius:10px;font-size:12.5px;font-weight:600;box-shadow:var(--sh-2);display:flex;align-items:center;gap:9px;opacity:0;visibility:hidden;transition:.18s}
+  #toast.on{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+  #toast .lk{color:#F0C674}
+  #printblock{display:none}
+  @media print{
+    .app,.drawer,.scrim,#wm,#toast{display:none!important}
+    #printblock{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:90vh;text-align:center;padding:40px}
+    #printblock .bg{width:54px;height:54px;border-radius:14px;background:#0F1D22;color:#fff;display:grid;place-items:center;font-size:26px}
+    #printblock h2{font-size:20px;margin:0}#printblock p{color:#555;max-width:420px;margin:0}
+  }
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="mark">P</div><div><b>Plenum</b><span>CRM Comercial</span></div></div>
+    <nav class="nav">
+      <a class="on" href="#" id="nav-campanhas"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6h12"/></svg>Campanhas</a>
+      <a href="#"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h9M2 8h12M2 12h6"/></svg>Leads &amp; funil</a>
+      <a href="#"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 13c0-2.8 2.2-4.5 5-4.5s5 1.7 5 4.5"/></svg>Clientes</a>
+      <a href="#" id="nav-comissoes"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12M11 4.5H6.5a2 2 0 000 4h3a2 2 0 010 4H4.5"/></svg>Comissões</a>
+      <a href="#" id="nav-equipe"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="6" r="2"/><circle cx="11" cy="6.5" r="1.8"/><path d="M2 13c0-2 1.6-3.2 3.5-3.2S9 11 9 13M9.5 12.6c0-1.6 1.2-2.6 2.8-2.6s2.7 1 2.7 2.6"/></svg>Equipe</a>
+      <div class="sec">Administração</div>
+      <a href="#" id="nav-empresas"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l5 2.5v3c0 3-2.2 5.2-5 6.5-2.8-1.3-5-3.5-5-6.5v-3z"/></svg>Empresas &amp; filiais</a>
+      <a href="#" id="nav-regras"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M15 8h-2M3 8H1"/></svg>Regras de comissão</a>
+    </nav>
+    <div class="me"><div class="av" style="background:#12626E">IS</div><div><b>Israel S.</b><span>israel@licitapublica.com.br · acesso irrestrito</span></div></div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <button class="iconbtn" id="hamb" title="Recolher / expandir menu" aria-label="Menu">☰</button>
+      <div class="camp-pick"><span class="dot"></span><b>Campanha Obras 2026</b><span class="chev">▾</span></div>
+      <button class="newcampbtn" id="newCampBtn">＋ Nova campanha</button>
+      <div class="segs"><button class="segbtn on">Todas</button><button class="segbtn">Gestão Pública</button><button class="segbtn">Legislativo</button></div>
+      <div class="spacer"></div>
+      <div class="search">🔎&nbsp; Buscar cliente, órgão, cidade…</div>
+      <span class="seclock" title="Cópia, seleção e impressão bloqueadas — segredo de negócio">🔒 Sigilo ativo</span>
+      <button class="iconbtn" id="hcbtn" title="Alto contraste de cor" aria-label="Alto contraste">◐</button>
+      <div class="adminbox"><span>Admin: editar</span><button class="sw" id="adm" aria-label="Modo edição do administrador"></button></div>
+    </div>
+
+    <div class="content">
+      <!-- CAMPAIGN HEADER -->
+      <section class="camp" id="sec-camp">
+        <div class="camp-head">
+          <div class="l">
+            <span class="pill ativa">● Ativa</span>
+            <h1 class="editable" id="campTitle">Campanha Obras 2026 · Gestão Pública — MG</h1>
+            <div class="sub"><span>Período <b>01/02 – 31/12/2026</b></span><span>Meta <b class="num">R$ 1,2 mi</b></span><span>Regra <b>Progressiva por nível</b></span><span>Leads do <b>Painel Estratégico · Obras</b></span></div>
+          </div>
+          <button class="editbtn" id="editCampBtn">✎ Editar campanha</button>
+        </div>
+        <div class="attach">
+          <div><div class="lbl eyebrow">📎 Anexos exibidos na campanha</div>
+            <div class="row">
+              <span class="chip editable"><span class="ext pdf">PDF</span> Apresentação Plenum 2026</span>
+              <span class="chip editable"><span class="ext xls">XLS</span> Tabela de serviços &amp; preços</span>
+              <span class="chip editable"><span class="ext doc">DOC</span> Proposta-modelo obras</span>
+              <button class="chip add">＋ Anexar</button>
+            </div>
+          </div>
+          <div><div class="lbl eyebrow">🔗 Links vinculados</div>
+            <div class="row">
+              <a class="chip link editable" href="#">Painel Estratégico — Obras <span class="ar">↗</span></a>
+              <a class="chip link editable" href="#">Consulta PNCP <span class="ar">↗</span></a>
+              <button class="chip add">＋ Vincular link</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FILTROS -->
+      <div class="filterbar" id="sec-filtros">
+        <span class="fb-title eyebrow">Filtros</span>
+        <label class="fsel">Estado<select id="f-uf"><option value="">Todos</option></select></label>
+        <label class="fsel">Cidade<select id="f-cid"><option value="">Todas</option></select></label>
+        <label class="fsel">Esfera administrativa<select id="f-esf"><option value="">Todas</option></select></label>
+        <label class="fsel">Responsável<select id="f-resp"><option value="">Todos</option></select></label>
+        <label class="fsel">Tema<select id="f-tema"><option value="">Todos</option></select></label>
+        <span class="fb-spacer"></span>
+        <span class="fcount" id="fcount"></span>
+        <button class="fclear" id="fclear">Limpar</button>
+      </div>
+
+      <!-- TABS + TABLE -->
+      <section class="panel" id="sec-funil">
+        <div class="tabs" id="tabs">
+          <button class="tab on" data-tab="all">Todos <span class="cnt">12</span></button>
+          <button class="tab" data-tab="prospeccao" style="--tc:#5B7A98"><span class="stdot"></span>Prospecção <span class="cnt">4</span></button>
+          <button class="tab" data-tab="qualificacao" style="--tc:#2E5AAC"><span class="stdot"></span>Qualificação <span class="cnt">2</span></button>
+          <button class="tab" data-tab="proposta" style="--tc:#B0771A"><span class="stdot"></span>Proposta <span class="cnt">2</span></button>
+          <button class="tab" data-tab="negociacao" style="--tc:#C4611C"><span class="stdot"></span>Negociação <span class="cnt">2</span></button>
+          <button class="tab" data-tab="fechamento" style="--tc:#2C8A57"><span class="stdot"></span>Fechamento <span class="cnt">1</span></button>
+          <button class="tab" data-tab="posvenda" style="--tc:#12626E"><span class="stdot"></span>Pós-venda <span class="cnt">1</span></button>
+        </div>
+
+        <div id="view-tree" class="tree"></div>
+        <div id="view-stage" hidden><div class="tblwrap">
+          <table class="leads">
+            <thead><tr>
+              <th>Cliente / Órgão</th><th>Área</th><th class="r">Obras</th><th class="r">Valor</th>
+              <th>Estágio</th><th>Atuação</th><th>Última interação</th><th>Próxima ação</th><th class="r">Comissão prev.</th><th></th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div></div>
+
+        <div class="legend">
+          <span>Linhas coloridas por estágio:</span>
+          <span class="k"><i style="background:#5B7A98"></i>Prospecção</span>
+          <span class="k"><i style="background:#2E5AAC"></i>Qualificação</span>
+          <span class="k"><i style="background:#B0771A"></i>Proposta</span>
+          <span class="k"><i style="background:#C4611C"></i>Negociação</span>
+          <span class="k"><i style="background:#2C8A57"></i>Fechamento</span>
+          <span class="k"><i style="background:#12626E"></i>Pós-venda</span>
+          <span style="margin-left:auto;color:var(--faint)">A cada interação o lead troca de aba; em <b>“Todos”</b> permanece com o status atualizado.</span>
+        </div>
+      </section>
+
+      <!-- PAINEL DE COMISSÕES -->
+      <div id="view-comm" hidden>
+        <section class="panel" style="margin-bottom:16px">
+          <div class="commhead">
+            <div><div class="eyebrow">Comissões · consolidado da equipe</div><h2>Julho 2026</h2></div>
+            <select id="comm-period"><option>jul/2026</option><option>jun/2026</option><option>Campanha inteira</option></select>
+            <span class="spacer"></span>
+            <span class="seclock" title="Valores protegidos por segredo de negócio">🔒 Sigilo ativo</span>
+          </div>
+          <div class="kpis" id="comm-kpis"></div>
+        </section>
+
+        <section class="panel" style="margin-bottom:16px">
+          <div class="tblwrap">
+            <table class="commtab">
+              <thead><tr><th>Vendedor</th><th>Área</th><th>Empresa</th><th class="r">Base</th><th class="r">Vendas ganhas</th><th class="r">Valor trabalhado</th><th class="r">Meta · atingido</th><th class="r">Apurada</th><th class="r">Prevista</th><th></th></tr></thead>
+              <tbody id="comm-rows"></tbody>
+            </table>
+          </div>
+          <div class="legend"><span>Clique no vendedor para abrir a <b>memória de cálculo</b> venda a venda.</span><span style="margin-left:auto"><span class="stpay ap">apurada</span> = venda fechada · <span class="stpay pr">prevista</span> = funil em aberto</span></div>
+        </section>
+
+        <section class="panel" style="margin-bottom:16px">
+          <div class="commhead">
+            <div><div class="eyebrow">Histórico de apuração</div><h2 style="font-size:16px">Log por vendedor · regra aplicada à época</h2></div>
+            <span class="spacer"></span><span class="ctmeta">snapshot imutável — mudar a política não altera apurações passadas</span>
+          </div>
+          <div class="tblwrap">
+            <table class="commtab">
+              <thead><tr><th>Competência</th><th>Vendedor</th><th>Venda</th><th>Regra à época</th><th>Cálculo</th><th class="r">Valor</th><th>Apurado em · por</th></tr></thead>
+              <tbody id="apur-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="rulehead"><span class="eyebrow">Regras vigentes</span><span class="rulever on" id="rule-current">—</span></div>
+        <section class="rulecards">
+          <div class="rulecard"><button class="editbtn">✎</button><h4>📈 Progressiva por nível</h4><div class="sub">Base por nível + acelerador de volume</div>
+            <div class="tier"><span>Vendedor IV</span><b>5%</b></div>
+            <div class="tier"><span>Vendedor V</span><b>5%</b></div>
+            <div class="tier"><span>11–20 vendas/mês</span><b>+0,5 p.p.</b></div>
+            <div class="tier"><span>21+ vendas/mês</span><b>+1 p.p.</b></div></div>
+          <div class="rulecard"><button class="editbtn">✎</button><h4>🎯 Pós-meta</h4><div class="sub">Após atingir a meta da campanha</div>
+            <div class="tier"><span>Vendas após a meta</span><b>+1 p.p.</b></div>
+            <div class="tier"><span>Meta Obras 2026</span><b>R$ 1,2 mi</b></div>
+            <div class="tier"><span>Atingido</span><b id="rule-meta">—</b></div></div>
+          <div class="rulecard"><button class="editbtn">✎</button><h4>🤝 Cliente novo × base</h4><div class="sub">Tipo do cliente define o percentual</div>
+            <div class="tier"><span>Cliente novo</span><b>5%</b></div>
+            <div class="tier"><span>Cliente de base · renovação</span><b>3%</b></div></div>
+          <div class="rulecard"><button class="editbtn">✎</button><h4>🧩 Rateio conjunto</h4><div class="sub">Trabalhos com mais de um vendedor</div>
+            <div class="tier"><span>Individual</span><b>100%</b></div>
+            <div class="tier"><span>Com parceiro</span><b>% livre = 100</b></div>
+            <div class="tier"><span>Por equipe</span><b>divide igual</b></div>
+            <div class="tier"><span>Geral (matriz · filial)</span><b>70 · 30</b></div></div>
+        </section>
+
+        <section class="panel" style="margin-top:16px">
+          <div class="commhead"><div><div class="eyebrow">Log de versões das regras</div><h2 style="font-size:16px">Política de comissão · vigências</h2></div><span class="spacer"></span><span class="ctmeta">✎ salvar num card publica uma nova versão — as anteriores ficam no log</span></div>
+          <div id="rulelog"></div>
+        </section>
+      </div>
+
+      <!-- EQUIPE & ORGANIZAÇÃO (cadastro · admin) -->
+      <div id="view-team" hidden>
+        <div class="teamlock">🔒 Cadastro de vendedor, equipe e organização (matriz · filial) — <b>ativo somente para administrador</b>. Ative “Admin: editar” no topo para incluir ou alterar.</div>
+        <div class="orgcards" id="org-cards"></div>
+        <section class="panel">
+          <div class="commhead">
+            <div><div class="eyebrow">Equipe</div><h2>Vendedores &amp; gestão</h2></div>
+            <span class="spacer"></span>
+            <button class="btn-primary adminonly" id="team-add">＋ Vendedor / colaborador</button>
+          </div>
+          <div class="tblwrap">
+            <table class="commtab">
+              <thead><tr><th>Nome</th><th>Função</th><th>Nível</th><th>Área</th><th>Empresa</th><th class="r">Base</th><th class="r">Meta</th><th>Login</th><th>Situação</th><th></th></tr></thead>
+              <tbody id="team-rows"></tbody>
+            </table>
+          </div>
+          <div class="legend"><span>Login de acesso: convite por email (Supabase Auth) vinculado ao cadastro — no app real.</span></div>
+        </section>
+      </div>
+
+      <p class="note" id="sec-note">Conceito de página — dados ilustrativos sobre a estrutura real (Instituto = matriz · PlenumGestão = filial · áreas Legislativo/Gestão Pública · níveis de vendedor). Clique numa linha para abrir a <b>visão 360</b>. Ative <b>“Admin: editar”</b> para ver os controles.</p>
+    </div>
+  </div>
+</div>
+
+<!-- 360 DRAWER -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Visão 360 da oportunidade">
+  <div class="dh">
+    <button class="x" id="dx" aria-label="Fechar">✕</button>
+    <div class="eyebrow">Visão 360 · Oportunidade</div>
+    <h3 id="o-nome">—</h3>
+    <span class="tag gp" id="o-area">—</span>
+    <div class="v"><span id="o-val">—</span> <small id="o-vsub"></small></div>
+    <div class="stagebar" id="o-stage"></div>
+  </div>
+  <div class="sec360"><div class="h"><span class="t">Quem atuou · rateio</span><a class="add360" href="#">+ pessoa</a></div><div id="o-atores"></div></div>
+  <div class="sec360"><div class="h"><span class="t">Linha do tempo</span><a class="add360" href="#">+ atividade</a></div><div class="tl" id="o-tl"></div></div>
+  <div class="sec360"><div class="h"><span class="t">Comissão prevista</span></div><div id="o-comm"></div><p class="commrule" id="o-rule"></p></div>
+</aside>
+
+<div id="wm" aria-hidden="true"></div>
+<div id="toast"><span class="lk">🔒</span><span id="toast-msg">Cópia bloqueada — segredo de negócio Plenum.</span></div>
+<div id="printblock"><div class="bg">🔒</div><h2>Impressão bloqueada</h2><p>Este painel contém dados estratégicos protegidos por segredo de negócio da Plenum. A exportação/impressão está desativada. Registro de tentativa vinculado ao seu usuário.</p></div>
+
+<!-- MODAL FICHA DO SERVIDOR -->
+<div class="scrim2" id="svscrim"></div>
+<div class="modal" id="svmodal" role="dialog" aria-label="Ficha do servidor">
+  <div class="mh">
+    <button class="x" id="svx" aria-label="Fechar">✕</button>
+    <div class="eyebrow">Servidor · ficha completa</div>
+    <h3 id="sv-nome">—</h3>
+    <div class="sv-sub" id="sv-sub"></div>
+  </div>
+  <div class="mb">
+    <div class="sv-vinc" id="sv-vinc"></div>
+    <div class="eyebrow" style="margin-bottom:9px">Informações</div>
+    <div id="sv-info"></div>
+    <div class="sv-add">
+      <span class="lb eyebrow">Adicionar informação</span>
+      <select id="sv-tipo">
+        <option>Email</option>
+        <option>Telefone / Contato</option>
+        <option>Setor</option>
+        <option>Responsabilidade</option>
+        <option>Rede social</option>
+        <option>Observação</option>
+      </select>
+      <input id="sv-rede" placeholder="Qual rede? (LinkedIn, Instagram…)" hidden>
+      <input id="sv-val" placeholder="Valor…">
+      <button id="sv-addbtn">＋ Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CADASTRO/EDIÇÃO DE CAMPANHA -->
+<div class="scrim2" id="cscrim"></div>
+<div class="modal wide" id="cmodal" role="dialog" aria-label="Cadastro de campanha">
+  <div class="mh">
+    <button class="x" id="cx" aria-label="Fechar">✕</button>
+    <div class="eyebrow">Administração</div>
+    <h3 id="c-title">Editar campanha</h3>
+    <div class="sv-sub">Dados editáveis pelo administrador · anexos e links exibidos na página da campanha</div>
+  </div>
+  <div class="mb">
+    <div class="frow"><label>Nome da campanha</label><input type="text" id="c-nome" value="Campanha Obras 2026 · Gestão Pública — MG"></div>
+    <div class="frow2">
+      <div class="frow"><label>Início</label><input type="date" id="c-ini" value="2026-02-01"></div>
+      <div class="frow"><label>Fim</label><input type="date" id="c-fim" value="2026-12-31"></div>
+    </div>
+    <div class="frow2">
+      <div class="frow"><label>Meta (R$)</label><input type="text" id="c-meta" value="1.200.000"></div>
+      <div class="frow"><label>Segmento</label><select id="c-seg"><option>Gestão Pública</option><option>Legislativo</option><option>Ambos</option></select></div>
+    </div>
+    <div class="frow"><label>Regra de comissão</label>
+      <div class="rulepick">
+        <label><input type="radio" name="crule" checked>Progressiva por nível</label>
+        <label><input type="radio" name="crule">Pós-meta</label>
+        <label><input type="radio" name="crule">Individual fixa</label>
+      </div>
+    </div>
+    <div class="frow3">
+      <div class="frow"><label>Escopo do rateio</label><select id="c-escopo"><option>Individual</option><option>Com parceiro</option><option>Por equipe</option><option>Só matriz</option><option>Só filial</option><option>Geral</option></select></div>
+      <div class="frow"><label>% Comissão</label><input type="number" id="c-pct" value="5" min="0" max="100"></div>
+      <div class="frow"><label>Valor unitário (R$)</label><input type="text" id="c-valor-unit" value="12.000"></div>
+    </div>
+    <div class="capnote" style="margin:-6px 0 6px">Escopo, percentual e valor unitário valem para toda a campanha — a captura do vendedor herda estes parâmetros (não são editáveis na captura).</div>
+    <div class="frow"><label>📎 Anexos exibidos na página</label>
+      <div class="chipedit" id="c-anexos"></div>
+      <div class="addline"><input type="text" id="c-anexo-nome" placeholder="Nome do arquivo (ex.: Proposta.pdf)"><button class="addbtn" id="c-anexo-add">＋ Anexar</button></div>
+    </div>
+    <div class="frow"><label>🔗 Links vinculados</label>
+      <div class="chipedit" id="c-links"></div>
+      <div class="addline"><input type="text" id="c-link-nome" placeholder="Título do link"><input type="text" id="c-link-url" placeholder="https://…"><button class="addbtn" id="c-link-add">＋ Vincular</button></div>
+    </div>
+    <div class="frow"><label>Adicionar leads por critério</label>
+      <div class="critbox">
+        <div class="frow" style="margin-bottom:9px"><label>Tema</label><div class="tchips" id="crit-tema"></div></div>
+        <div class="critgrid">
+          <div class="frow"><label>Responsabilidade</label><select id="crit-resp2"><option value="">Qualquer</option><option>Ordenador de Despesa</option><option>Secretário / Diretor</option><option>Engenheiro</option><option>Fiscal</option><option>Compras / Licitação / Pregoeiro</option><option>Assessor</option></select></div>
+          <div class="frow"><label>Função</label><select id="crit-funcao"><option value="">Qualquer</option><option>Gestão / Ordenação</option><option>Técnica / Engenharia</option><option>Compras / Licitação</option><option>Assessoria</option><option>Fiscalização</option></select></div>
+          <div class="frow"><label>Setor (secretaria)</label><input id="crit-setor" placeholder="ex.: Obras, Saúde"></div>
+          <div class="frow"><label>Cargo</label><input id="crit-cargo" placeholder="ex.: Engenheiro"></div>
+          <div class="frow"><label>Palavra-chave</label><input id="crit-kw" placeholder="ex.: pavimentação, ponte"></div>
+          <div class="frow"><label>CNAE</label><input id="crit-cnae" placeholder="ex.: 8411-6/00"></div>
+        </div>
+        <div class="critresult">
+          <div class="critcount"><b id="crit-n">0</b>&nbsp;entidades correspondem<button type="button" id="crit-clear">limpar critérios</button></div>
+          <div class="critprev" id="crit-prev"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn-ghost" id="c-cancel">Cancelar</button><button class="btn-primary" id="c-save">Salvar campanha</button></div>
+</div>
+
+<!-- MODAL CAPTURAR ATUAÇÃO / VENDA -->
+<div class="scrim2" id="capscrim"></div>
+<div class="modal wide" id="capmodal" role="dialog" aria-label="Capturar atuação">
+  <div class="mh">
+    <button class="x" id="capx" aria-label="Fechar">✕</button>
+    <div class="eyebrow">Capturar servidor</div>
+    <h3 id="cap-title">Capturar para campanha</h3>
+    <div class="sv-sub" id="cap-sub"></div>
+  </div>
+  <div class="mb">
+    <div class="capwarn" id="cap-warn" hidden></div>
+    <div class="frow2">
+      <div class="frow"><label>Campanha</label><select id="cap-camp"></select></div>
+      <div class="frow"><label>Estágio</label><select id="cap-st">
+        <option value="prospeccao">Prospecção</option><option value="qualificacao">Qualificação</option>
+        <option value="proposta">Proposta</option><option value="negociacao">Negociação</option>
+        <option value="fechamento">Fechamento (ganha)</option><option value="posvenda">Pós-venda</option>
+      </select></div>
+    </div>
+    <div class="frow"><label>Responsável pelo lead</label>
+      <div class="caplock" id="cap-resp-lock"><span id="cap-resp-av"></span><b id="cap-resp-nome"></b><span class="lk" id="cap-resp-note">🔒 quem captura é o responsável · só gerente/admin transfere</span></div>
+      <select id="cap-resp-sel" hidden></select>
+    </div>
+    <div class="capparams" id="cap-params"></div>
+    <div class="frow"><label>Observação (entra na linha do tempo)</label><textarea id="cap-obs" rows="2" placeholder="ex.: reunião na Secretaria de Obras; proposta enviada."></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn-ghost" id="cap-cancel">Cancelar</button><button class="btn-primary" id="cap-save">Registrar captura</button></div>
+</div>
+
+<!-- MODAL ADICIONAR (contato / tipo / servidor / unidade / secretaria / empresa) -->
+<div class="scrim2" id="adscrim"></div>
+<div class="modal" id="admodal" role="dialog" aria-label="Adicionar informação">
+  <div class="mh"><button class="x" id="adx" aria-label="Fechar">✕</button><div class="eyebrow">Adicionar</div><h3 id="ad-title">—</h3><div class="sv-sub" id="ad-sub"></div></div>
+  <div class="mb" id="ad-fields"></div>
+  <div class="mfoot"><button class="btn-ghost" id="ad-cancel">Cancelar</button><button class="btn-primary" id="ad-save">Adicionar</button></div>
+</div>
+
+<!-- MODAL VENDEDOR / COLABORADOR (admin) -->
+<div class="scrim2" id="tmscrim"></div>
+<div class="modal" id="tmmodal" role="dialog" aria-label="Cadastro de colaborador">
+  <div class="mh"><button class="x" id="tmx" aria-label="Fechar">✕</button><div class="eyebrow">Administração · equipe</div><h3 id="tm-title">Novo colaborador</h3></div>
+  <div class="mb">
+    <div class="frow"><label>Nome</label><input id="tm-nome" type="text" placeholder="Nome do colaborador"></div>
+    <div class="frow2">
+      <div class="frow"><label>Função</label><select id="tm-fn"><option>Vendedor</option><option>Gerente</option><option>Administrador</option></select></div>
+      <div class="frow"><label>Nível</label><select id="tm-nv"><option>Vendedor I</option><option>Vendedor II</option><option>Vendedor III</option><option>Vendedor IV</option><option>Vendedor V</option><option>—</option></select></div>
+    </div>
+    <div class="frow2">
+      <div class="frow"><label>Área de atuação</label><select id="tm-ar"><option>Gestão Pública</option><option>Legislativo</option><option>—</option></select></div>
+      <div class="frow"><label>Empresa</label><select id="tm-emp"><option>Matriz</option><option>Filial</option></select></div>
+    </div>
+    <div class="frow2">
+      <div class="frow"><label>Comissão base (%)</label><input id="tm-base" type="number" value="5" min="0" max="100"></div>
+      <div class="frow"><label>Meta individual (R$)</label><input id="tm-meta" type="text" placeholder="300.000"></div>
+    </div>
+    <div class="frow2">
+      <div class="frow"><label>Login · CPF</label><input id="tm-cpf" type="text" placeholder="000.000.000-00" autocomplete="off"></div>
+      <div class="frow"><label>Senha</label><input id="tm-senha" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+    </div>
+    <div class="frow"><label>Situação</label><select id="tm-sit"><option>ativo</option><option>inativo</option></select></div>
+    <div class="capnote">Login preenchido manualmente (CPF + senha) pelo administrador. O CPF fica <b>mascarado</b> na exibição (LGPD). O usuário <b>israel@licitapublica.com.br</b> tem acesso irrestrito.</div>
+  </div>
+  <div class="mfoot"><button class="btn-ghost" id="tm-cancel">Cancelar</button><button class="btn-primary" id="tm-save">Salvar</button></div>
+</div>
+
+<script>
+  document.getElementById('adm').addEventListener('click',()=>document.body.classList.toggle('admin'));
+  document.getElementById('hamb').addEventListener('click',()=>document.body.classList.toggle('sidehide'));
+  document.getElementById('hcbtn').addEventListener('click',()=>document.body.classList.toggle('hc'));
+
+  const ST={
+    prospeccao:['Prospecção','#5B7A98','#EBEFF3'], qualificacao:['Qualificação','#2E5AAC','#E8EDF7'],
+    proposta:['Proposta','#B0771A','#F7EFDD'], negociacao:['Negociação','#C4611C','#F7EADD'],
+    fechamento:['Ganha','#2C8A57','#E6F1EA'], posvenda:['Pós-venda','#12626E','#E7F0F1']
+  };
+  const AV={A:'#7A5296',F:'#12626E',K:'#2C8A57',D:'#B0771A',E:'#C4611C',W:'#5B7A98'};
+  const av=(i)=>`<span class="av" style="background:${AV[i]||'#5B7A98'}">${i}</span>`;
+
+  // celular (9 dígitos após DDD) vira hiperlink p/ conversa no WhatsApp; fixo fica texto
+  const WAICON='<svg class="wai" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 0 0-6.05 10.52L1 15l3.6-.93A7 7 0 1 0 8 1Zm3.4 9.6c-.15.42-.86.8-1.2.83-.32.03-.62.15-2.08-.43-1.76-.7-2.87-2.5-2.96-2.61-.09-.12-.7-.94-.7-1.8 0-.85.44-1.27.6-1.44a.63.63 0 0 1 .46-.22l.33.01c.1 0 .25-.04.39.3l.54 1.3c.05.1.08.22.02.35l-.22.33-.31.34c-.1.1-.2.2-.09.4.11.19.5.82 1.07 1.33.73.65 1.35.85 1.54.95.2.1.3.08.42-.05l.63-.74c.15-.19.27-.14.45-.08l1.44.68c.15.08.25.11.29.18.04.06.04.36-.11.77Z"/></svg>';
+  const WAPP=s=>String(s||'').replace(/\((\d{2})\)\s?(9\d{4})-?(\d{4})/g,(m,dd,p1,p2)=>`<a class="wa" href="https://wa.me/55${dd}${p1}${p2}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">${WAICON}${m}</a>`);
+
+  // metadados p/ filtros (estado, cidade, esfera, responsável, tema) — usados pela árvore e pela tabela
+  const FMETA={
+    jf:{uf:'MG',cid:'Juiz de Fora',esf:'Municipal',tema:'Obras',resp:'Vendedora A.'},
+    montes:{uf:'MG',cid:'Montes Claros',esf:'Municipal',tema:'Obras',resp:'Vendedora K.'},
+    araxa:{uf:'MG',cid:'Araxá',esf:'Municipal',tema:'Obras',resp:'Vendedora K.'},
+    gv:{uf:'MG',cid:'Governador Valadares',esf:'Municipal',tema:'Obras',resp:'Vendedora K.'},
+    uberaba:{uf:'MG',cid:'Uberaba',esf:'Municipal',tema:'Obras',resp:'Vendedora I.'},
+    patos:{uf:'MG',cid:'Patos de Minas',esf:'Municipal',tema:'Obras',resp:'Vendedora K.'},
+    pocos:{uf:'MG',cid:'Poços de Caldas',esf:'Municipal',tema:'Obras',resp:'Vendedora I.'},
+    'fms-araxa':{uf:'MG',cid:'Araxá',esf:'Municipal',tema:'Saúde',resp:'Sem vendedor'},
+    udi:{uf:'MG',cid:'Uberlândia',esf:'Municipal',tema:'Legislativo',resp:'Vendedora D.'},
+    contagem:{uf:'MG',cid:'Contagem',esf:'Municipal',tema:'Legislativo',resp:'Vendedora A.'},
+    betim:{uf:'MG',cid:'Betim',esf:'Municipal',tema:'Legislativo',resp:'Vendedora D.'},
+    juizforacam:{uf:'MG',cid:'Juiz de Fora',esf:'Municipal',tema:'Legislativo',resp:'Vendedora E.'},
+    der:{uf:'MG',cid:'Belo Horizonte',esf:'Estadual',tema:'Obras',resp:'Vendedor F.'},
+    tce:{uf:'MG',cid:'Belo Horizonte',esf:'Estadual',tema:'Controle Externo',resp:'Sem vendedor'},
+    ifsudeste:{uf:'MG',cid:'Juiz de Fora',esf:'Federal',tema:'Educação',resp:'Sem vendedor'},
+    assess:{uf:'MG',cid:'Belo Horizonte',esf:'Privado',tema:'Parceria',resp:'Vendedora A.'},
+    constr:{uf:'MG',cid:'Belo Horizonte',esf:'Privado',tema:'Parceria',resp:'Sem vendedor'}
+  };
+
+  // LEADS (linhas). area: gp|leg. atores/timeline/comm p/ o 360.
+  const LEADS=[
+    {id:'jf',cli:'Município de Juiz de Fora',mun:'Zona da Mata · MG',area:'gp',obras:39,val:'R$ 240 mil',vsub:'contrato · 39 obras',st:'negociacao',avs:['A','F'],ult:'Hoje 09:41',ultq:'Vendedor F.',next:'Revisar proposta',nextw:1,comm:'R$ 12.000',
+      atores:[['A','Vendedora A.','Vendedor V · Legislativo → apoio','Resp · 60%',60,1],['F','Vendedor F.','Vendedor V · Gestão Pública','Parceiro · 40%',40,0]],
+      tl:[['Em negociação','Proposta ajustada após reunião técnica.','Hoje 09:41 · Vendedor F.',0],['Proposta enviada','R$ 240 mil — assessoria em 39 obras (PNCP).','02/07 · Vendedora A.',0],['Reunião — Secretaria de Obras','Contato: obras@pjf.mg.gov.br.','27/06 · Vendedor F.',1],['Lead importado do painel','Juiz de Fora · R$ 198,4 mi em obras.','20/06 · Gerente W. (gerente)',1]],
+      comm:[['Vendedora A. · resp 60%','R$ 7.200'],['Vendedor F. · parc 40%','R$ 4.800']],rule:'Progressiva por nível · Vendedor V = 5% · cliente novo. Apurada ao entrar em Fechamento.'},
+    {id:'montes',cli:'Município de Montes Claros',mun:'Norte · MG',area:'gp',obras:36,val:'R$ 210 mil',vsub:'proposta em preparo',st:'qualificacao',avs:['K'],ult:'Ontem 16:20',ultq:'Vendedora K.',next:'Agendar reunião',nextw:0,comm:'R$ 10.500',
+      atores:[['K','Vendedora K.','Vendedor IV · Gestão Pública','Resp · 100%',100,1]],
+      tl:[['Qualificado','Secretaria confirmou interesse em assessoria.','Ontem · Vendedora K.',0],['Lead importado do painel','Montes Claros · 36 obras.','18/06 · Gerente W.',1]],
+      comm:[['Vendedora K. · resp 100%','R$ 10.500']],rule:'Vendedor IV = 5% · cliente novo. Prévia — confirma no fechamento.'},
+    {id:'araxa',cli:'Município de Araxá',mun:'Alto Paranaíba · MG',area:'gp',obras:39,val:'R$ 180 mil',vsub:'proposta enviada',st:'proposta',avs:['K'],ult:'02/07',ultq:'Vendedora K.',next:'Follow-up proposta',nextw:1,comm:'R$ 9.000',
+      atores:[['K','Vendedora K.','Vendedor IV · Gestão Pública','Resp · 100%',100,1]],
+      tl:[['Proposta enviada','R$ 180 mil.','02/07 · Vendedora K.',0],['Lead importado','Araxá · 39 obras.','19/06 · Gerente W.',1]],
+      comm:[['Vendedora K. · resp 100%','R$ 9.000']],rule:'Vendedor IV = 5% · cliente novo.'},
+    {id:'der',cli:'DER-MG — Edificações e Estradas',mun:'Estadual · Belo Horizonte',area:'gp',obras:4,val:'R$ 480 mil',vsub:'estimado · grande porte',st:'prospeccao',avs:['F'],ult:'3 dias',ultq:'Vendedor F.',next:'Mapear decisor',nextw:0,comm:'—',
+      atores:[['F','Vendedor F.','Vendedor V · Gestão Pública','Resp · 100%',100,1]],
+      tl:[['Lead importado do painel','DER-MG · R$ 63,8 mi · 4 obras.','03/07 · Gerente W.',1]],
+      comm:[['Vendedor F. · resp 100%','a definir']],rule:'Órgão estadual — regra a confirmar na campanha.'},
+    {id:'uberaba',cli:'Município de Uberaba',mun:'Triângulo · MG',area:'gp',obras:22,val:'R$ 41,2 mi',vsub:'estimado em obras',st:'prospeccao',avs:['A'],ult:'Novo',ultq:'—',next:'1º contato',nextw:0,comm:'—',
+      atores:[['A','Vendedora I.','Vendedor(a) · Gestão Pública','Resp · 100%',100,1]],
+      tl:[['Lead importado','Uberaba · 22 obras.','Hoje · Gerente W.',1]],comm:[['Vendedora I. · resp 100%','a definir']],rule:'Cliente novo.'},
+    {id:'pocos',cli:'Município de Poços de Caldas',mun:'Sul · MG',area:'gp',obras:18,val:'R$ 156 mil',vsub:'em negociação',st:'negociacao',avs:['A'],ult:'Hoje 11:02',ultq:'Vendedora I.',next:'Ajustar escopo',nextw:1,comm:'R$ 7.800',
+      atores:[['A','Vendedora I.','Vendedor(a) · Gestão Pública','Resp · 100%',100,1]],
+      tl:[['Em negociação','Cliente pediu revisão de escopo.','Hoje · Vendedora I.',0]],comm:[['Vendedora I. · resp 100%','R$ 7.800']],rule:'Cliente novo · 5%.'},
+    {id:'gv',cli:'Município de Governador Valadares',mun:'Vale do Rio Doce · MG',area:'gp',obras:14,val:'R$ 132 mil',vsub:'proposta enviada',st:'proposta',avs:['K','F'],ult:'01/07',ultq:'Vendedora K.',next:'Follow-up',nextw:0,comm:'R$ 6.600',
+      atores:[['K','Vendedora K.','Vendedor IV · Gestão Pública','Resp · 70%',70,1],['F','Vendedor F.','Vendedor V','Parceiro · 30%',30,0]],
+      tl:[['Proposta enviada','Trabalho conjunto Kelly + Fernando.','01/07 · Vendedora K.',0]],comm:[['Vendedora K. · 70%','R$ 4.620'],['Vendedor F. · 30%','R$ 1.980']],rule:'Rateio por participação · 5%.'},
+    {id:'udi',cli:'Câmara Municipal de Uberlândia',mun:'Legislativo · MG',area:'leg',obras:'—',val:'R$ 96 mil',vsub:'assessoria legislativa',st:'prospeccao',avs:['D','E'],ult:'1 dia',ultq:'Vendedora D.',next:'Enviar apresentação',nextw:0,comm:'—',
+      atores:[['D','Vendedora D.','Vendedor IV · Legislativo','Resp · 70%',70,1],['E','Vendedora E.','Vendedor(a) · Legislativo','Equipe · 30%',30,0]],
+      tl:[['Lead importado','Câmara de Uberlândia.','Ontem · Gerente W.',1]],comm:[['Vendedora D. · 70%','a definir'],['Vendedora E. · 30%','a definir']],rule:'Segmento Legislativo.'},
+    {id:'contagem',cli:'Câmara Municipal de Contagem',mun:'Legislativo · MG',area:'leg',obras:'—',val:'R$ 108 mil',vsub:'em qualificação',st:'qualificacao',avs:['A'],ult:'28/06',ultq:'Vendedora A.',next:'Reunião técnica',nextw:0,comm:'R$ 5.400',
+      atores:[['A','Vendedora A.','Vendedor V · Legislativo','Resp · 100%',100,1]],
+      tl:[['Qualificado','Interesse confirmado.','28/06 · Vendedora A.',0]],comm:[['Vendedora A. · 100%','R$ 5.400']],rule:'Vendedor V = 5%.'},
+    {id:'patos',cli:'Município de Patos de Minas',mun:'Alto Paranaíba · MG',area:'gp',obras:27,val:'R$ 312 mil',vsub:'contrato assinado',st:'fechamento',avs:['K','F'],ult:'12/06',ultq:'Vendedora K.',next:'Onboarding',nextw:0,comm:'R$ 15.600',
+      atores:[['K','Vendedora K.','Vendedor IV · Gestão Pública','Resp · 60%',60,1],['F','Vendedor F.','Vendedor V','Parceiro · 40%',40,0]],
+      tl:[['Ganha — contrato assinado','R$ 312 mil.','12/06 · Vendedora K.',0],['Negociação','—','08/06 · Vendedor F.',1]],comm:[['Vendedora K. · 60%','R$ 9.360'],['Vendedor F. · 40%','R$ 6.240']],rule:'Apurada · pós-meta ativa (+1%).'},
+    {id:'betim',cli:'Câmara Municipal de Betim',mun:'Legislativo · MG',area:'leg',obras:'—',val:'R$ 288 mil',vsub:'contrato ativo',st:'posvenda',avs:['D'],ult:'Renov. 90d',ultq:'Vendedora D.',next:'Renovação',nextw:1,comm:'R$ 14.400',
+      atores:[['D','Vendedora D.','Vendedor IV · Legislativo','Resp · 100%',100,1]],
+      tl:[['Pós-venda','Acompanhamento ativo; renovação em 90 dias.','Hoje · Vendedora D.',0]],comm:[['Vendedora D. · 100%','R$ 14.400']],rule:'Cliente de base — % de renovação.'},
+    {id:'juizforacam',cli:'Câmara Municipal de Juiz de Fora',mun:'Legislativo · MG',area:'leg',obras:'—',val:'R$ 120 mil',vsub:'contrato assinado',st:'fechamento',avs:['E'],ult:'05/06',ultq:'Vendedora E.',next:'Onboarding',nextw:0,comm:'R$ 6.000',
+      atores:[['E','Vendedora E.','Vendedor(a) · Legislativo','Resp · 100%',100,1]],
+      tl:[['Ganha','R$ 120 mil.','05/06 · Vendedora E.',0]],comm:[['Vendedora E. · 100%','R$ 6.000']],rule:'Vendedor(a) · 5%.'}
+  ];
+
+  const rows=document.getElementById('rows');
+  rows.innerHTML=LEADS.map(l=>{
+    const s=ST[l.st]; const area=l.area==='gp'?['tag gp','Gestão Pública']:['tag leg','Legislativo']; const m=FMETA[l.id]||{};
+    return `<tr data-st="${l.st}" data-id="${l.id}" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${m.resp||''}" style="--sc:${s[1]};--scw:${s[2]}">
+      <td class="cli"><b>${l.cli}</b><span>${l.mun}</span></td>
+      <td><span class="${area[0]}">${area[1]}</span></td>
+      <td class="r num">${l.obras}</td>
+      <td class="r money">${l.val}</td>
+      <td><span class="stpill"><span class="d"></span>${s[0]}</span></td>
+      <td><div class="avs">${l.avs.map(av).join('')}</div></td>
+      <td class="when"><b>${l.ult}</b><br><span style="font-size:11px">${l.ultq}</span></td>
+      <td class="next ${l.nextw?'warn':''}">${l.next}</td>
+      <td class="r money">${l.comm}</td>
+      <td class="r"><span class="chev">›</span></td>
+    </tr>`;
+  }).join('');
+
+  // ===== ÁRVORE EM CASCATA (aba "Todos") =====
+  const CT=(tipo,cls,val,meta,link)=>({tipo,cls,val,meta,link});
+  const ent=(o)=>Object.assign({t:'ent'},o);
+  // contatos/servidores ilustrativos (institucional + secretaria + servidor)
+  const TREE=[
+   {t:'esfera',nome:'Municipal',children:[
+     {t:'poder',nome:'Executivo',children:[
+       {t:'tipo',nome:'Prefeitura',children:[
+         ent({id:'jf',nome:'Município de Juiz de Fora',area:'gp',st:'negociacao',
+           contatos:[CT('Institucional','','gabinete@pjf.mg.gov.br','(32) 3690-7001 · pjf.mg.gov.br')],
+           estrutura:[
+             {nome:'Secretaria de Obras e Infraestrutura',tema:'Obras',email:'sec.obras@pjf.mg.gov.br',
+               unidades:[{nome:'Gabinete do Secretário',servidores:[{nome:'José M. Guedes',cargo:'Secretário / Ordenador',email:'gab.obras@pjf.mg.gov.br',tel:'(32) 3690-7010'}]},
+                         {nome:'Departamento de Projetos',servidores:[{nome:'Ana P. Almeida',cargo:'Engenheira Civil',email:'projetos.obras@pjf.mg.gov.br',tel:'(32) 99912-3040'}]},
+                         {nome:'Departamento de Fiscalização de Obras',servidores:[{nome:'Bruno C. Reis',cargo:'Fiscal de Obras',email:'fiscal.obras@pjf.mg.gov.br',tel:'(32) 98811-2233'}]}]},
+             {nome:'Secretaria de Administração',tema:'Administração',email:'sec.adm@pjf.mg.gov.br',
+               unidades:[{nome:'Departamento de Compras e Licitações',servidores:[{nome:'Carla M. Souza',cargo:'Pregoeira',email:'licitacao@pjf.mg.gov.br',tel:'—'}]}]},
+             {nome:'Secretaria Municipal de Saúde',tema:'Saúde',email:'sec.saude@pjf.mg.gov.br',unidades:[]}
+           ]}),
+         ent({id:'montes',nome:'Município de Montes Claros',area:'gp',st:'qualificacao',vend:['K','Vendedora K.'],
+           contatos:[CT('Institucional','','gabinete@montesclaros.mg.gov.br','(38) 2211-3000')],
+           servidores:[{nome:'Roberto Dias',cargo:'Sec. de Infraestrutura',email:'infra@montesclaros.mg.gov.br',tel:'—'}]}),
+         ent({id:'araxa',nome:'Município de Araxá',area:'gp',st:'proposta',vend:['K','Vendedora K.'],
+           contatos:[CT('Institucional','','ouvidoria@araxa.mg.gov.br','(34) 3668-0503')],servidores:[]}),
+         ent({id:'gv',nome:'Município de Governador Valadares',area:'gp',st:'proposta',vend:['K','Vendedora K.'],
+           contatos:[CT('Institucional','','contato@valadares.mg.gov.br','(33) 3279-0000')],servidores:[]}),
+         ent({id:'uberaba',nome:'Município de Uberaba',area:'gp',st:'prospeccao',vend:['A','Vendedora I.'],
+           contatos:[CT('Institucional','','gabinete@uberaba.mg.gov.br','(34) 3318-0000')],servidores:[]}),
+         ent({id:'patos',nome:'Município de Patos de Minas',area:'gp',st:'fechamento',vend:['K','Vendedora K.'],
+           contatos:[CT('Institucional','','gabinete@patosdeminas.mg.gov.br','(34) 3822-9500')],servidores:[]}),
+       ]},
+       {t:'tipo',nome:'Fundo Municipal de Saúde',children:[
+         ent({id:'fms-araxa',nome:'Fundo Municipal de Saúde de Araxá',area:'gp',st:'prospeccao',vend:null,
+           contatos:[CT('Institucional','','fms@araxa.mg.gov.br','(34) 3691-7000')],servidores:[]}),
+       ]},
+     ]},
+     {t:'poder',nome:'Legislativo',children:[
+       {t:'tipo',nome:'Câmara Municipal',children:[
+         ent({id:'udi',nome:'Câmara Municipal de Uberlândia',area:'leg',st:'prospeccao',
+           contatos:[CT('Institucional','','presidencia@camarauberlandia.mg.gov.br','(34) 3239-8500')],
+           estrutura:[
+             {nome:'Diretoria Legislativa',tema:'Legislativo',email:'dirleg@camarauberlandia.mg.gov.br',
+               unidades:[{nome:'Assessoria Técnica',servidores:[{nome:'Marcos T. Alves',cargo:'Assessor Legislativo',email:'assessoria@camarauberlandia.mg.gov.br',tel:'—'}]}]},
+             {nome:'Diretoria Administrativa',tema:'Administração',email:'diradm@camarauberlandia.mg.gov.br',unidades:[]}
+           ]}),
+         ent({id:'contagem',nome:'Câmara Municipal de Contagem',area:'leg',st:'qualificacao',vend:['A','Vendedora A.'],
+           contatos:[CT('Institucional','','contato@camaracontagem.mg.gov.br','(31) 3391-0000')],servidores:[]}),
+         ent({id:'betim',nome:'Câmara Municipal de Betim',area:'leg',st:'posvenda',vend:['D','Vendedora D.'],
+           contatos:[CT('Institucional','','contato@camarabetim.mg.gov.br','(31) 3512-3000')],servidores:[]}),
+         ent({id:'juizforacam',nome:'Câmara Municipal de Juiz de Fora',area:'leg',st:'fechamento',vend:['E','Vendedora E.'],
+           contatos:[CT('Institucional','','contato@camarajf.mg.gov.br','(32) 3690-8100')],servidores:[]}),
+       ]},
+     ]},
+   ]},
+   {t:'esfera',nome:'Estadual',children:[
+     {t:'poder',nome:'Executivo',children:[
+       {t:'tipo',nome:'Autarquia / Departamento',children:[
+         ent({id:'der',nome:'DER-MG — Edificações e Estradas',area:'gp',st:'prospeccao',
+           contatos:[CT('Institucional','','gabinete@der.mg.gov.br','(31) 3235-1000 · der.mg.gov.br')],
+           estrutura:[{nome:'Diretoria de Obras',tema:'Obras',email:'dobras@der.mg.gov.br',
+             unidades:[{nome:'Departamento de Edificações',servidores:[{nome:'Carlos E. Lima',cargo:'Engenheiro',email:'edificacoes@der.mg.gov.br',tel:'—'}]},
+                       {nome:'Departamento de Estradas',servidores:[]}]}]}),
+       ]},
+     ]},
+     {t:'poder',nome:'Controle Externo',children:[
+       {t:'tipo',nome:'Tribunal de Contas',children:[
+         ent({id:'tce',nome:'Tribunal de Contas do Estado de MG (TCE-MG)',area:null,st:'prospeccao',vend:null,
+           contatos:[CT('Institucional','','contato@tce.mg.gov.br','(31) 3348-2000')],servidores:[]}),
+       ]},
+     ]},
+   ]},
+   {t:'esfera',nome:'Federal',children:[
+     {t:'poder',nome:'Executivo',children:[
+       {t:'tipo',nome:'Instituto / Autarquia',children:[
+         ent({id:'ifsudeste',nome:'Instituto Federal do Sudeste de MG',area:'gp',st:'prospeccao',vend:null,
+           contatos:[CT('Institucional','','reitoria@ifsudestemg.edu.br','(32) 3257-4100')],servidores:[]}),
+       ]},
+     ]},
+   ]},
+   {t:'esfera',nome:'Privado · Parceiros / Fornecedores',children:[
+     {t:'poder',nome:'—',children:[
+       {t:'tipo',nome:'Assessoria',children:[
+         ent({id:'assess',nome:'Assessoria de Engenharia Horizonte',area:null,st:'posvenda',vend:['A','Vendedora A.'],
+           contatos:[CT('Comercial','','comercial@horizonteeng.com.br','(31) 3000-0000')],
+           servidores:[{nome:'Paulo R.',cargo:'Sócio · Eng. Civil',email:'paulo@horizonteeng.com.br',tel:'(31) 98888-0000'}]}),
+       ]},
+       {t:'tipo',nome:'Fornecedor / Construtora',children:[
+         ent({id:'constr',nome:'Construtora Vale Ltda',area:null,st:'prospeccao',vend:null,
+           contatos:[CT('Comercial','','contato@construtoravale.com.br','(31) 3222-0000')],servidores:[]}),
+       ]},
+     ]},
+   ]},
+  ];
+
+  const countEnts=n=>n.t==='ent'?1:n.children.reduce((s,c)=>s+countEnts(c),0);
+  const areaChip=a=>a==='gp'?'<span class="tag gp">Gestão Pública</span>':a==='leg'?'<span class="tag leg">Legislativo</span>':'';
+  const TEMACOR={Obras:'#B0771A',Saúde:'#2C8A57',Educação:'#2E5AAC',Administração:'#5B7A98',Legislativo:'#7A5296','Controle Externo':'#0E7C86',Parceria:'#B85C8A'};
+  const SVREG=[]; // registro de servidores p/ a ficha (modal)
+  function svLine(v,ctx){
+    const i=SVREG.length, info=[];
+    if(v.email) info.push({tipo:'Email',val:v.email});
+    if(v.tel&&v.tel!=='—') info.push({tipo:'Telefone / Contato',val:v.tel});
+    if(ctx&&ctx.setor) info.push({tipo:'Setor',val:ctx.setor+(ctx.unidade?(' · '+ctx.unidade):'')});
+    if(v.cargo) info.push({tipo:'Responsabilidade',val:v.cargo});
+    SVREG.push({nome:v.nome,cargo:v.cargo||'',orgao:(ctx&&ctx.orgao)||'',orgId:(ctx&&ctx.orgId)||'',area:(ctx&&ctx.area)||null,setor:(ctx&&ctx.setor)||'',unidade:(ctx&&ctx.unidade)||'',info});
+    return `<div class="svline"><span class="cttag serv">Servidor</span><button type="button" class="snm" data-sv="${i}">${v.nome}</button><span class="scargo">· ${v.cargo}</span><button type="button" class="svcapbtn" data-svcapi="${i}" title="Capturar para campanha">⊕ capturar</button><span class="svcap" data-svcap="${i}"></span><span class="grow2"></span><span class="ctval"><a href="mailto:${v.email||''}">${v.email||'—'}</a></span><span class="ctmeta">${WAPP(v.tel||'')}</span></div>`;
+  }
+  function renderOrg(sec,orgao,area,orgId){ // secretaria (1º) -> unidade (2º) -> servidor (folha); cadência de cor por tema
+    const cor=TEMACOR[sec.tema]||'#5B7A98';
+    const tema=sec.tema?`<span class="temachip">${sec.tema}</span>`:'';
+    const email=sec.email?`<span class="emailchip">✉ ${sec.email}</span>`:'';
+    const unis=(sec.unidades&&sec.unidades.length)?sec.unidades.map(u=>{
+      const us=(u.servidores&&u.servidores.length)?u.servidores.map(sv=>svLine(sv,{orgao,orgId,area,setor:sec.nome,unidade:u.nome})).join('')
+               :`<div class="ctmeta" style="padding:2px">Sem servidor listado.</div>`;
+      return `<div class="tnode orgnode lv-uni open"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm2">↳ ${u.nome}</span><span class="grow2"></span><span class="temachip">2º nível</span></div>
+        <div class="tchildren">${us}<div class="addrow"><button class="addbtn" data-add="servidor" data-orgao="${orgao}" data-setor="${sec.nome}" data-unidade="${u.nome}">＋ Servidor</button></div></div></div>`;
+    }).join('')
+      :`<div class="ctmeta" style="padding:2px">Sem unidade/servidor mapeado.</div>`;
+    return `<div class="tnode orgnode lv-sec open" style="--sc:${cor}"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm">🏛 ${sec.nome}</span> ${tema}<span class="grow2"></span>${email}</div>
+      <div class="tchildren">${unis}<div class="addrow"><button class="addbtn" data-add="unidade" data-orgao="${orgao}" data-setor="${sec.nome}">＋ Unidade (2º nível)</button></div></div></div>`;
+  }
+  const ENTMAP={}; // id -> {nome, area, st} para capturar atuação
+  function renderNode(n,depth){
+    const pad=`padding-left:${16+depth*16}px`;
+    if(n.t==='ent'){
+      const s=ST[n.st]||['—','#5B7A98','#EBEFF3'];
+      const m=FMETA[n.id]||{}; const rp=m.resp||'Sem vendedor';
+      const vend=rp==='Sem vendedor'?`<span class="vend"><span class="none">⚠ Sem vendedor</span></span>`
+                                     :`<span class="vend">Vendedor: ${av(rp[0])}<b>${rp}</b></span>`;
+      const cts=n.contatos.map(c=>`<div class="ctline"><span class="cttag ${c.cls}">${c.tipo}</span><span class="ctval"><a href="mailto:${c.val}">${c.val}</a></span><span class="ctmeta">${WAPP(c.meta||'')}</span></div>`).join('');
+      const estr=(n.estrutura&&n.estrutura.length)?n.estrutura.map(sec=>renderOrg(sec,n.nome,n.area,n.id)).join('')
+                 :`<div class="ctmeta" style="padding:2px">Estrutura organizacional não mapeada ainda.</div>`;
+      ENTMAP[n.id]={nome:n.nome,area:n.area,st:n.st};
+      return `<div class="tnode lv-ent" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${rp}" style="--sc:${s[1]};--scw:${s[2]}">
+        <div class="trow" style="${pad}"><span class="tchev">›</span>
+          <span class="ent-nm">${n.nome}</span> ${areaChip(n.area)}
+          <span class="grow"></span>${vend}
+          <span class="stpill"><span class="d"></span>${s[0]}</span></div>
+        <div class="edetail">
+          <div class="eblock"><div class="bt">📇 Contato institucional</div>${cts}
+            <div class="addrow"><button class="addbtn" data-add="contato" data-orgao="${n.nome}">＋ Contato</button><button class="addbtn" data-add="tipocontato">＋ Tipo de contato</button></div></div>
+          <div class="eblock"><div class="bt">🏛 Estrutura organizacional <span class="bt-sub">— secretarias até o 2º nível</span></div>${estr}
+            <div class="addrow"><button class="addbtn" data-add="secretaria" data-orgao="${n.nome}" data-area="${n.area||''}">＋ Secretaria / unidade</button></div></div>
+        </div></div>`;
+    }
+    const tpill = n.t==='tipo' ? `<span class="tpill">tipo de órgão</span>` : '';
+    return `<div class="tnode lv-${n.t} open">
+      <div class="trow" style="${pad}"><span class="tchev">›</span><span class="tlabel">${n.nome}</span>${tpill}
+        <span class="grow2"></span><span class="tcount">${countEnts(n)}</span></div>
+      <div class="tchildren">${n.children.map(c=>renderNode(c,depth+1)).join('')}</div></div>`;
+  }
+  document.getElementById('view-tree').innerHTML=TREE.map(n=>renderNode(n,0)).join('');
+
+  // expand/collapse; add-buttons e links não togglam
+  document.getElementById('view-tree').addEventListener('click',e=>{
+    const capEl=e.target.closest('.svcapbtn');
+    if(capEl){openCaptureSv(+capEl.dataset.svcapi);return;}
+    const svEl=e.target.closest('[data-sv]');
+    if(svEl){openServidor(+svEl.dataset.sv);return;}
+    const ab=e.target.closest('.addbtn');
+    if(ab){e.preventDefault();openAdd(ab);return;}
+    if(e.target.closest('a')){e.preventDefault();return;}
+    const row=e.target.closest('.trow'); if(!row)return;
+    row.parentElement.classList.toggle('open');
+  });
+
+  // ===== FILTROS (estado, cidade, esfera, responsável, tema) =====
+  const vTree=document.getElementById('view-tree'), vStage=document.getElementById('view-stage');
+  const F={uf:document.getElementById('f-uf'),cid:document.getElementById('f-cid'),esf:document.getElementById('f-esf'),resp:document.getElementById('f-resp'),tema:document.getElementById('f-tema')};
+  const fcount=document.getElementById('fcount');
+  const uniq=a=>[...new Set(a)].sort((x,y)=>x.localeCompare(y,'pt'));
+  const metas=Object.values(FMETA);
+  const fill=(sel,vals)=>vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
+  fill(F.uf,uniq(metas.map(m=>m.uf)));fill(F.cid,uniq(metas.map(m=>m.cid)));fill(F.esf,uniq(metas.map(m=>m.esf)));fill(F.resp,uniq(metas.map(m=>m.resp)));fill(F.tema,uniq(metas.map(m=>m.tema)));
+  let curTab='all';
+  const okd=d=>(!F.uf.value||d.uf===F.uf.value)&&(!F.cid.value||d.cid===F.cid.value)&&(!F.esf.value||d.esf===F.esf.value)&&(!F.resp.value||d.resp===F.resp.value)&&(!F.tema.value||d.tema===F.tema.value);
+  function applyFilters(){
+    let vis=0;
+    document.querySelectorAll('#view-tree .lv-ent').forEach(el=>{const ok=okd(el.dataset);el.style.display=ok?'':'none';if(ok)vis++;});
+    ['.lv-tipo','.lv-poder','.lv-esfera'].forEach(cls=>document.querySelectorAll('#view-tree '+cls).forEach(g=>{
+      let any=false;g.querySelectorAll('.lv-ent').forEach(e=>{if(e.style.display!=='none')any=true;});g.style.display=any?'':'none';}));
+    rows.querySelectorAll('tr').forEach(tr=>{tr.hidden=!okd(tr.dataset)||(curTab!=='all'&&tr.dataset.st!==curTab);});
+    fcount.textContent=vis+(vis===1?' entidade':' entidades');
+  }
+  Object.values(F).forEach(s=>s.addEventListener('change',applyFilters));
+  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');applyFilters();});
+
+  // TABS -> alterna árvore (Todos) x tabela por estágio
+  document.getElementById('tabs').addEventListener('click',e=>{
+    const b=e.target.closest('.tab'); if(!b)return;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on')); b.classList.add('on');
+    curTab=b.dataset.tab;
+    if(curTab==='all'){vTree.hidden=false;vStage.hidden=true;}else{vTree.hidden=true;vStage.hidden=false;}
+    applyFilters();
+  });
+  applyFilters();
+
+  // Abrir 360
+  const drawer=document.getElementById('drawer'), scrim=document.getElementById('scrim');
+  const OPPS={}; let CUR=null; // atuações capturadas sobrepõem o lead base
+  window.o_nome=document.getElementById('o-nome');window.o_val=document.getElementById('o-val');
+  function render360(l){
+    CUR=l; const s=ST[l.st]||['—','#5B7A98','#EBEFF3'];
+    o_nome.textContent=l.cli;
+    const a=document.getElementById('o-area'); a.className=l.area==='gp'?'tag gp':l.area==='leg'?'tag leg':'tag'; a.textContent=l.area==='gp'?'Gestão Pública':l.area==='leg'?'Legislativo':(l.areaLabel||'—');
+    o_val.textContent=l.val; document.getElementById('o-vsub').textContent=l.vsub;
+    const order=['prospeccao','qualificacao','proposta','negociacao','fechamento','posvenda']; const idx=order.indexOf(l.st);
+    document.getElementById('o-stage').innerHTML=order.map((k,i)=>`<i style="background:${i<idx?'#12626E':i===idx?s[1]:'#E4E8EB'}"></i>`).join('');
+    document.getElementById('o-atores').innerHTML=l.atores.map(t=>`<div class="actor">${av(t[0])}<div class="info"><b>${t[1]}</b><span>${t[2]}</span><div class="rateiobar"><i style="width:${t[4]}%"></i></div></div><span class="role ${t[5]?'resp':''}">${t[3]}</span></div>`).join('');
+    document.getElementById('o-tl').innerHTML=l.tl.map(e=>`<div class="ev ${e[3]?'mut':''}"><span class="d"></span><div class="c"><b>${e[0]}</b><p>${e[1]}</p><time>${e[2]}</time></div></div>`).join('');
+    const tot=l.comm.reduce((s,c)=>s+(parseInt(c[1].replace(/\D/g,''))||0),0);
+    document.getElementById('o-comm').innerHTML=l.comm.map(c=>`<div class="commrow"><span class="who">${c[0]}</span><span class="amt">${c[1]}</span></div>`).join('')+`<div class="commtot"><span>Total previsto</span><span class="amt">${tot?('R$ '+tot.toLocaleString('pt-BR')):'a definir'}</span></div>`;
+    document.getElementById('o-rule').innerHTML='Regra <b>'+l.rule+'</b>';
+    drawer.classList.add('open'); scrim.classList.add('open');
+  }
+  function openLead(id){const l=OPPS[id]||LEADS.find(x=>x.id===id);if(!l)return;rows.querySelectorAll('tr').forEach(t=>t.classList.toggle('sel',t.dataset.id===id));render360(l);}
+  rows.addEventListener('click',e=>{const tr=e.target.closest('tr[data-id]');if(tr)openLead(tr.dataset.id)});
+  function close(){drawer.classList.remove('open');scrim.classList.remove('open');rows.querySelectorAll('tr.sel').forEach(t=>t.classList.remove('sel'))}
+  document.getElementById('dx').addEventListener('click',close); scrim.addEventListener('click',close);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+
+  // ===== FICHA DO SERVIDOR (modal) — último nível, com campos livres =====
+  const svModal=document.getElementById('svmodal'), svScrim=document.getElementById('svscrim');
+  const svTipo=document.getElementById('sv-tipo'), svRede=document.getElementById('sv-rede'), svVal=document.getElementById('sv-val');
+  let svCur=-1;
+  function renderSvInfo(){
+    const r=SVREG[svCur]; if(!r)return;
+    document.getElementById('sv-info').innerHTML = r.info.length ? r.info.map((it,k)=>
+      `<div class="infoline"><span class="cttag serv">${it.tipo}</span><span class="iv">${it.rede?('<small>'+it.rede+':</small> '):''}${WAPP(it.val)}</span><button class="infox" data-k="${k}" aria-label="Remover">✕</button></div>`
+    ).join('') : `<div class="ctmeta" style="padding:2px 0 6px">Nenhuma informação ainda — adicione abaixo.</div>`;
+  }
+  function openServidor(i){
+    svCur=i; const r=SVREG[i]; if(!r)return;
+    document.getElementById('sv-nome').textContent=r.nome;
+    document.getElementById('sv-sub').textContent=[r.cargo,r.setor&&('· '+r.setor),r.unidade&&('· '+r.unidade),r.orgao&&('· '+r.orgao)].filter(Boolean).join(' ');
+    renderSvInfo(); renderSvVinc(i);
+    svModal.classList.add('open'); svScrim.classList.add('open');
+  }
+  function closeSv(){svModal.classList.remove('open');svScrim.classList.remove('open');svVal.value='';svRede.value='';}
+  // adicionar / remover
+  svTipo.addEventListener('change',()=>{svRede.hidden = svTipo.value!=='Rede social';});
+  document.getElementById('sv-addbtn').addEventListener('click',()=>{
+    const v=svVal.value.trim(); if(!v||svCur<0)return;
+    const it={tipo:svTipo.value,val:v}; if(svTipo.value==='Rede social'&&svRede.value.trim()) it.rede=svRede.value.trim();
+    SVREG[svCur].info.push(it); svVal.value=''; svRede.value=''; renderSvInfo();
+  });
+  document.getElementById('sv-info').addEventListener('click',e=>{
+    const b=e.target.closest('.infox'); if(!b||svCur<0)return;
+    SVREG[svCur].info.splice(+b.dataset.k,1); renderSvInfo();
+  });
+  document.getElementById('svx').addEventListener('click',closeSv); svScrim.addEventListener('click',closeSv);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSv()});
+
+  // ===== SIGILO: anti-cópia / seleção / print (demonstração; enforcement real no back-end) =====
+  document.body.classList.add('protect');
+  const USER='Gerente W.';
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  // marca d'água com usuário + data (dissuasão de print/screenshot)
+  document.getElementById('wm').innerHTML=Array.from({length:160},
+    ()=>`<span>PLENUM · CONFIDENCIAL · ${USER} · ${hoje}</span>`).join('');
+  // toast
+  let tmr; const toast=document.getElementById('toast'), tmsg=document.getElementById('toast-msg');
+  function warn(msg){tmsg.textContent=msg;toast.classList.add('on');clearTimeout(tmr);tmr=setTimeout(()=>toast.classList.remove('on'),2200);}
+  // bloqueia copiar / recortar / menu de contexto / arrastar
+  ['copy','cut'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();warn('Cópia bloqueada — segredo de negócio Plenum.');}));
+  document.addEventListener('contextmenu',e=>{e.preventDefault();warn('Menu bloqueado — dados protegidos.');});
+  document.addEventListener('dragstart',e=>e.preventDefault());
+  // Ctrl/Cmd+P e Ctrl/Cmd+S
+  document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&['p','s'].includes(e.key.toLowerCase())){e.preventDefault();warn('Impressão/exportação bloqueada — sigilo de negócio.');}
+  });
+
+  // ===== CADASTRO / EDIÇÃO DE CAMPANHA (admin) =====
+  const cModal=document.getElementById('cmodal'), cScrim=document.getElementById('cscrim');
+  let cAnexos=[{nome:'Apresentação Plenum 2026',ext:'pdf'},{nome:'Tabela de serviços & preços',ext:'xls'},{nome:'Proposta-modelo obras',ext:'doc'}];
+  let cLinks=[{nome:'Painel Estratégico — Obras',url:'#'},{nome:'Consulta PNCP',url:'#'}];
+  const extGuess=n=>{const e=(n.split('.').pop()||'').toLowerCase();return e==='pdf'?'pdf':['xls','xlsx','csv'].includes(e)?'xls':['png','jpg','jpeg','gif'].includes(e)?'img':'doc';};
+  const renderCAnexos=()=>{document.getElementById('c-anexos').innerHTML=cAnexos.map((a,i)=>`<span class="chip"><span class="ext ${a.ext}">${a.ext.toUpperCase()}</span> ${a.nome}<button class="rm" data-i="${i}" aria-label="Remover">✕</button></span>`).join('')||'<span class="ctmeta">Nenhum anexo.</span>';};
+  const renderCLinks=()=>{document.getElementById('c-links').innerHTML=cLinks.map((l,i)=>`<span class="chip link">${l.nome} <span class="ar">↗</span><button class="rm" data-i="${i}" aria-label="Remover">✕</button></span>`).join('')||'<span class="ctmeta">Nenhum link.</span>';};
+  // ---- seleção de leads por critério (tema, responsabilidade, setor, cargo, função, palavra-chave, CNAE) ----
+  const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const CNAE_MAP={jf:'8411-6/00',montes:'8411-6/00',araxa:'8411-6/00',gv:'8411-6/00',uberaba:'8411-6/00',patos:'8411-6/00','fms-araxa':'8412-4/00',udi:'8411-6/00',contagem:'8411-6/00',betim:'8411-6/00',juizforacam:'8411-6/00',der:'8411-6/00',tce:'8411-6/00',ifsudeste:'8542-1/00',assess:'7112-0/00',constr:'4120-4/00'};
+  let MATCHED=[]; const critTema=new Set(['Obras']);
+  function buildLeadset(){
+    const arr=[];
+    (function walk(list){list.forEach(node=>{
+      if(node.t==='ent'){
+        const m=FMETA[node.id]||{}, temas=new Set(); if(m.tema)temas.add(m.tema);
+        const setores=[],cargos=[];
+        (node.estrutura||[]).forEach(sec=>{if(sec.tema)temas.add(sec.tema);setores.push(sec.nome);(sec.unidades||[]).forEach(u=>{setores.push(u.nome);(u.servidores||[]).forEach(v=>cargos.push(v.cargo||''));});});
+        arr.push({id:node.id,nome:node.nome,temas:[...temas],cnae:CNAE_MAP[node.id]||'',setores:setores.map(norm),cargos:cargos.map(norm),texto:norm([node.nome,...setores,...cargos,m.cid,m.resp].join(' '))});
+      } else walk(node.children||[]);
+    });})(TREE);
+    return arr;
+  }
+  const LEADSET=buildLeadset();
+  const RESPKW={'Ordenador de Despesa':'ordenador','Secretário / Diretor':'secret','Engenheiro':'engenheir','Fiscal':'fiscal','Compras / Licitação / Pregoeiro':'pregoeir','Assessor':'assessor'};
+  const FUNCKW={'Gestão / Ordenação':'ordenad|secret|diretor','Técnica / Engenharia':'engenheir|projet','Compras / Licitação':'pregoeir|licita|compras','Assessoria':'assessor','Fiscalização':'fiscal'};
+  function renderCritTema(){
+    document.getElementById('crit-tema').innerHTML=Object.keys(TEMACOR).map(t=>`<button type="button" class="tchip${critTema.has(t)?' on':''}" data-tema="${t}"${critTema.has(t)?` style="background:${TEMACOR[t]}"`:''}>${t}</button>`).join('');
+  }
+  function applyCrit(){
+    const setor=norm(document.getElementById('crit-setor').value), cargo=norm(document.getElementById('crit-cargo').value),
+          kw=norm(document.getElementById('crit-kw').value), cnae=document.getElementById('crit-cnae').value.trim(),
+          respk=RESPKW[document.getElementById('crit-resp2').value]||'', funck=FUNCKW[document.getElementById('crit-funcao').value]||'';
+    MATCHED=LEADSET.filter(l=>{
+      if(critTema.size && !l.temas.some(t=>critTema.has(t))) return false;
+      if(setor && !l.setores.some(s=>s.includes(setor))) return false;
+      if(cargo && !l.cargos.some(c=>c.includes(cargo))) return false;
+      if(respk && !l.cargos.some(c=>c.includes(respk))) return false;
+      if(funck){const re=new RegExp(funck); if(!l.cargos.some(c=>re.test(c))) return false;}
+      if(kw && !l.texto.includes(kw)) return false;
+      if(cnae && !(l.cnae||'').startsWith(cnae)) return false;
+      return true;
+    });
+    document.getElementById('crit-n').textContent=MATCHED.length;
+    document.getElementById('crit-prev').innerHTML = MATCHED.length
+      ? MATCHED.slice(0,16).map(l=>`<span class="previtem">${l.nome}</span>`).join('')+(MATCHED.length>16?`<span class="previtem">+${MATCHED.length-16}</span>`:'')
+      : '<span class="ctmeta">Nenhuma entidade — ajuste os critérios.</span>';
+  }
+  document.getElementById('crit-tema').addEventListener('click',e=>{const b=e.target.closest('.tchip');if(!b)return;const t=b.dataset.tema;critTema.has(t)?critTema.delete(t):critTema.add(t);renderCritTema();applyCrit();});
+  ['crit-setor','crit-cargo','crit-kw','crit-cnae'].forEach(id=>document.getElementById(id).addEventListener('input',applyCrit));
+  ['crit-resp2','crit-funcao'].forEach(id=>document.getElementById(id).addEventListener('change',applyCrit));
+  document.getElementById('crit-clear').addEventListener('click',()=>{critTema.clear();['crit-setor','crit-cargo','crit-kw','crit-cnae'].forEach(id=>document.getElementById(id).value='');document.getElementById('crit-resp2').selectedIndex=0;document.getElementById('crit-funcao').selectedIndex=0;renderCritTema();applyCrit();});
+  function openCampanha(modo){
+    document.getElementById('c-title').textContent = modo==='nova' ? 'Nova campanha' : 'Editar campanha';
+    renderCAnexos(); renderCLinks(); renderCritTema(); applyCrit();
+    cModal.classList.add('open'); cScrim.classList.add('open');
+  }
+  function closeCampanha(){cModal.classList.remove('open');cScrim.classList.remove('open');}
+  document.getElementById('newCampBtn').addEventListener('click',()=>openCampanha('nova'));
+  const ec=document.getElementById('editCampBtn'); if(ec) ec.addEventListener('click',()=>openCampanha('editar'));
+  document.getElementById('c-anexos').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cAnexos.splice(+b.dataset.i,1);renderCAnexos();}});
+  document.getElementById('c-links').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cLinks.splice(+b.dataset.i,1);renderCLinks();}});
+  document.getElementById('c-anexo-add').addEventListener('click',()=>{const n=document.getElementById('c-anexo-nome');const v=n.value.trim();if(!v)return;cAnexos.push({nome:v,ext:extGuess(v)});n.value='';renderCAnexos();});
+  document.getElementById('c-link-add').addEventListener('click',()=>{const n=document.getElementById('c-link-nome'),u=document.getElementById('c-link-url');const v=n.value.trim();if(!v)return;cLinks.push({nome:v,url:u.value.trim()||'#'});n.value='';u.value='';renderCLinks();});
+  document.getElementById('c-save').addEventListener('click',()=>{
+    const nome=document.getElementById('c-nome').value.trim();
+    if(nome){document.getElementById('campTitle').textContent=nome; CAMPAIGNS[0].nome=nome;}
+    CAMPAIGNS[0].escopo=document.getElementById('c-escopo').value;
+    CAMPAIGNS[0].pct=+document.getElementById('c-pct').value||CAMPAIGNS[0].pct;
+    CAMPAIGNS[0].valorUnit=parseInt(document.getElementById('c-valor-unit').value.replace(/\D/g,''))||CAMPAIGNS[0].valorUnit;
+    closeCampanha(); warn(`Campanha salva (conceito) · escopo ${CAMPAIGNS[0].escopo}, ${CAMPAIGNS[0].pct}%, valor unit. R$ ${CAMPAIGNS[0].valorUnit.toLocaleString('pt-BR')} · ${MATCHED.length} leads.`);
+  });
+  document.getElementById('cx').addEventListener('click',closeCampanha);
+  document.getElementById('c-cancel').addEventListener('click',closeCampanha);
+  cScrim.addEventListener('click',closeCampanha);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCampanha()});
+
+  // ===== CAPTURAR SERVIDOR PARA CAMPANHA =====
+  const capModal=document.getElementById('capmodal'), capScrim=document.getElementById('capscrim');
+  const VEND=[['A','Vendedora A.'],['F','Vendedor F.'],['K','Vendedora K.'],['D','Vendedora D.'],['E','Vendedora E.'],['I','Vendedora I.']];
+  const iniOf=nome=>{const f=VEND.find(v=>v[1]===nome);return f?f[0]:(nome||'?')[0];};
+  const avmini=nome=>`<span class="av" style="background:${AV[iniOf(nome)]||'#5B7A98'}">${iniOf(nome)}</span>`;
+  const CURRENT='Vendedora A.';                                   // usuário logado (vendedor) que captura
+  const isGestor=()=>document.body.classList.contains('admin'); // Admin ligado = gerente/admin
+  const CAMPAIGNS=[                                             // parâmetros definidos pelo admin no cadastro
+    {id:'c-obras',nome:'Obras 2026 · Gestão Pública — MG',escopo:'Individual',pct:5,valorUnit:12000},
+    {id:'c-saude',nome:'Saúde 2026 · Gestão Pública — MG',escopo:'Por equipe',pct:6,valorUnit:9000}
+  ];
+  const campById=id=>CAMPAIGNS.find(c=>c.id===id);
+  const CAPTURES={}; let CAPI=-1;  // svIndex -> {campId, responsavel, estagio, obs}
+
+  function renderSvVinc(i){
+    const box=document.getElementById('sv-vinc'), c=CAPTURES[i];
+    if(!c){box.innerHTML=`<div class="box"><span>Sem vínculo de campanha.</span><span style="flex:1"></span><button class="btn-primary" id="sv-cap-open">＋ Capturar para campanha</button></div>`;}
+    else{const camp=campById(c.campId), s=ST[c.estagio]||['—','#5B7A98','#EBEFF3'];
+      box.innerHTML=`<div class="box"><span class="campchip">${camp?camp.nome.split(' · ')[0]:'Campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">Responsável: ${avmini(c.responsavel)} <b>${c.responsavel}</b></span><span style="flex:1"></span><button class="btn-ghost" id="sv-cap-open">${isGestor()?'Remanejar':'Ver / atualizar'}</button></div>`;}
+    document.getElementById('sv-cap-open').onclick=()=>{closeSv();openCaptureSv(i);};
+  }
+  function renderCapParams(){
+    const c=campById(document.getElementById('cap-camp').value); if(!c)return;
+    const com=Math.round(c.valorUnit*c.pct/100);
+    const el=document.getElementById('cap-params'); el.title='Definidos pelo admin no cadastro da campanha';
+    el.innerHTML=`<span>Escopo <b>${c.escopo}</b></span><span>Comissão <b>${c.pct}%</b></span><span>Valor unitário <b>R$ ${c.valorUnit.toLocaleString('pt-BR')}</b></span><span>Comissão prevista <b>R$ ${com.toLocaleString('pt-BR')}</b></span>`;
+  }
+  function checkConc(){
+    const c=CAPTURES[CAPI], warnEl=document.getElementById('cap-warn'), save=document.getElementById('cap-save');
+    if(c){const camp=campById(c.campId);
+      warnEl.hidden=false; warnEl.innerHTML=`⚠ Servidor já vinculado à campanha <b>${camp?camp.nome.split(' · ')[0]:''}</b> (responsável ${c.responsavel}). Um servidor não participa de campanhas concomitantes.${isGestor()?' Como gestor, você pode remanejar.':' Só gerente/admin pode remanejar.'}`;
+      save.disabled=!isGestor(); save.textContent=isGestor()?'Remanejar':'Bloqueado';
+    } else {warnEl.hidden=true; save.disabled=false; save.textContent='Registrar captura';}
+  }
+  function openCaptureSv(i){
+    const r=SVREG[i]; if(!r)return; CAPI=i; const c=CAPTURES[i];
+    document.getElementById('cap-title').textContent='Capturar — '+r.nome;
+    document.getElementById('cap-sub').textContent=[r.cargo,r.setor&&('· '+r.setor),r.unidade&&('· '+r.unidade),r.orgao&&('· '+r.orgao)].filter(Boolean).join(' ');
+    const sel=document.getElementById('cap-camp'); sel.innerHTML=CAMPAIGNS.map(x=>`<option value="${x.id}">${x.nome}</option>`).join(''); sel.value=c?c.campId:CAMPAIGNS[0].id;
+    document.getElementById('cap-st').value=c?c.estagio:'prospeccao';
+    document.getElementById('cap-obs').value=c?(c.obs||''):'';
+    const resp=c?c.responsavel:CURRENT, lock=document.getElementById('cap-resp-lock'), rsel=document.getElementById('cap-resp-sel');
+    if(isGestor()){lock.hidden=true; rsel.hidden=false; rsel.innerHTML=VEND.map(v=>`<option ${v[1]===resp?'selected':''}>${v[1]}</option>`).join('');}
+    else{rsel.hidden=true; lock.hidden=false; document.getElementById('cap-resp-av').innerHTML=avmini(resp); document.getElementById('cap-resp-nome').textContent=resp;}
+    renderCapParams(); checkConc();
+    capModal.classList.add('open'); capScrim.classList.add('open');
+  }
+  function closeCapture(){capModal.classList.remove('open');capScrim.classList.remove('open');}
+  function updateSvBadge(i){
+    const el=document.querySelector('.svcap[data-svcap="'+i+'"]'); if(!el)return; const c=CAPTURES[i];
+    if(!c){el.innerHTML='';return;} const camp=campById(c.campId), s=ST[c.estagio]||['—','#5B7A98','#EBEFF3'];
+    el.innerHTML=`<span class="campchip">${camp?camp.nome.split(' · ')[0]:'campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">${avmini(c.responsavel)} ${c.responsavel}</span>`;
+    const b=document.querySelector('.svcapbtn[data-svcapi="'+i+'"]'); if(b)b.textContent='⊕ vínculo';
+  }
+  document.getElementById('cap-camp').addEventListener('change',renderCapParams);
+  document.getElementById('cap-save').addEventListener('click',()=>{
+    if(document.getElementById('cap-save').disabled)return;
+    const r=SVREG[CAPI]; if(!r)return;
+    const campId=document.getElementById('cap-camp').value, st=document.getElementById('cap-st').value,
+          obs=document.getElementById('cap-obs').value.trim(),
+          resp=isGestor()?document.getElementById('cap-resp-sel').value:CURRENT;
+    CAPTURES[CAPI]={campId,responsavel:resp,estagio:st,obs};
+    updateSvBadge(CAPI);
+    const camp=campById(campId), com=Math.round(camp.valorUnit*camp.pct/100);
+    const rec={id:'sv-'+CAPI,cli:r.nome,area:r.area,st,
+      val:'R$ '+camp.valorUnit.toLocaleString('pt-BR'), vsub:'valor unitário · '+camp.nome.split(' · ')[0],
+      atores:[[iniOf(resp),resp,'Responsável · '+camp.escopo,'Responsável · 100%',100,1]],
+      tl:[[(ST[st]?ST[st][0]:st)+' — captura registrada',(obs||'—'),'agora · '+resp,0],['Servidor do órgão',r.cargo+' · '+r.orgao,'origem · painel',1]],
+      comm:[[resp+' · 100%','R$ '+com.toLocaleString('pt-BR')]],
+      rule:camp.escopo+' · '+camp.pct+'% · valor unitário R$ '+camp.valorUnit.toLocaleString('pt-BR')+' (definido pelo admin)'};
+    closeCapture(); render360(rec);
+    warn('Servidor capturado — '+r.nome+' → '+camp.nome.split(' · ')[0]+' · '+(ST[st]?ST[st][0]:st)+'.');
+  });
+  document.getElementById('capx').addEventListener('click',closeCapture);
+  document.getElementById('cap-cancel').addEventListener('click',closeCapture);
+  capScrim.addEventListener('click',closeCapture);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCapture()});
+
+  // ===== PAINEL DE COMISSÕES =====
+  const money=n=>'R$ '+n.toLocaleString('pt-BR');
+  const COMM=[
+   {i:'K',n:'Vendedora K.',nv:'Vendedor IV',ar:'Gestão Pública',emp:'Matriz',base:5,meta:800000,mem:[
+     {cli:'Município de Patos de Minas',t:'novo',v:312000,rt:'Resp · 60%',c:'312.000 × 5% = 15.600 → 60%',r:9360,s:'apurada'},
+     {cli:'Município de Montes Claros',t:'novo',v:210000,rt:'Resp · 100%',c:'210.000 × 5%',r:10500,s:'prevista'},
+     {cli:'Município de Araxá',t:'novo',v:180000,rt:'Resp · 100%',c:'180.000 × 5%',r:9000,s:'prevista'},
+     {cli:'Município de Gov. Valadares',t:'novo',v:132000,rt:'Resp · 70%',c:'132.000 × 5% = 6.600 → 70%',r:4620,s:'prevista'}]},
+   {i:'F',n:'Vendedor F.',nv:'Vendedor V',ar:'Gestão Pública',emp:'Matriz',base:5,meta:500000,mem:[
+     {cli:'Município de Patos de Minas',t:'novo',v:312000,rt:'Parceiro · 40%',c:'312.000 × 5% = 15.600 → 40%',r:6240,s:'apurada'},
+     {cli:'Município de Juiz de Fora',t:'novo',v:240000,rt:'Parceiro · 40%',c:'240.000 × 5% = 12.000 → 40%',r:4800,s:'prevista'}]},
+   {i:'A',n:'Vendedora A.',nv:'Vendedor V',ar:'Legislativo',emp:'Matriz',base:5,meta:400000,mem:[
+     {cli:'Município de Juiz de Fora',t:'novo',v:240000,rt:'Resp · 60%',c:'240.000 × 5% = 12.000 → 60%',r:7200,s:'prevista'},
+     {cli:'Câmara Municipal de Contagem',t:'novo',v:108000,rt:'Resp · 100%',c:'108.000 × 5%',r:5400,s:'prevista'}]},
+   {i:'D',n:'Vendedora D.',nv:'Vendedor IV',ar:'Legislativo',emp:'Filial',base:5,meta:300000,mem:[
+     {cli:'Câmara Municipal de Betim',t:'base',v:288000,rt:'Resp · 100%',c:'288.000 × 3% (base · renovação)',r:8640,s:'apurada',rv:'v1'}]},
+   {i:'E',n:'Vendedora E.',nv:'Vendedor(a)',ar:'Legislativo',emp:'Filial',base:5,meta:200000,mem:[
+     {cli:'Câmara Municipal de Juiz de Fora',t:'novo',v:120000,rt:'Resp · 100%',c:'120.000 × 5%',r:6000,s:'apurada',rv:'v1'}]},
+   {i:'I',n:'Vendedora I.',nv:'Vendedor(a)',ar:'Gestão Pública',emp:'Matriz',base:5,meta:250000,mem:[
+     {cli:'Município de Poços de Caldas',t:'novo',v:156000,rt:'Resp · 100%',c:'156.000 × 5%',r:7800,s:'prevista'}]}
+  ];
+  const commAgg=v=>{const ap=v.mem.filter(m=>m.s==='apurada').reduce((s,m)=>s+m.r,0),
+    pr=v.mem.filter(m=>m.s!=='apurada').reduce((s,m)=>s+m.r,0),
+    ganhas=v.mem.filter(m=>m.s==='apurada').length,
+    val=v.mem.reduce((s,m)=>s+m.v,0); return{ap,pr,ganhas,val};};
+  function renderComm(){
+    document.getElementById('comm-rows').innerHTML=COMM.map((v,ix)=>{const a=commAgg(v);
+      const mem=v.mem.map(m=>`<div class="memline"><b>${m.cli}</b><span class="tag ${m.t}">${m.t}</span><span class="ctmeta">${m.rt}</span><span class="memcalc">${m.c}</span><span class="grow2"></span><span class="rulever${(m.rv||'v2')==='v2'?' on':''}">regra ${m.rv||'v2'}</span><span class="money">${money(m.r)}</span><span class="stpay ${m.s==='apurada'?'ap':'pr'}">${m.s}</span></div>`).join('');
+      return `<tr class="vrow" data-ix="${ix}">
+        <td><div class="vwho"><span class="av" style="background:${AV[v.i]||'#5B7A98'}">${v.i}</span><div><b>${v.n}</b><span>${v.nv}</span></div></div></td>
+        <td><span class="tag ${v.ar==='Legislativo'?'leg':'gp'}">${v.ar}</span></td>
+        <td>${v.emp}</td>
+        <td class="r num">${v.base}%</td>
+        <td class="r num">${a.ganhas}</td>
+        <td class="r money">${money(a.val)}</td>
+        <td class="r">${v.meta?`<span class="num" style="font-size:11px">${money(v.meta)} · ${Math.min(100,Math.round(a.val/v.meta*100))}%</span><div class="metabar" style="width:78px;margin-left:auto"><i style="width:${Math.min(100,Math.round(a.val/v.meta*100))}%"></i></div>`:'—'}</td>
+        <td class="r money" style="color:var(--good)">${a.ap?money(a.ap):'—'}</td>
+        <td class="r money">${a.pr?money(a.pr):'—'}</td>
+        <td class="r"><span class="chev">›</span></td></tr>
+        <tr class="vdetail" hidden><td colspan="10"><div class="eyebrow" style="margin:8px 0 2px">Memória de cálculo</div>${mem}</td></tr>`;
+    }).join('');
+    let ap=0,pr=0; COMM.forEach(v=>{const a=commAgg(v);ap+=a.ap;pr+=a.pr;});
+    const vendido=312000+120000+288000, ganhas=3, metaPct=Math.round(vendido/1200000*100);
+    document.getElementById('comm-kpis').innerHTML=
+      `<div class="kpi"><div class="k">Comissão apurada</div><div class="v num" style="color:var(--good)">${money(ap)}</div></div>
+       <div class="kpi accent"><div class="k">Comissão prevista</div><div class="v num">${money(pr)}</div></div>
+       <div class="kpi"><div class="k">Vendas ganhas</div><div class="v num">${ganhas}</div></div>
+       <div class="kpi"><div class="k">Vendido (ganhas)</div><div class="v num">${money(vendido)}</div></div>
+       <div class="kpi"><div class="k">Meta da campanha</div><div class="v num">${metaPct}%</div><div class="metabar"><i style="width:${metaPct}%"></i></div></div>`;
+    document.getElementById('rule-meta').textContent=metaPct+'%';
+  }
+  renderComm();
+  document.getElementById('comm-rows').addEventListener('click',e=>{
+    const tr=e.target.closest('tr.vrow'); if(!tr)return;
+    const d=tr.nextElementSibling; if(d)d.hidden=!d.hidden;
+  });
+
+  // histórico de apuração + versões de regra (a apuração grava a regra vigente à época)
+  const RULEV=[
+   {v:'v1',ini:'01/02/2026',fim:'30/06/2026',desc:'Base IV/V 5% · cliente novo 5% · base/renovação 3% · rateio geral 70·30',por:'Gerente W. (admin)'},
+   {v:'v2',ini:'01/07/2026',fim:null,desc:'Acrescenta pós-meta +1 p.p. e acelerador de volume (11–20 vendas +0,5 · 21+ +1)',por:'Gerente W. (admin)'}];
+  const APUR=[
+   {comp:'jul/2026',vend:'Vendedora K.',cli:'Município de Patos de Minas',rv:'v2',calc:'312.000 × 5% = 15.600 → 60%',val:9360,em:'12/07/2026 · fechamento'},
+   {comp:'jul/2026',vend:'Vendedor F.',cli:'Município de Patos de Minas',rv:'v2',calc:'312.000 × 5% = 15.600 → 40%',val:6240,em:'12/07/2026 · fechamento'},
+   {comp:'jun/2026',vend:'Vendedora D.',cli:'Câmara Municipal de Betim',rv:'v1',calc:'288.000 × 3% (base · renovação)',val:8640,em:'28/06/2026 · Gerente W.'},
+   {comp:'jun/2026',vend:'Vendedora E.',cli:'Câmara Municipal de Juiz de Fora',rv:'v1',calc:'120.000 × 5%',val:6000,em:'05/06/2026 · Gerente W.'}];
+  function renderApur(){
+    document.getElementById('apur-rows').innerHTML=APUR.map(a=>`<tr>
+      <td class="num">${a.comp}</td>
+      <td><div class="vwho"><span class="av" style="background:${AV[iniOf(a.vend)]||'#5B7A98'}">${iniOf(a.vend)}</span><b>${a.vend}</b></div></td>
+      <td>${a.cli}</td>
+      <td><span class="rulever${a.rv==='v2'?' on':''}">regra ${a.rv}</span></td>
+      <td class="memcalc">${a.calc}</td>
+      <td class="r money">${money(a.val)}</td>
+      <td class="ctmeta">${a.em}</td></tr>`).join('');
+  }
+  function renderRulelog(){
+    document.getElementById('rulelog').innerHTML=RULEV.slice().reverse().map(r=>`<div class="verline">
+      <span class="rulever${r.fim?'':' on'}">${r.v}</span>
+      <b class="num">${r.ini} — ${r.fim||'vigente'}</b>
+      <span class="desc">${r.desc}</span><span class="por">por ${r.por}</span></div>`).join('');
+    const cur=RULEV.find(r=>!r.fim);
+    if(cur)document.getElementById('rule-current').textContent=cur.v+' · desde '+cur.ini;
+  }
+  renderApur(); renderRulelog();
+
+  // navegação sidebar: Campanhas ↔ Comissões ↔ Equipe/Organização
+  const SECS=['sec-filtros','sec-camp','sec-funil','sec-note'].map(id=>document.getElementById(id));
+  function showView(v){
+    SECS.forEach(el=>{if(el)el.hidden=v!=='main';});
+    document.getElementById('view-comm').hidden=v!=='comm';
+    document.getElementById('view-team').hidden=v!=='team';
+    const on={main:'nav-campanhas',comm:'nav-comissoes',team:'nav-equipe'}[v];
+    ['nav-campanhas','nav-comissoes','nav-equipe','nav-regras','nav-empresas'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',id===on);});
+  }
+  const NAVGO={'nav-campanhas':()=>showView('main'),'nav-comissoes':()=>showView('comm'),
+    'nav-regras':()=>{showView('comm');document.querySelector('.rulecards').scrollIntoView({behavior:'smooth'});document.getElementById('nav-regras').classList.add('on');},
+    'nav-equipe':()=>showView('team'),
+    'nav-empresas':()=>{showView('team');document.getElementById('org-cards').scrollIntoView({behavior:'smooth'});document.getElementById('nav-empresas').classList.add('on');}};
+  Object.keys(NAVGO).forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',e=>{e.preventDefault();NAVGO[id]();});});
+
+  // cards de regras: edição FUNCIONAL (admin) — ✎ libera os valores, ✓ salva
+  document.querySelector('.rulecards').addEventListener('click',e=>{
+    const b=e.target.closest('.editbtn'); if(!b)return;
+    const card=b.closest('.rulecard'), on=card.classList.toggle('editing');
+    card.querySelectorAll('.tier b').forEach(el=>el.contentEditable=on?'true':'false');
+    b.textContent=on?'✓ salvar':'✎';
+    if(on){const f=card.querySelector('.tier b'); if(f)f.focus();}
+    else{
+      const hoje=new Date().toLocaleDateString('pt-BR'), cur=RULEV.find(r=>!r.fim);
+      if(cur)cur.fim=hoje;
+      RULEV.push({v:'v'+(RULEV.length+1),ini:hoje,fim:null,desc:card.querySelector('h4').textContent.trim()+' — parâmetros ajustados',por:'Israel S. (admin)'});
+      renderRulelog();
+      warn('Nova versão publicada (v'+RULEV.length+') — apurações passadas preservam a regra à época.');
+    }
+  });
+
+  // ===== EQUIPE & ORGANIZAÇÃO (cadastro · somente admin) =====
+  const ORGS=[
+    {t:'mz',tipo:'Matriz',nome:'Instituto de Desenvolvimento Público Plenum Brasil LTDA',cnpj:'21.650.715/0001-60'},
+    {t:'fl',tipo:'Filial',nome:'PlenumGestão LTDA',cnpj:'41.209.777/0001-48'}];
+  const TEAM=[
+    {i:'IS',n:'Israel Santiago',fn:'Administrador',nv:'—',ar:'—',emp:'Matriz',base:0,meta:0,sit:'ativo',login:'israel@licitapublica.com.br',irrestrito:true},
+    {i:'W',n:'Gerente W.',fn:'Gerente',nv:'—',ar:'—',emp:'Matriz',base:0,meta:0,sit:'ativo',cpf:'',senha:''},
+    {i:'A',n:'Vendedora A.',fn:'Vendedor',nv:'Vendedor V',ar:'Legislativo',emp:'Matriz',base:5,meta:400000,sit:'ativo',cpf:'12345678901',senha:'•'},
+    {i:'F',n:'Vendedor F.',fn:'Vendedor',nv:'Vendedor V',ar:'Gestão Pública',emp:'Matriz',base:5,meta:500000,sit:'ativo',cpf:'',senha:''},
+    {i:'K',n:'Vendedora K.',fn:'Vendedor',nv:'Vendedor IV',ar:'Gestão Pública',emp:'Matriz',base:5,meta:800000,sit:'ativo',cpf:'',senha:''},
+    {i:'D',n:'Vendedora D.',fn:'Vendedor',nv:'Vendedor IV',ar:'Legislativo',emp:'Filial',base:5,meta:300000,sit:'ativo',cpf:'',senha:''},
+    {i:'E',n:'Vendedora E.',fn:'Vendedor',nv:'Vendedor(a)',ar:'Legislativo',emp:'Filial',base:5,meta:200000,sit:'ativo',cpf:'',senha:''},
+    {i:'I',n:'Vendedora I.',fn:'Vendedor',nv:'Vendedor(a)',ar:'Gestão Pública',emp:'Matriz',base:5,meta:250000,sit:'ativo',cpf:'',senha:''}];
+  const maskCpf=c=>{const d=(c||'').replace(/\D/g,'');return d.length===11?d.slice(0,3)+'.•••.•••-'+d.slice(9):'';};
+  function renderOrgs(){
+    document.getElementById('org-cards').innerHTML=ORGS.map(o=>{const q=TEAM.filter(t=>t.emp===o.tipo).length;
+      return `<div class="orgcard"><span class="tipoemp ${o.t}">${o.tipo}</span><h4>${o.nome}</h4><div class="cnpj">CNPJ ${o.cnpj}</div><div class="qtd">👥 ${q} pessoas na equipe</div></div>`;}).join('')
+      +`<button class="orgcard adminonly" id="org-add">＋ Empresa (matriz ou filial)</button>`;
+  }
+  function renderTeam(){
+    document.getElementById('team-rows').innerHTML=TEAM.map((t,ix)=>{
+      const login=t.irrestrito?`<span class="stpay ap" title="${t.login||''}">🔓 irrestrito</span>`
+                 :(t.cpf?`<span class="num" style="font-size:11px">🔑 ${maskCpf(t.cpf)}</span>`:'<span class="ctmeta">a definir</span>');
+      return `<tr>
+      <td><div class="vwho"><span class="av" style="background:${AV[t.i]||'#5B7A98'}">${t.i}</span><div><b>${t.n}</b></div></div></td>
+      <td>${t.fn}</td><td>${t.nv}</td>
+      <td>${t.ar==='—'?'—':`<span class="tag ${t.ar==='Legislativo'?'leg':'gp'}">${t.ar}</span>`}</td>
+      <td>${t.emp}</td>
+      <td class="r num">${t.base?t.base+'%':'—'}</td>
+      <td class="r money">${t.meta?money(t.meta):'—'}</td>
+      <td>${login}</td>
+      <td><span class="stpay ${t.sit==='ativo'?'ap':'pr'}">${t.sit}</span></td>
+      <td class="r"><button class="editbtn" data-tedit="${ix}">✎</button></td></tr>`;}).join('');
+    renderOrgs();
+  }
+  renderTeam();
+  const tmModal=document.getElementById('tmmodal'), tmScrim=document.getElementById('tmscrim'); let TEDIT=-1;
+  function openTeam(ix){
+    TEDIT=ix; const t=ix>=0?TEAM[ix]:null;
+    document.getElementById('tm-title').textContent=t?('Editar — '+t.n):'Novo colaborador';
+    document.getElementById('tm-nome').value=t?t.n:'';
+    document.getElementById('tm-fn').value=t?t.fn:'Vendedor';
+    const nv=document.getElementById('tm-nv'); nv.value=(t&&[...nv.options].some(o=>o.value===t.nv))?t.nv:'Vendedor IV';
+    document.getElementById('tm-ar').value=t&&t.ar!=='—'?t.ar:'Gestão Pública';
+    document.getElementById('tm-emp').value=t?t.emp:'Matriz';
+    document.getElementById('tm-base').value=t?t.base:5;
+    document.getElementById('tm-meta').value=t&&t.meta?t.meta.toLocaleString('pt-BR'):'';
+    document.getElementById('tm-cpf').value=t?(t.cpf||''):'';
+    document.getElementById('tm-senha').value='';
+    document.getElementById('tm-sit').value=t?t.sit:'ativo';
+    tmModal.classList.add('open'); tmScrim.classList.add('open');
+  }
+  function closeTeam(){tmModal.classList.remove('open');tmScrim.classList.remove('open');}
+  document.getElementById('team-add').addEventListener('click',()=>openTeam(-1));
+  document.getElementById('team-rows').addEventListener('click',e=>{const b=e.target.closest('[data-tedit]');if(b)openTeam(+b.dataset.tedit);});
+  document.getElementById('tm-save').addEventListener('click',()=>{
+    const nome=document.getElementById('tm-nome').value.trim(); if(!nome)return;
+    const rec={i:nome[0].toUpperCase(),n:nome,fn:document.getElementById('tm-fn').value,nv:document.getElementById('tm-nv').value,
+      ar:document.getElementById('tm-ar').value,emp:document.getElementById('tm-emp').value,
+      base:+document.getElementById('tm-base').value||0,
+      meta:parseInt(document.getElementById('tm-meta').value.replace(/\D/g,''))||0,
+      cpf:document.getElementById('tm-cpf').value.replace(/\D/g,''),
+      sit:document.getElementById('tm-sit').value};
+    const senha=document.getElementById('tm-senha').value;
+    if(senha)rec.senha=senha; else if(TEDIT>=0)rec.senha=TEAM[TEDIT].senha; // senha só muda se preenchida
+    if(TEDIT>=0)Object.assign(TEAM[TEDIT],rec);
+    else{TEAM.push(rec); if(rec.fn==='Vendedor'&&!VEND.some(v=>v[1]===rec.n))VEND.push([rec.i,rec.n]);}
+    const cm=COMM.find(c=>c.n===rec.n); if(cm){cm.meta=rec.meta; renderComm();} // meta reflete no painel de comissões
+    renderTeam(); closeTeam(); warn((TEDIT>=0?'Cadastro atualizado':'Colaborador cadastrado')+' — '+rec.n+' · '+rec.emp+(rec.cpf?' · login CPF definido':'')+'.');
+  });
+  document.getElementById('tmx').addEventListener('click',closeTeam);
+  document.getElementById('tm-cancel').addEventListener('click',closeTeam);
+  tmScrim.addEventListener('click',closeTeam);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTeam()});
+
+  // ===== "+ ADICIONAR" FUNCIONAIS (árvore) + nova empresa =====
+  let CTYPES=['Institucional','Secretaria','Ouvidoria','Gabinete','Comercial','Outro'];
+  const ADDDEFS={
+    contato:{t:'Adicionar contato',f:[['tipo','Tipo de contato','sel','ct'],['valor','Email / valor','txt','contato@orgao.gov.br'],['meta','Telefone · site (opcional)','txt','(31) 0000-0000']]},
+    tipocontato:{t:'Novo tipo de contato',f:[['nome','Nome do tipo','txt','ex.: WhatsApp institucional']]},
+    servidor:{t:'Adicionar servidor',f:[['nome','Nome','txt','Nome completo'],['cargo','Cargo','txt','ex.: Engenheiro Civil'],['email','Email','txt','servidor@orgao.gov.br'],['tel','Telefone','txt','(31) 90000-0000']]},
+    unidade:{t:'Adicionar unidade (2º nível)',f:[['nome','Nome da unidade','txt','ex.: Departamento de Projetos']]},
+    secretaria:{t:'Adicionar secretaria (1º nível)',f:[['nome','Nome da secretaria','txt','ex.: Secretaria de Educação'],['tema','Tema','sel','tm'],['email','Email setorial','txt','sec@orgao.gov.br']]},
+    empresa:{t:'Nova empresa',f:[['nome','Razão social','txt','Razão social'],['cnpj','CNPJ','txt','00.000.000/0000-00'],['tipo','Tipo','sel','emp']]}
+  };
+  const adModal=document.getElementById('admodal'), adScrim=document.getElementById('adscrim'); let ADCTX=null;
+  function openAdd(btn){
+    const kind=btn.dataset.add||'empresa', def=ADDDEFS[kind]; if(!def)return;
+    ADCTX={kind,btn};
+    document.getElementById('ad-title').textContent=def.t;
+    document.getElementById('ad-sub').textContent=[btn.dataset.orgao,btn.dataset.setor,btn.dataset.unidade].filter(Boolean).join(' · ');
+    document.getElementById('ad-fields').innerHTML=def.f.map(([k,lab,tp,x])=>{
+      if(tp==='sel'){const opts=x==='ct'?CTYPES:x==='tm'?Object.keys(TEMACOR):['Matriz','Filial'];
+        return `<div class="frow"><label>${lab}</label><select data-adf="${k}">${opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;}
+      return `<div class="frow"><label>${lab}</label><input type="text" data-adf="${k}" placeholder="${x||''}"></div>`;
+    }).join('');
+    adModal.classList.add('open'); adScrim.classList.add('open');
+    const f=document.querySelector('#ad-fields [data-adf]'); if(f)f.focus();
+  }
+  function closeAdd(){adModal.classList.remove('open');adScrim.classList.remove('open');}
+  document.getElementById('ad-save').addEventListener('click',()=>{
+    if(!ADCTX)return; const V={};
+    document.querySelectorAll('#ad-fields [data-adf]').forEach(el=>V[el.dataset.adf]=el.value.trim());
+    const kind=ADCTX.kind, btn=ADCTX.btn, row=btn.closest('.addrow');
+    if(kind==='contato'&&V.valor){
+      row.insertAdjacentHTML('beforebegin',`<div class="ctline"><span class="cttag ${/secretaria|ouvidoria/i.test(V.tipo)?'sec':''}">${V.tipo}</span><span class="ctval"><a href="mailto:${V.valor}">${V.valor}</a></span><span class="ctmeta">${WAPP(V.meta||'')}</span></div>`);
+    } else if(kind==='tipocontato'&&V.nome){ CTYPES.push(V.nome); }
+    else if(kind==='servidor'&&V.nome){
+      const box=btn.closest('.tchildren'), ph=box.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
+      row.insertAdjacentHTML('beforebegin',svLine({nome:V.nome,cargo:V.cargo,email:V.email,tel:V.tel},{orgao:btn.dataset.orgao,setor:btn.dataset.setor,unidade:btn.dataset.unidade,area:null,orgId:''}));
+    } else if(kind==='unidade'&&V.nome){
+      const box=btn.closest('.tchildren'), ph=box.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
+      row.insertAdjacentHTML('beforebegin',`<div class="tnode orgnode lv-uni open"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm2">↳ ${V.nome}</span><span class="grow2"></span><span class="temachip">2º nível</span></div><div class="tchildren"><div class="ctmeta" style="padding:2px">Sem servidor listado.</div><div class="addrow"><button class="addbtn" data-add="servidor" data-orgao="${btn.dataset.orgao||''}" data-setor="${btn.dataset.setor||''}" data-unidade="${V.nome}">＋ Servidor</button></div></div></div>`);
+    } else if(kind==='secretaria'&&V.nome){
+      const eb=btn.closest('.eblock'), ph=eb.querySelector(':scope > .ctmeta'); if(ph)ph.remove();
+      row.insertAdjacentHTML('beforebegin',renderOrg({nome:V.nome,tema:V.tema,email:V.email,unidades:[]},btn.dataset.orgao||'',btn.dataset.area||null,''));
+    } else if(kind==='empresa'&&V.nome){
+      ORGS.push({t:V.tipo==='Matriz'?'mz':'fl',tipo:V.tipo,nome:V.nome,cnpj:V.cnpj||'—'}); renderTeam();
+    }
+    closeAdd(); warn('Adicionado (conceito) — no app real grava no Supabase com auditoria.');
+  });
+  document.getElementById('adx').addEventListener('click',closeAdd);
+  document.getElementById('ad-cancel').addEventListener('click',closeAdd);
+  adScrim.addEventListener('click',closeAdd);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAdd()});
+  document.getElementById('org-cards').addEventListener('click',e=>{const b=e.target.closest('#org-add');if(b)openAdd(b);});
+  // chips "+ Anexar / + Vincular" do cabeçalho abrem a edição da campanha
+  document.getElementById('sec-camp').addEventListener('click',e=>{const b=e.target.closest('.chip.add');if(b)openCampanha('editar');});
+  // links "+ pessoa / + atividade" do 360 (conceito)
+  document.querySelectorAll('.add360').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();warn('No conceito, participações e atividades entram pela captura do servidor (⊕ capturar).');}));
+</script>
