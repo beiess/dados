@@ -511,6 +511,10 @@
 
   .p1block .orgnm{color:var(--muted)}
   .p1block>.bt .bt-sub{font-family:var(--mono);font-size:10px}
+
+  .fsel input{font-family:var(--sans);font-size:12.5px;font-weight:550;color:var(--ink);border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:6px 9px;min-width:150px;letter-spacing:normal;text-transform:none}
+  .fsel input::placeholder{color:var(--faint);font-weight:400}
+  .fsel input:focus{outline:2px solid var(--accent);outline-offset:1px}
 </style>
 
 <div id="login">
@@ -588,6 +592,7 @@
         <label class="fsel">Esfera administrativa<select id="f-esf"><option value="">Todas</option></select></label>
         <label class="fsel">Responsável<select id="f-resp"><option value="">Todos</option></select></label>
         <label class="fsel">Tema<select id="f-tema"><option value="">Todos</option></select></label>
+        <label class="fsel">Nome do servidor<input id="f-nome" placeholder="ex.: Marcos Francisco" autocomplete="off"></label>
         <span class="fb-spacer"></span>
         <span class="fcount" id="fcount"></span>
         <span class="selcount" id="selcount"></span>
@@ -1219,7 +1224,7 @@
     fcount.textContent=vis+(vis===1?' entidade':' entidades');
   }
   Object.values(F).forEach(s=>s.addEventListener('change',()=>applyAll()));
-  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');const q=document.getElementById('q-serv');if(q)q.value='';applyAll();});
+  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');['q-serv','f-nome'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyAll();});
 
   // TABS -> alterna árvore (Todos) x tabela por estágio
   document.getElementById('tabs').addEventListener('click',e=>{
@@ -2120,7 +2125,7 @@
   async function applyAll(){
     document.querySelectorAll('.snm.hit').forEach(x=>x.classList.remove('hit'));
     applyFilters();
-    const q=document.getElementById('q-serv'), raw=q?q.value.trim():'', qs=raw?norm(raw):'';
+    const raw=((document.getElementById('f-nome')||{}).value||(document.getElementById('q-serv')||{}).value||'').trim(), qs=raw?norm(raw):'';
     window.P1HL=qs||'';
     let p1set=null;
     if(qs&&qs.length>=4&&typeof sbc!=='undefined'){
@@ -2151,6 +2156,9 @@
   }
   document.getElementById('fapply').addEventListener('click',applyAll);
   document.getElementById('q-serv').addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});
+  document.getElementById('f-nome').addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});
+  document.getElementById('q-serv').addEventListener('input',e=>{document.getElementById('f-nome').value=e.target.value;});
+  document.getElementById('f-nome').addEventListener('input',e=>{document.getElementById('q-serv').value=e.target.value;});
   document.getElementById('view-tree').addEventListener('change',e=>{
     if(e.target.matches('[data-svsel],[data-ctsel]')){
       const nsel=document.querySelectorAll('#view-tree input[data-svsel]:checked,#view-tree input[data-ctsel]:checked').length;
