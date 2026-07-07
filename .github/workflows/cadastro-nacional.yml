@@ -1,0 +1,94 @@
+name: Cadastro Institucional Nacional (PNCP)
+
+# Roda a varredura nacional do PNCP nos servidores do GitHub (sem depender do laptop).
+# Matriz: 1 job por modalidade (paralelo, cada um < 6h) -> merge -> carga no Supabase.
+# - push no branch de CI: smoke test (5 páginas/modalidade), sem carga.
+# - workflow_dispatch: varredura completa (inputs de data/paginação) + carga se houver secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      inicio:      { description: "Data inicial (yyyyMMdd)", default: "20250705" }
+      fim:         { description: "Data final (yyyyMMdd)",    default: "20260705" }
+      max_paginas: { description: "Cap de páginas por modalidade (0 = todas)", default: "0" }
+  push:
+    branches: [ v26-cadastro-nacional-ci ]
+    paths:
+      - '.github/workflows/cadastro-nacional.yml'
+      - 'tools/pncp_cadastro_nacional.py'
+      - 'tools/merge_cadastro_nacional.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cadastro-nacional-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sweep:
+    name: "varredura mod ${{ matrix.modalidade }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        modalidade: [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13]
+    env:
+      INICIO: ${{ github.event.inputs.inicio || '20250705' }}
+      FIM:    ${{ github.event.inputs.fim || '20260705' }}
+      # push => smoke (5 páginas); dispatch => input (default 0 = todas)
+      MAXPAG: ${{ github.event.inputs.max_paginas || (github.event_name == 'push' && '5' || '0') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Varrer modalidade ${{ matrix.modalidade }}
+        run: |
+          python tools/pncp_cadastro_nacional.py \
+            --inicio "$INICIO" --fim "$FIM" \
+            --modalidades ${{ matrix.modalidade }} \
+            --max-paginas "$MAXPAG" --sem-rfb --sem-setores
+          cp data_full/.sweep_state.json "state-${{ matrix.modalidade }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: state-${{ matrix.modalidade }}
+          path: state-${{ matrix.modalidade }}.json
+          retention-days: 3
+
+  merge-load:
+    name: "merge + carga Supabase"
+    needs: sweep
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: state-*
+          path: states
+          merge-multiple: true
+      - name: Merge -> cascata nacional
+        run: |
+          python tools/merge_cadastro_nacional.py 'states/state-*.json'
+          echo "---- resumo ----"
+          wc -l data_full/cadastro_nacional.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cadastro-nacional
+          path: |
+            data_full/cadastro_nacional.json
+            data_full/cadastro_nacional.csv
+          retention-days: 14
+      - name: Carregar no Supabase
+        if: ${{ env.SUPABASE_URL != '' }}
+        run: python tools/load_cadastro_nacional.py
+      - name: Sem secrets (pulou carga)
+        if: ${{ env.SUPABASE_URL == '' }}
+        run: echo "::notice::SUPABASE_URL/KEY ausentes — carga pulada. Baixe o artefato 'cadastro-nacional' ou configure os secrets."
