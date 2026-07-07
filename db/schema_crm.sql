@@ -1,10 +1,18 @@
 -- ============================================================================
--- CRM de Vendas — visão 360 (prospecção → fechamento → pós-venda) + comissionamento
--- Mesma instância Supabase dos painéis. Login = Supabase Auth. Leads vêm do painel
--- estratégico (obras_engenharia_orgaos). Visibilidade: a EQUIPE (organização = matriz +
--- filiais) vê os clientes trabalhados; comissão cada um vê a sua, gestor vê da equipe.
+-- CRM de Vendas Plenum — SCHEMA v2 (build real, espelha o conceito v14)
+-- Rodar no SQL Editor: https://supabase.com/dashboard/project/ntkntgcegvqqlarjspjp/sql/new
 --
--- ARTEFATO DE DESENHO — revisar antes de rodar no SQL Editor. RLS inicial (refinável por papel).
+-- Modelo:
+--  · Cascata: crm_entidades › crm_setores (1º/2º nível) › crm_servidores (folha)
+--  · CAPTURA é POR SERVIDOR; um servidor NÃO participa de campanhas concomitantes
+--    (unique index parcial). Quem captura vira responsável; transferir = só gestor
+--    (trigger). Escopo/%/valor unitário vêm da CAMPANHA (definidos pelo admin).
+--  · Comissão: regras VERSIONADAS com vigência (regras_versoes) + APURAÇÕES
+--    imutáveis com snapshot da regra à época (sem policy de update/delete).
+--  · Login: Supabase Auth. CPF+senha = email alias cpf<digitos>@crm.plenumbrasil.com.br
+--    (provisionado por tools/crm_logins.py). israel@licitapublica.com.br = irrestrito.
+--  · Visibilidade: EQUIPE (org = matriz + filiais) vê tudo; escrita de cadastro só gestor.
+--  · LGPD: cpf é chave interna — MASCARAR na exibição (app já mascara).
 -- ============================================================================
 
 -- ========================= EMPRESAS (matriz/filial) =========================
@@ -13,14 +21,11 @@ create table if not exists empresas (
   nome text not null,
   cnpj text unique,
   tipo text not null default 'matriz' check (tipo in ('matriz','filial')),
-  matriz_id uuid references empresas(id),        -- filial aponta p/ matriz; matriz = NULL
+  matriz_id uuid references empresas(id),
   cidade text, uf text,
   ativo boolean default true,
   criado_em timestamptz default now()
 );
-
--- Seed das empresas reais do grupo (dado público de PJ). PII de colaborador NÃO vai no git —
--- funcionários são carregados por tools/load_crm_colaboradores.py a partir da planilha do RH.
 insert into empresas (nome, cnpj, tipo) values
   ('Instituto de Desenvolvimento Público Plenum Brasil LTDA', '21650715000160', 'matriz')
   on conflict (cnpj) do nothing;
@@ -30,215 +35,322 @@ insert into empresas (nome, cnpj, tipo, matriz_id)
   on conflict (cnpj) do nothing;
 
 -- ========================= FUNCIONÁRIOS (usuários) =========================
--- Estrutura alinhada à planilha real "COLABORADORES 2026" (RH/Interno).
 create table if not exists funcionarios (
   id uuid primary key default gen_random_uuid(),
-  auth_user_id uuid unique references auth.users(id) on delete set null,  -- login (Supabase Auth)
+  auth_user_id uuid unique references auth.users(id) on delete set null,
   nome text not null,
   email text,
+  cpf text,                                       -- login interno (só dígitos) — MASCARAR na exibição
   empresa_id uuid not null references empresas(id),
-  funcao text not null default 'vendedor' check (funcao in ('admin','gerente','vendedor')),  -- papel no app
-  setor text,                                    -- Comercial / Administrativo / Financeiro / Aux. de Limpeza
-  cargo text,                                    -- ex.: "Vendedor V", "Gerente de Relacionamento", "Diretor Administrativo"
-  nivel text,                                    -- escada do cargo (ex.: I..V) — usada em regra de comissão por nível
+  funcao text not null default 'vendedor' check (funcao in ('admin','gerente','vendedor')),
+  setor text, cargo text, nivel text,
   area_atuacao text check (area_atuacao in ('Legislativo','Gestão Pública') or area_atuacao is null),
-  -- ^ segmento de vendas. LIGA AO PAINEL: 'Gestão Pública' -> órgãos executivos (prefeituras/obras);
-  --   'Legislativo' -> câmaras/legislativo. Usar para rotear leads por área.
-  comissao_base_pct numeric default 0,           -- % base individual (pode vir do nível/cargo)
-  -- campos de RH (opcionais, da planilha)
-  salario numeric, dt_admissao date, sexo text, localizacao text,  -- OBS: BH/DF
+  comissao_base_pct numeric default 5,
+  meta_individual numeric default 0,              -- meta configurável por vendedor (R$)
+  acesso_irrestrito boolean default false,        -- israel@licitapublica.com.br
+  salario numeric, dt_admissao date, sexo text, localizacao text,
   situacao text default 'ativo',
   ativo boolean default true,
   criado_em timestamptz default now()
 );
+create unique index if not exists ux_func_email on funcionarios(email) where email is not null;
+create unique index if not exists ux_func_cpf   on funcionarios(cpf)   where cpf is not null;
 
--- ---- Helpers de sessão (usados nas policies de RLS) ----
--- org do usuário = a MATRIZ (matriz vê a si + filiais; filial pertence à mesma org).
+-- usuário com acesso irrestrito (auth_user_id vinculado por tools/crm_logins.py --link)
+insert into funcionarios (nome, email, empresa_id, funcao, acesso_irrestrito, comissao_base_pct)
+  select 'Israel Santiago', 'israel@licitapublica.com.br', m.id, 'admin', true, 0
+  from empresas m where m.cnpj = '21650715000160'
+  on conflict do nothing;
+
+-- senhas preenchidas manualmente pelo admin no app ficam AQUI até o provisionamento
+-- (tools/crm_logins.py cria o usuário no Auth e APAGA a linha). Transiente; só gestor lê.
+create table if not exists logins_pendentes (
+  funcionario_id uuid primary key references funcionarios(id) on delete cascade,
+  cpf text not null,
+  senha text not null,
+  criado_em timestamptz default now()
+);
+
+-- ---- Helpers de sessão ----
 create or replace function app_org() returns uuid language sql stable security definer as $$
   select coalesce(e.matriz_id, e.id)
   from funcionarios f join empresas e on e.id = f.empresa_id
   where f.auth_user_id = auth.uid() and f.ativo limit 1;
 $$;
-create or replace function app_is_gestor() returns boolean language sql stable security definer as $$
-  select exists (select 1 from funcionarios
-                 where auth_user_id = auth.uid() and ativo and funcao in ('admin','gerente'));
-$$;
 create or replace function app_me_id() returns uuid language sql stable security definer as $$
   select id from funcionarios where auth_user_id = auth.uid() and ativo limit 1;
 $$;
+create or replace function app_is_gestor() returns boolean language sql stable security definer as $$
+  select exists (select 1 from funcionarios
+                 where auth_user_id = auth.uid() and ativo
+                   and (funcao in ('admin','gerente') or acesso_irrestrito));
+$$;
 
--- ========================= REGRAS DE COMISSÃO =========================
--- Esquemas configuráveis (não hard-coded). config em JSON, ex.:
---   individual : {"pct_base":5, "pct_novo":8}
---   progressivo: {"faixas":[{"ate":100000,"pct":3},{"ate":500000,"pct":5},{"acima":true,"pct":7}]}
---   pos_meta   : {"pct":4, "meta":500000, "bonus_pct":2}   -- bônus após bater a meta
-create table if not exists regras_comissao (
+-- ========================= ENTIDADES (aba "Todos" em cascata) =========================
+create table if not exists crm_entidades (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null default app_org(),
+  cnpj text, cod_ibge text,
   nome text not null,
-  tipo text not null check (tipo in ('individual','progressivo','pos_meta')),
-  aplica_cliente text default 'ambos' check (aplica_cliente in ('base','novo','ambos')),
-  config jsonb not null default '{}',
-  ativo boolean default true,
-  criada_em timestamptz default now()
+  esfera text check (esfera in ('Municipal','Estadual','Federal','Privado')),
+  poder text,                                     -- Executivo / Legislativo / Judiciário / Controle Externo / —
+  tipo_orgao text,                                -- Prefeitura / Câmara / Fundo de Saúde / Autarquia / Tribunal de Contas / Instituto / Assessoria / Fornecedor...
+  area text check (area in ('Legislativo','Gestão Pública') or area is null),
+  tema text,                                      -- Obras / Saúde / Educação / Administração / Legislativo / Controle Externo / Parceria
+  tipo_cliente text default 'novo' check (tipo_cliente in ('novo','base')),
+  cnae text,
+  uf text, municipio text,
+  email text, telefone text, site text,
+  n_obras int, valor_obras numeric,               -- contexto do painel estratégico
+  fonte text default 'painel_estrategico',
+  criado_em timestamptz default now()
 );
+create unique index if not exists ux_ent_cnpj on crm_entidades(cnpj) where cnpj is not null;
+create index if not exists ix_ent_ibge on crm_entidades(cod_ibge);
 
--- ========================= CAMPANHAS =========================
+create table if not exists crm_setores (         -- 1º nível = secretaria; 2º nível = unidade
+  id uuid primary key default gen_random_uuid(),
+  entidade_id uuid not null references crm_entidades(id) on delete cascade,
+  parent_id uuid references crm_setores(id) on delete cascade,
+  nivel smallint not null default 1 check (nivel in (1,2)),
+  nome text not null,
+  tema text, email text,
+  criado_em timestamptz default now()
+);
+create index if not exists ix_set_ent on crm_setores(entidade_id);
+
+create table if not exists crm_servidores (      -- SEMPRE folha (último nível)
+  id uuid primary key default gen_random_uuid(),
+  entidade_id uuid not null references crm_entidades(id) on delete cascade,
+  setor_id uuid references crm_setores(id) on delete set null,
+  nome text not null,
+  cargo text, email text, telefone text,
+  cpf text,                                       -- interno; mascarar
+  origem text default 'painel_estrategico',
+  criado_em timestamptz default now()
+);
+create index if not exists ix_srv_ent on crm_servidores(entidade_id);
+create index if not exists ix_srv_set on crm_servidores(setor_id);
+
+create table if not exists crm_contatos (        -- tipos livres (ficha do servidor / entidade)
+  id uuid primary key default gen_random_uuid(),
+  entidade_id uuid references crm_entidades(id) on delete cascade,
+  servidor_id uuid references crm_servidores(id) on delete cascade,
+  tipo text not null,                             -- Email / Telefone / Setor / Responsabilidade / Rede social / Observação / Institucional / ...
+  valor text not null,
+  rede text,                                      -- qual rede social, quando tipo='Rede social'
+  complemento text,
+  criado_por uuid references funcionarios(id) default app_me_id(),
+  criado_em timestamptz default now(),
+  check (entidade_id is not null or servidor_id is not null)
+);
+create index if not exists ix_ct_srv on crm_contatos(servidor_id);
+
+-- ========================= REGRAS DE COMISSÃO (versionadas, com vigência) =========================
+create table if not exists regras_versoes (
+  versao int generated always as identity primary key,
+  org_id uuid not null default app_org(),
+  vigente_de date not null default current_date,
+  vigente_ate date,                               -- NULL = vigente
+  descricao text not null,
+  config jsonb not null default '{}',
+  criado_por uuid references funcionarios(id) default app_me_id(),
+  criado_em timestamptz default now()
+);
+insert into regras_versoes (org_id, vigente_de, descricao, config, criado_por)
+  select coalesce(e.matriz_id, e.id), '2026-02-01',
+         'Base IV/V 5% · cliente novo 5% · base/renovação 3% · rateio geral 70·30',
+         '{"base":{"IV":5,"V":5},"cliente":{"novo":5,"base":3},"rateio_geral":[70,30]}'::jsonb,
+         null
+  from empresas e where e.cnpj='21650715000160'
+  and not exists (select 1 from regras_versoes);
+
+-- ========================= CAMPANHAS (parâmetros definidos pelo ADMIN) =========================
 create table if not exists campanhas (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null default app_org(),
   nome text not null,
-  descricao text,
   inicio date, fim date,
   meta_valor numeric,
-  regra_comissao_id uuid references regras_comissao(id),
+  segmento text default 'Gestão Pública',
+  escopo_rateio text default 'Individual' check (escopo_rateio in
+    ('Individual','Com parceiro','Por equipe','Só matriz','Só filial','Geral')),
+  pct_comissao numeric default 5,
+  valor_unitario numeric default 0,
+  regra_versao int references regras_versoes(versao),
+  criterios jsonb default '{}',                   -- {temas:[],responsabilidade,funcao,setor,cargo,kw,cnae}
+  anexos jsonb default '[]',                      -- [{nome,ext,url}]
+  links  jsonb default '[]',                      -- [{nome,url}]
   status text default 'ativa' check (status in ('rascunho','ativa','encerrada')),
   criada_por uuid references funcionarios(id) default app_me_id(),
   criada_em timestamptz default now()
 );
 
--- ========================= CLIENTES (leads do painel estratégico) =========================
-create table if not exists clientes (
+-- ========================= CAPTURAS (funil POR SERVIDOR) =========================
+create table if not exists capturas (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null default app_org(),
-  campanha_id uuid references campanhas(id),
-  origem text default 'painel_estrategico',
-  ref_cnpj text,                    -- vínculo ao painel: obras_engenharia_orgaos.cnpj
-  ref_cod_ibge text,
-  razao_social text not null,
-  tipo text default 'novo' check (tipo in ('base','novo')),   -- cliente de base × novo
-  area_atuacao text check (area_atuacao in ('Legislativo','Gestão Pública') or area_atuacao is null),
-  -- ^ segmento do lead (deriva do poder do órgão no painel: executivo->Gestão Pública; legislativo->Legislativo).
-  --   Casa com funcionarios.area_atuacao para rotear o lead ao vendedor da área certa.
-  uf text, municipio text,
-  email text, telefone text, emails_setoriais text, site text,
-  criado_por uuid references funcionarios(id) default app_me_id(),
-  criado_em timestamptz default now()
-);
-
--- ========================= OPORTUNIDADES (o funil) =========================
-create table if not exists oportunidades (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null default app_org(),
-  cliente_id uuid not null references clientes(id) on delete cascade,
-  campanha_id uuid references campanhas(id),
-  titulo text,
-  valor_estimado numeric,
-  valor_fechado numeric,
+  servidor_id uuid not null references crm_servidores(id) on delete cascade,
+  entidade_id uuid not null references crm_entidades(id),
+  campanha_id uuid not null references campanhas(id),
+  responsavel_id uuid not null references funcionarios(id) default app_me_id(),
   estagio text not null default 'prospeccao' check (estagio in
-    ('prospeccao','qualificacao','proposta','negociacao','fechada_ganha','fechada_perdida','pos_venda')),
-  probabilidade int,
-  dono_id uuid references funcionarios(id) default app_me_id(),
-  aberta_em timestamptz default now(),
-  fechada_em timestamptz,
-  motivo_perda text
+    ('prospeccao','qualificacao','proposta','negociacao','fechamento','pos_venda','perdida')),
+  valor_contrato numeric,
+  obs text,
+  ativo boolean default true,
+  criado_por uuid references funcionarios(id) default app_me_id(),
+  criado_em timestamptz default now(),
+  atualizado_em timestamptz default now()
 );
+-- EXCLUSIVIDADE: um servidor não participa de campanhas concomitantes
+create unique index if not exists ux_cap_servidor_ativo on capturas(servidor_id) where ativo;
+create index if not exists ix_cap_ent on capturas(entidade_id);
+create index if not exists ix_cap_camp on capturas(campanha_id);
 
--- ========================= PARTICIPAÇÕES (quem atuou + rateio) =========================
--- Registra CADA pessoa que atuou na venda e sua fatia. Soma de rateio_pct por oportunidade = 100.
+-- transferência de responsável: SÓ gerente/admin/irrestrito
+create or replace function trg_capturas_resp() returns trigger language plpgsql security definer as $$
+begin
+  if new.responsavel_id is distinct from old.responsavel_id and not app_is_gestor() then
+    raise exception 'Transferência de responsável permitida apenas a gerente/admin';
+  end if;
+  new.atualizado_em := now();
+  return new;
+end $$;
+drop trigger if exists t_capturas_resp on capturas;
+create trigger t_capturas_resp before update on capturas
+  for each row execute function trg_capturas_resp();
+
 create table if not exists participacoes (
   id uuid primary key default gen_random_uuid(),
-  oportunidade_id uuid not null references oportunidades(id) on delete cascade,
+  captura_id uuid not null references capturas(id) on delete cascade,
   funcionario_id uuid not null references funcionarios(id),
   papel text default 'responsavel' check (papel in ('responsavel','parceiro','equipe')),
-  escopo text default 'individual' check (escopo in
-    ('individual','parceiro','equipe','matriz','filial','geral')),
   rateio_pct numeric not null default 100,
   criada_em timestamptz default now(),
-  unique (oportunidade_id, funcionario_id)
+  unique (captura_id, funcionario_id)
 );
 
--- ========================= ATIVIDADES (timeline 360) =========================
 create table if not exists atividades (
   id uuid primary key default gen_random_uuid(),
-  oportunidade_id uuid not null references oportunidades(id) on delete cascade,
+  captura_id uuid not null references capturas(id) on delete cascade,
   funcionario_id uuid references funcionarios(id) default app_me_id(),
   tipo text default 'nota' check (tipo in
-    ('nota','ligacao','email','reuniao','mudanca_estagio','proposta','documento')),
+    ('nota','ligacao','email','reuniao','mudanca_estagio','captura','proposta','documento')),
   descricao text,
-  estagio_de text, estagio_para text,           -- preenchidos quando tipo='mudanca_estagio'
+  estagio_de text, estagio_para text,
   criada_em timestamptz default now()
 );
+create index if not exists ix_ativ_cap on atividades(captura_id);
 
--- ========================= COMISSÕES (calculado ao ganhar) =========================
-create table if not exists comissoes (
+-- ========================= APURAÇÕES (histórico IMUTÁVEL, regra à época) =========================
+create table if not exists apuracoes (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null default app_org(),
-  oportunidade_id uuid references oportunidades(id) on delete cascade,
-  funcionario_id uuid references funcionarios(id),
-  base_valor numeric,
-  pct_aplicado numeric,
-  valor_comissao numeric,
-  memoria jsonb,                                 -- detalhamento auditável (regra, faixa, rateio…)
-  status text default 'prevista' check (status in ('prevista','apurada','paga')),
-  criada_em timestamptz default now()
+  captura_id uuid references capturas(id),
+  funcionario_id uuid not null references funcionarios(id),
+  competencia text not null,                      -- 'AAAA-MM'
+  regra_versao int not null references regras_versoes(versao),
+  regra_snapshot jsonb,                           -- cópia da config à época (imune a edições futuras)
+  base_valor numeric, pct_aplicado numeric, rateio_pct numeric,
+  memoria text,                                   -- cálculo por extenso
+  valor numeric not null,
+  apurado_por uuid references funcionarios(id) default app_me_id(),
+  apurado_em timestamptz default now()
 );
+create index if not exists ix_apur_func on apuracoes(funcionario_id);
 
--- ========================= ÍNDICES =========================
-create index if not exists ix_func_auth   on funcionarios(auth_user_id);
-create index if not exists ix_op_org       on oportunidades(org_id);
-create index if not exists ix_op_estagio   on oportunidades(estagio);
-create index if not exists ix_op_cliente   on oportunidades(cliente_id);
-create index if not exists ix_cli_org      on clientes(org_id);
-create index if not exists ix_ativ_op      on atividades(oportunidade_id);
-create index if not exists ix_part_op      on participacoes(oportunidade_id);
-create index if not exists ix_com_func     on comissoes(funcionario_id);
+-- ========================= VIEW 360 =========================
+create or replace view v_capturas_360 with (security_invoker = on) as
+select c.id, c.estagio, c.valor_contrato, c.obs, c.ativo, c.criado_em, c.atualizado_em,
+       s.id as servidor_id, s.nome as servidor, s.cargo, s.email as servidor_email, s.telefone as servidor_tel,
+       st.nome as setor, st2.nome as unidade,
+       e.id as entidade_id, e.nome as entidade, e.esfera, e.poder, e.tipo_orgao, e.area, e.tema, e.uf, e.municipio,
+       f.nome as responsavel, f.id as responsavel_id,
+       cp.nome as campanha, cp.id as campanha_id, cp.escopo_rateio, cp.pct_comissao, cp.valor_unitario
+from capturas c
+join crm_servidores s on s.id = c.servidor_id
+left join crm_setores st2 on st2.id = s.setor_id
+left join crm_setores st on st.id = coalesce(st2.parent_id, s.setor_id)
+join crm_entidades e on e.id = c.entidade_id
+join funcionarios f on f.id = c.responsavel_id
+join campanhas cp on cp.id = c.campanha_id;
 
 -- ============================================================================
--- RLS — visibilidade da EQUIPE (mesma org) + escrita por autenticados; comissão own/gestor
+-- RLS
 -- ============================================================================
-alter table empresas         enable row level security;
-alter table funcionarios     enable row level security;
-alter table regras_comissao  enable row level security;
-alter table campanhas        enable row level security;
-alter table clientes         enable row level security;
-alter table oportunidades    enable row level security;
-alter table participacoes    enable row level security;
-alter table atividades       enable row level security;
-alter table comissoes        enable row level security;
+alter table empresas          enable row level security;
+alter table funcionarios      enable row level security;
+alter table logins_pendentes  enable row level security;
+alter table crm_entidades     enable row level security;
+alter table crm_setores       enable row level security;
+alter table crm_servidores    enable row level security;
+alter table crm_contatos      enable row level security;
+alter table regras_versoes    enable row level security;
+alter table campanhas         enable row level security;
+alter table capturas          enable row level security;
+alter table participacoes     enable row level security;
+alter table atividades        enable row level security;
+alter table apuracoes         enable row level security;
 
--- Empresas: vê as da sua org (matriz + filiais); escreve só gestor.
+-- Empresas / funcionários: equipe lê; escreve só gestor.
 create policy emp_sel on empresas for select to authenticated
   using (id = app_org() or matriz_id = app_org());
 create policy emp_wr  on empresas for all to authenticated
   using ((id = app_org() or matriz_id = app_org()) and app_is_gestor())
-  with check ((id = app_org() or matriz_id = app_org()) and app_is_gestor());
-
--- Funcionários: vê os da org; escreve só gestor.
+  with check (app_is_gestor());
 create policy fun_sel on funcionarios for select to authenticated
   using (empresa_id in (select id from empresas where id = app_org() or matriz_id = app_org()));
 create policy fun_wr  on funcionarios for all to authenticated
-  using (app_is_gestor() and empresa_id in (select id from empresas where id = app_org() or matriz_id = app_org()))
-  with check (app_is_gestor());
+  using (app_is_gestor()) with check (app_is_gestor());
+create policy lp_all  on logins_pendentes for all to authenticated
+  using (app_is_gestor()) with check (app_is_gestor());
 
--- Tabelas org-scoped (org_id): EQUIPE vê tudo; qualquer autenticado da org cria/edita.
--- (campanhas e regras: leitura equipe, escrita gestor.)
-create policy rc_sel  on regras_comissao for select to authenticated using (org_id = app_org());
-create policy rc_wr   on regras_comissao for all    to authenticated using (org_id = app_org() and app_is_gestor()) with check (org_id = app_org() and app_is_gestor());
-create policy cmp_sel on campanhas       for select to authenticated using (org_id = app_org());
-create policy cmp_wr  on campanhas       for all    to authenticated using (org_id = app_org() and app_is_gestor()) with check (org_id = app_org() and app_is_gestor());
+-- Cascata: equipe lê; qualquer autenticado da org adiciona (contatos/servidores/setores);
+-- entidade nova também (ex.: fornecedor privado digitado à mão).
+create policy ent_sel on crm_entidades  for select to authenticated using (org_id = app_org());
+create policy ent_wr  on crm_entidades  for all    to authenticated using (org_id = app_org()) with check (org_id = app_org());
+create policy set_all on crm_setores    for all to authenticated
+  using (exists (select 1 from crm_entidades e where e.id = entidade_id and e.org_id = app_org()))
+  with check (exists (select 1 from crm_entidades e where e.id = entidade_id and e.org_id = app_org()));
+create policy srv_all on crm_servidores for all to authenticated
+  using (exists (select 1 from crm_entidades e where e.id = entidade_id and e.org_id = app_org()))
+  with check (exists (select 1 from crm_entidades e where e.id = entidade_id and e.org_id = app_org()));
+create policy ct_all  on crm_contatos   for all to authenticated using (true) with check (true);
 
-create policy cli_sel on clientes        for select to authenticated using (org_id = app_org());
-create policy cli_wr  on clientes        for all    to authenticated using (org_id = app_org()) with check (org_id = app_org());
-create policy opp_sel on oportunidades   for select to authenticated using (org_id = app_org());
-create policy opp_wr  on oportunidades   for all    to authenticated using (org_id = app_org()) with check (org_id = app_org());
-
--- Participações e atividades: visíveis/edit por quem é da org da oportunidade.
-create policy part_all on participacoes for all to authenticated
-  using (exists (select 1 from oportunidades o where o.id = oportunidade_id and o.org_id = app_org()))
-  with check (exists (select 1 from oportunidades o where o.id = oportunidade_id and o.org_id = app_org()));
-create policy ativ_all on atividades for all to authenticated
-  using (exists (select 1 from oportunidades o where o.id = oportunidade_id and o.org_id = app_org()))
-  with check (exists (select 1 from oportunidades o where o.id = oportunidade_id and o.org_id = app_org()));
-
--- Comissões: cada um vê a SUA; gestor vê da org. Escrita pelo motor (service_role) ou gestor.
-create policy com_sel on comissoes for select to authenticated
-  using (org_id = app_org() and (app_is_gestor() or funcionario_id = app_me_id()));
-create policy com_wr  on comissoes for all to authenticated
+-- Regras/campanhas: equipe lê; escreve só gestor.
+create policy rv_sel  on regras_versoes for select to authenticated using (org_id = app_org());
+create policy rv_ins  on regras_versoes for insert to authenticated with check (org_id = app_org() and app_is_gestor());
+create policy rv_upd  on regras_versoes for update to authenticated
+  using (org_id = app_org() and app_is_gestor()) with check (app_is_gestor());  -- só p/ fechar vigência
+create policy cmp_sel on campanhas for select to authenticated using (org_id = app_org());
+create policy cmp_wr  on campanhas for all to authenticated
   using (org_id = app_org() and app_is_gestor()) with check (org_id = app_org() and app_is_gestor());
 
+-- Capturas: equipe vê tudo (visão 360 compartilhada); cria quem captura (vira responsável
+-- pelo default; trigger impede transferir sem ser gestor); atualiza equipe (estágio/obs).
+create policy cap_sel on capturas for select to authenticated using (org_id = app_org());
+create policy cap_ins on capturas for insert to authenticated
+  with check (org_id = app_org() and (responsavel_id = app_me_id() or app_is_gestor()));
+create policy cap_upd on capturas for update to authenticated
+  using (org_id = app_org()) with check (org_id = app_org());
+create policy part_all on participacoes for all to authenticated
+  using (exists (select 1 from capturas c where c.id = captura_id and c.org_id = app_org()))
+  with check (exists (select 1 from capturas c where c.id = captura_id and c.org_id = app_org()));
+create policy ativ_all on atividades for all to authenticated
+  using (exists (select 1 from capturas c where c.id = captura_id and c.org_id = app_org()))
+  with check (exists (select 1 from capturas c where c.id = captura_id and c.org_id = app_org()));
+
+-- Apurações: vendedor vê a SUA, gestor vê tudo; INSERE só gestor; SEM update/delete (imutável).
+create policy apr_sel on apuracoes for select to authenticated
+  using (org_id = app_org() and (app_is_gestor() or funcionario_id = app_me_id()));
+create policy apr_ins on apuracoes for insert to authenticated
+  with check (org_id = app_org() and app_is_gestor());
+
 -- ============================================================================
--- PENDENTE (Fase 2): função calcular_comissao(oportunidade) que, ao estágio virar
--- 'fechada_ganha', percorre participacoes × regra_comissao da campanha (tipo cliente,
--- faixa progressiva, pós-meta) e grava linhas em comissoes com a memoria jsonb.
+-- Depois de rodar:
+--   1) python3 tools/load_crm_colaboradores.py          (funcionários da planilha RH)
+--   2) python3 tools/load_crm_entidades.py              (cascata: entidades/setores/servidores do painel)
+--   3) python3 tools/crm_logins.py --link israel@licitapublica.com.br   (+ provisionar CPFs)
+--   4) publicar crm/index.html (GitHub Pages)
 -- ============================================================================
