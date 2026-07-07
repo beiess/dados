@@ -15,6 +15,7 @@ Uso:
 Saídas em data_full/: cadastro_nacional.json (cascata) + cadastro_nacional.csv (achatado, 1 linha=órgão).
 """
 import os, sys, csv, json, time, argparse, urllib.request, urllib.error
+from datetime import date, timedelta
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36"
 PNCP_CONSULTA = "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao"
@@ -37,27 +38,42 @@ class NetErr(Exception):
     """Falha de rede/DNS persistente (distinta de resposta HTTP de erro)."""
 
 
-def get(url, timeout=90, tries=8, raise_net=False):
+def get(url, timeout=180, tries=8, raise_net=False):
     """Retorna JSON. HTTP 404 -> None. HTTP 4xx com corpo -> devolve o JSON de erro
     (ex.: {message,status}). Erro de REDE/DNS após as tentativas -> None, ou levanta
     NetErr se raise_net=True (usado na paginação p/ abortar de forma resumível)."""
     last = None
-    for t in range(tries):
+    r429 = 0
+    for t in range(tries + 20):                   # folga extra p/ ondas de 429 (rate limit)
         try:
             r = urllib.request.Request(url, headers={"User-Agent": UA})
             with urllib.request.urlopen(r, timeout=timeout) as resp:
-                return json.load(resp)
+                if resp.status == 204:
+                    return {}          # sem registros nessa janela (não é erro) -> fim do window
+                body = resp.read()
+                return json.loads(body) if body.strip() else {}
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
+            if e.code == 429:                     # rate limit: espera (Retry-After) e tenta de novo
+                ra = e.headers.get("Retry-After")
+                wait = int(ra) if (ra and str(ra).isdigit()) else min(90, 5 * (r429 + 1))
+                r429 += 1
+                if r429 <= 20:
+                    time.sleep(wait)
+                    continue                      # não conta como queda de rede
+                last = e
+                break
             try:
-                return json.loads(e.read())      # corpo de erro da API (400 etc.) -> não é queda de rede
+                return json.loads(e.read())       # corpo de erro da API (400 etc.) -> não é queda de rede
             except Exception:
                 last = e
                 break
-        except Exception as e:                    # DNS/timeout/conn reset — pode ser sono do laptop
+        except Exception as e:                    # DNS/timeout/conn reset
             last = e
-        time.sleep(min(60, 3 * (t + 1)))
+        if t - r429 >= tries - 1:                 # esgotou as tentativas de rede reais
+            break
+        time.sleep(min(60, 3 * (t - r429 + 1)))
     if raise_net:
         raise NetErr(f"{url[:90]}: {last}")
     log(f"  falha em {url[:80]}: {last}")
@@ -89,52 +105,74 @@ def _absorve(orgs, rec, mod):
         o["ultimaPub"] = dt
 
 
-def _save_state(orgs, mi, pagina):
+def _save_state(orgs, ti, pagina):
     os.makedirs(OUTDIR, exist_ok=True)
     tmp = STATE + ".tmp"
-    json.dump({"cursor": {"mi": mi, "pagina": pagina}, "orgs": orgs},
+    json.dump({"cursor": {"ti": ti, "pagina": pagina}, "orgs": orgs},
               open(tmp, "w", encoding="utf-8"), ensure_ascii=False)
     os.replace(tmp, STATE)  # escrita atômica
 
 
+def month_ranges(inicio, fim):
+    """Fatia [inicio, fim] (yyyyMMdd) em janelas de mês-calendário — consultas menores,
+    página 1 rápida, sem timeout nas modalidades gigantes."""
+    y, m, d0 = int(inicio[:4]), int(inicio[4:6]), int(inicio[6:8])
+    y1, m1, d1 = int(fim[:4]), int(fim[4:6]), int(fim[6:8])
+    out = []
+    while (y, m) <= (y1, m1):
+        ini = date(y, m, d0) if (y, m) == (int(inicio[:4]), int(inicio[4:6])) else date(y, m, 1)
+        nxt = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
+        fimm = date(y1, m1, d1) if (y, m) == (y1, m1) else nxt - timedelta(days=1)
+        out.append((ini.strftime("%Y%m%d"), fimm.strftime("%Y%m%d")))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    return out
+
+
 def sweep(inicio, fim, modalidades, uf, max_paginas, resume):
-    """Varre PNCP deduplicando por CNPJ. Checkpoint a cada 200 páginas; resumível."""
-    orgs, start_mi, start_pag = {}, 0, 1
+    """Varre PNCP deduplicando por CNPJ. Tarefas = modalidade × mês (consultas pequenas).
+    Checkpoint a cada 200 páginas; resumível pelo índice de tarefa (ti)."""
+    meses = month_ranges(inicio, fim)
+    tarefas = [(mod, mi, mf) for mod in modalidades for (mi, mf) in meses]
+    orgs, start_ti, start_pag = {}, 0, 1
     if resume and os.path.exists(STATE):
         st = json.load(open(STATE, encoding="utf-8"))
         orgs = st["orgs"]
-        start_mi, start_pag = st["cursor"]["mi"], st["cursor"]["pagina"]
-        log(f"RESUME: {len(orgs)} órgãos, retomando modalidade idx {start_mi} pág {start_pag}")
+        cur = st.get("cursor", {})
+        start_ti, start_pag = cur.get("ti", cur.get("mi", 0)), cur.get("pagina", 1)
+        log(f"RESUME: {len(orgs)} órgãos, retomando tarefa idx {start_ti}/{len(tarefas)} pág {start_pag}")
     npag = 0
-    for mi in range(start_mi, len(modalidades)):
-        mod = modalidades[mi]
-        pagina = start_pag if mi == start_mi else 1
+    for ti in range(start_ti, len(tarefas)):
+        mod, di, df = tarefas[ti]
+        pagina = start_pag if ti == start_ti else 1
         total_pag = None
         while True:
-            url = (f"{PNCP_CONSULTA}?dataInicial={inicio}&dataFinal={fim}"
+            url = (f"{PNCP_CONSULTA}?dataInicial={di}&dataFinal={df}"
                    f"&codigoModalidadeContratacao={mod}&pagina={pagina}&tamanhoPagina=50")
             if uf:
                 url += f"&uf={uf}"
             try:
                 d = get(url, raise_net=True)
             except NetErr as e:
-                _save_state(orgs, mi, pagina)   # resumível exatamente daqui
-                raise NetErr(f"modalidade {mod} pág {pagina}: {e}")
+                _save_state(orgs, ti, pagina)   # resumível exatamente daqui
+                raise NetErr(f"modalidade {mod} {di}-{df} pág {pagina}: {e}")
             if not d or "data" not in d:
-                break   # fim normal / modalidade sem resultados (não é queda de rede)
+                break   # fim normal / janela sem resultados (não é queda de rede)
             if total_pag is None:
                 total_pag = d.get("totalPaginas", 1)
-                log(f"  modalidade {mod}: {d.get('totalRegistros', 0)} reg / {total_pag} pág (órgãos até agora: {len(orgs)})")
+                tot = d.get("totalRegistros", 0)
+                if tot:
+                    log(f"  mod {mod} {di[:6]}: {tot} reg / {total_pag} pág (órgãos: {len(orgs)})")
             for rec in d.get("data", []):
                 _absorve(orgs, rec, mod)
+            time.sleep(0.15)   # educado com o PNCP (evita 429)
             npag += 1
             if npag % 200 == 0:
-                _save_state(orgs, mi, pagina)
+                _save_state(orgs, ti, pagina)
                 log(f"  checkpoint: {npag} pág varridas, {len(orgs)} órgãos distintos")
             pagina += 1
             if pagina > (total_pag or 1) or (max_paginas and pagina > max_paginas):
                 break
-        _save_state(orgs, mi + 1, 1)
+        _save_state(orgs, ti + 1, 1)
     return orgs
 
 
