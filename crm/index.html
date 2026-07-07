@@ -1,16 +1,41 @@
 <title>Plenum CRM</title>
 <style>
   :root{
-    --canvas:#F4F6F7; --surface:#FFFFFF; --surface-2:#FBFCFD;
-    --ink:#15191E; --muted:#63707B; --faint:#8A96A0;
-    --border:#E4E8EB; --border-2:#EEF1F3;
-    --accent:#12626E; --accent-d:#0E4E58; --accent-wash:#E7F0F1;
-    --good:#2C8A57; --warn:#B0771A; --crit:#BB4438;
-    --gp:#12626E; --gp-wash:#E7F0F1; --leg:#7A5296; --leg-wash:#F0EAF5;
-    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    /* ===== PLENUM DS v1.1 — marca navy+ouro (plenum-flax.vercel.app); escuro = assinatura ===== */
+    --navy-950:#030D1F; --navy-900:#08182D; --navy-800:#0A1C33;
+    --gold:#C9A227; --gold-2:#E4BC44; --gold-3:#8A6E1A;
+    --canvas:#030D1F; --surface:#0A1728; --surface-2:#071120;
+    --ink:#F2F6FA; --muted:rgba(255,255,255,.65); --faint:rgba(255,255,255,.42);
+    --border:rgba(255,255,255,.13); --border-2:rgba(255,255,255,.07);
+    --accent:#C9A227; --accent-d:#E4BC44; --accent-wash:rgba(201,162,39,.15);
+    --good:#63C989; --warn:#E4BC44; --crit:#E06A5E; --wa-ui:#5CE690; --money:#D4F34A;
+    --gp:#4FB8C4; --gp-wash:rgba(79,184,196,.14); --leg:#B48EDD; --leg-wash:rgba(180,142,221,.15);
+    --st-pros:#8FA7C0; --st-qual:#5C9CE6; --st-prop:#E4BC44; --st-nego:#E0854C; --st-fech:#63C989; --st-pos:#4FB8C4;
+    --stw-pros:color-mix(in srgb,var(--st-pros) 13%,var(--surface));
+    --stw-qual:color-mix(in srgb,var(--st-qual) 13%,var(--surface));
+    --stw-prop:color-mix(in srgb,var(--st-prop) 13%,var(--surface));
+    --stw-nego:color-mix(in srgb,var(--st-nego) 13%,var(--surface));
+    --stw-fech:color-mix(in srgb,var(--st-fech) 13%,var(--surface));
+    --stw-pos:color-mix(in srgb,var(--st-pos) 13%,var(--surface));
+    --tm-obras:#E4BC44; --tm-saude:#63C989; --tm-edu:#6FA8E8; --tm-adm:#9BB0C4; --tm-leg:#B48EDD; --tm-controle:#4FB8C4; --tm-parceria:#E087B8;
+    --sans:'DM Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --display:'Bricolage Grotesque',var(--sans);
     --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
-    --sh:0 1px 2px rgba(20,30,40,.05),0 1px 3px rgba(20,30,40,.04);
-    --sh-2:0 8px 30px rgba(20,30,40,.16);
+    --sh:0 1px 2px rgba(0,0,0,.30),0 1px 3px rgba(0,0,0,.22);
+    --sh-2:0 22px 55px rgba(0,0,0,.45);
+  }
+  /* ===== TEMA CLARO — mesma marca, superfícies invertidas, semânticos recalibrados ===== */
+  body.light{
+    --canvas:#F4F6F8; --surface:#FFFFFF; --surface-2:#EDF1F4;
+    --ink:#0B1B2E; --muted:rgba(9,24,43,.66); --faint:rgba(9,24,43,.44);
+    --border:rgba(3,13,31,.16); --border-2:rgba(3,13,31,.08);
+    --accent:#8A6E1A; --accent-d:#6E5713; --accent-wash:rgba(201,162,39,.16);
+    --good:#2C8A57; --warn:#B08718; --crit:#C74E42; --wa-ui:#128C4B; --money:#6F8E10;
+    --gp:#0E7C86; --gp-wash:rgba(14,124,134,.10); --leg:#7A5296; --leg-wash:rgba(122,82,150,.10);
+    --st-pros:#5B7A98; --st-qual:#2E6FD0; --st-prop:#B08718; --st-nego:#C4611C; --st-fech:#2C8A57; --st-pos:#0E7C86;
+    --tm-obras:#B08718; --tm-saude:#2C8A57; --tm-edu:#2E6FD0; --tm-adm:#5B7A98; --tm-leg:#7A5296; --tm-controle:#0E7C86; --tm-parceria:#B85C8A;
+    --sh:0 1px 2px rgba(9,24,43,.06),0 1px 3px rgba(9,24,43,.05);
+    --sh-2:0 22px 55px rgba(9,24,43,.14);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--sans);
@@ -28,7 +53,7 @@
   .brand b{color:#fff;font-size:15px;font-weight:650}.brand span{display:block;font-size:10px;color:#7E9498;letter-spacing:.04em}
   .nav{display:flex;flex-direction:column;gap:1px;padding:8px 10px;flex:1}
   .nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;color:#AEC0C3;font-weight:500;font-size:12.5px}
-  .nav a .ico{width:15px;height:15px;flex:none;opacity:.85}.nav a:hover{background:#172A30;color:#fff}.nav a.on{background:#12626E;color:#fff}
+  .nav a .ico{width:15px;height:15px;flex:none;opacity:.85}.nav a:hover{background:rgba(255,255,255,.06);color:#fff}.nav a.on{background:rgba(201,162,39,.17);color:#F2F6FA}
   .nav .sec{padding:14px 12px 5px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5F787C}
   .me{display:flex;align-items:center;gap:9px;padding:12px 14px;border-top:1px solid #1C2F35;margin-top:auto}
   .me .av{width:30px;height:30px;border-radius:50%;background:#7A5296;color:#fff;display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
@@ -86,8 +111,8 @@
   .leads thead th{position:sticky;top:0;background:var(--surface);text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;z-index:2}
   .leads th.r,.leads td.r{text-align:right}
   .leads tbody tr{border-bottom:1px solid var(--border-2);border-left:3px solid var(--sc);background:var(--scw);cursor:pointer;transition:.1s}
-  .leads tbody tr:hover{background:color-mix(in srgb,var(--sc) 12%,#fff)}
-  .leads tbody tr.sel{background:color-mix(in srgb,var(--sc) 16%,#fff);box-shadow:inset 3px 0 0 var(--sc)}
+  .leads tbody tr:hover{background:color-mix(in srgb,var(--sc) 12%,var(--surface))}
+  .leads tbody tr.sel{background:color-mix(in srgb,var(--sc) 16%,var(--surface));box-shadow:inset 3px 0 0 var(--sc)}
   .leads td{padding:9px 12px;vertical-align:middle}
   .cli b{font-weight:650;font-size:12.5px;display:block;line-height:1.3}
   .cli span{font-size:11px;color:var(--muted)}
@@ -124,8 +149,8 @@
   .lv-tipo>.trow .tlabel{color:var(--ink);font-weight:650}
   .lv-tipo>.trow .tpill{font-size:10px;font-weight:600;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:1px 8px}
   /* entidade */
-  .lv-ent>.trow{border-left:3px solid var(--sc);background:color-mix(in srgb,var(--sc) 6%,#fff)}
-  .lv-ent>.trow:hover{background:color-mix(in srgb,var(--sc) 12%,#fff)}
+  .lv-ent>.trow{border-left:3px solid var(--sc);background:color-mix(in srgb,var(--sc) 6%,var(--surface))}
+  .lv-ent>.trow:hover{background:color-mix(in srgb,var(--sc) 12%,var(--surface))}
   .lv-ent .ent-nm{font-weight:650;font-size:12.5px}
   .lv-ent .grow{flex:1}
   .vend{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted)}
@@ -140,18 +165,18 @@
   /* cadência de cor por tema: --sc definido na secretaria e herdado pela unidade */
   .orgnode.lv-sec{border:1px solid var(--border);border-left:3px solid var(--sc,#5B7A98);border-radius:9px;margin-bottom:7px;overflow:hidden}
   .orgrow{display:flex;align-items:center;gap:9px;padding:8px 11px;cursor:pointer;user-select:none}
-  .lv-sec>.orgrow{background:color-mix(in srgb,var(--sc,#5B7A98) 9%,#fff)}
+  .lv-sec>.orgrow{background:color-mix(in srgb,var(--sc,#5B7A98) 9%,var(--surface))}
   .lv-sec>.orgrow .orgnm{color:color-mix(in srgb,var(--sc,#5B7A98) 62%,#15191E)}
-  .lv-uni{border-top:1px solid var(--border-2);border-left:2px solid color-mix(in srgb,var(--sc,#5B7A98) 40%,#fff)}
+  .lv-uni{border-top:1px solid var(--border-2);border-left:2px solid color-mix(in srgb,var(--sc,#5B7A98) 40%,var(--surface))}
   .lv-uni>.orgrow{background:color-mix(in srgb,var(--sc,#5B7A98) 4%,var(--surface-2));padding-left:16px}
   .orgnode>.tchildren{display:none;padding:6px 10px 8px}.orgnode.open>.tchildren{display:block}
   .orgnode.open>.orgrow>.tchev{transform:rotate(90deg)}
   .orgnm{font-weight:650;font-size:12px}
   .orgnm2{font-weight:600;font-size:11.5px;color:color-mix(in srgb,var(--sc,#5B7A98) 55%,#63707B)}
-  .emailchip{font-family:var(--mono);font-size:10.5px;color:var(--sc,var(--accent));background:color-mix(in srgb,var(--sc,#12626E) 11%,#fff);border-radius:6px;padding:2px 7px;white-space:nowrap}
+  .emailchip{font-family:var(--mono);font-size:10.5px;color:var(--sc,var(--accent));background:color-mix(in srgb,var(--sc,var(--gold)) 11%,var(--surface));border-radius:6px;padding:2px 7px;white-space:nowrap}
   .temachip{font-size:10px;font-weight:600;padding:1px 8px;border-radius:999px;background:#EEF1F3;color:var(--muted);white-space:nowrap}
-  .lv-sec>.orgrow .temachip{background:color-mix(in srgb,var(--sc,#5B7A98) 15%,#fff);color:var(--sc,#5B7A98)}
-  .svline{border-left:2px solid color-mix(in srgb,var(--sc,#5B7A98) 30%,#fff)}
+  .lv-sec>.orgrow .temachip{background:color-mix(in srgb,var(--sc,#5B7A98) 15%,var(--surface));color:var(--sc,#5B7A98)}
+  .svline{border-left:2px solid color-mix(in srgb,var(--sc,#5B7A98) 30%,var(--surface))}
   .tnode.open>.edetail{display:block}
   .eblock{margin-bottom:12px}
   .eblock .bt{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -269,7 +294,7 @@
   .caplock b{font-weight:600}.caplock .lk{margin-left:auto;font-size:11px;color:var(--faint)}
   .sv-vinc{margin-bottom:14px}
   .sv-vinc .box{border:1px solid var(--border);border-radius:9px;padding:11px;background:var(--surface-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px}
-  .sv-vinc .box .stpill{--sc:#5B7A98;--scw:#EBEFF3}
+  .sv-vinc .box .stpill{--sc:var(--st-pros);--scw:var(--stw-pros)}
 
   /* ===== PAINEL DE COMISSÕES ===== */
   [hidden]{display:none!important}
@@ -342,9 +367,7 @@
   .iconbtn:hover{color:var(--ink);border-color:var(--muted)}
   body.sidehide .app{grid-template-columns:1fr}
   body.sidehide .side{display:none}
-  body.hc{--ink:#000;--muted:#2E3A44;--faint:#44525C;--border:#8C9AA4;--border-2:#B9C3CA;--surface-2:#F1F4F6}
-  body.hc .tag,body.hc .stpill,body.hc .temachip,body.hc .rulever,body.hc .cttag{font-weight:700}
-  body.hc .ctmeta,body.hc .scargo,body.hc .obrahint{color:#2E3A44}
+  /* ◐ agora alterna tema escuro (assinatura) / claro (operação) */
 
   .legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--border-2);background:var(--surface-2);font-size:11.5px;color:var(--muted)}
   .legend .k{display:inline-flex;align-items:center;gap:6px}.legend .k i{width:9px;height:9px;border-radius:2px;display:inline-block}
@@ -387,7 +410,7 @@
   body.protect .cli,body.protect .money,body.protect .ctval,body.protect .snm,body.protect .when,body.protect td,body.protect .ent-nm,body.protect .actor,body.protect .tl,body.protect #o-comm{user-select:none;-webkit-user-select:none}
   #wm{position:fixed;inset:0;z-index:9;pointer-events:none;overflow:hidden;display:none;transform:rotate(-24deg) scale(1.4);opacity:.05;align-content:center;flex-wrap:wrap;gap:26px 40px;justify-content:center}
   body.protect #wm{display:flex}
-  #wm span{font-family:var(--mono);font-size:12px;font-weight:700;color:#0F1D22;white-space:nowrap;letter-spacing:.04em}
+  #wm span{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;letter-spacing:.04em}
   #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);z-index:200;background:#0F1D22;color:#fff;padding:11px 16px;border-radius:10px;font-size:12.5px;font-weight:600;box-shadow:var(--sh-2);display:flex;align-items:center;gap:9px;opacity:0;visibility:hidden;transition:.18s}
   #toast.on{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
   #toast .lk{color:#F0C674}
@@ -409,6 +432,45 @@
   #login button{width:100%;padding:11px;background:var(--accent);border:none;color:#fff;border-radius:9px;font-weight:650;font-size:13.5px;margin-top:10px;cursor:pointer}
   #login button:hover{background:var(--accent-d)}
   #lg-err{color:var(--crit);font-size:12px;margin-top:10px;min-height:16px}
+
+  /* ===== PLENUM DS v1.1 — skin da marca (navy + ouro, Bricolage/DM Sans) ===== */
+  h1,h2,h3,.kpi .v,#login h2{font-family:var(--display);letter-spacing:-.015em}
+  .side{background:var(--navy-950);border-right:1px solid rgba(255,255,255,.09);color:rgba(255,255,255,.72)}
+  .brand .mark,#login .mark{background:linear-gradient(150deg,#E4BC44,#8A6E1A);color:#0A0F1A}
+  .brand span{color:rgba(255,255,255,.45)}
+  .nav a{color:rgba(255,255,255,.62)}
+  .nav a:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav a.on{background:rgba(201,162,39,.17);color:#F2F6FA}
+  .nav .sec{color:rgba(255,255,255,.35)}
+  .me{border-top:1px solid rgba(255,255,255,.09)}
+  .me b{color:#fff}.me span{color:rgba(255,255,255,.45)}
+  .top{background:color-mix(in srgb,var(--canvas) 84%,transparent);backdrop-filter:blur(10px)}
+  .camp-head{background:linear-gradient(135deg,color-mix(in srgb,var(--gold) 9%,transparent),transparent 60%)}
+  .btn-primary,#sv-addbtn,#login button{background:var(--gold);color:#0A0F1A;border-radius:100px;box-shadow:0 6px 22px rgba(201,162,39,.25);border:none}
+  .btn-primary:hover,#sv-addbtn:hover,#login button:hover{background:var(--gold-2)}
+  .btn-ghost,.fclear,.newcampbtn,.editbtn,.iconbtn,.camp-pick,.segbtn{border-radius:100px}
+  .newcampbtn{background:var(--accent-wash);border-color:color-mix(in srgb,var(--gold) 45%,transparent);color:var(--accent)}
+  .segbtn.on{background:var(--gold);color:#0A0F1A;border-color:transparent}
+  body.admin .sw{background:var(--gold)}
+  .metabar i,.rateiobar i{background:linear-gradient(90deg,var(--gold-3),var(--gold-2))}
+  .pill.ativa{background:color-mix(in srgb,var(--good) 16%,var(--surface));color:var(--good)}
+  .stpay.ap{background:color-mix(in srgb,var(--good) 16%,var(--surface));color:var(--good)}
+  .stpay.pr{background:color-mix(in srgb,var(--warn) 16%,var(--surface));color:var(--warn)}
+  .tag.base,.rulever,.temachip{background:color-mix(in srgb,var(--ink) 9%,var(--surface));color:var(--muted)}
+  .rulever.on{background:var(--accent-wash);color:var(--accent)}
+  .tag.novo{background:var(--accent-wash);color:var(--accent)}
+  .capwarn,.teamlock{background:color-mix(in srgb,var(--warn) 12%,var(--surface));border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn)}
+  .seclock{background:color-mix(in srgb,var(--warn) 12%,var(--surface));border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn)}
+  a.wa{color:var(--wa-ui);background:color-mix(in srgb,#25D366 12%,var(--surface));border-color:color-mix(in srgb,#25D366 35%,transparent)}
+  .emailchip{color:var(--sc,var(--accent));background:color-mix(in srgb,var(--sc,var(--gold)) 13%,var(--surface))}
+  #toast{background:#081221;border:1px solid rgba(255,255,255,.16)}
+  .tchip.on{color:#0A0F1A} body.light .tchip.on{color:#fff}
+  .money.up,#o-comm .commtot .amt{color:var(--money)}
+  .kpi.accent .v{color:var(--accent)}
+  .cttag{background:var(--accent-wash);color:var(--accent)}
+  .cttag.serv{background:color-mix(in srgb,var(--st-pros) 16%,var(--surface));color:var(--st-pros)}
+  .cttag.sec{background:var(--leg-wash);color:var(--leg)}
+  .ext.pdf{background:#C25048}.ext.xls{background:#3E9A68}.ext.doc{background:#4A76C4}.ext.img{background:#C08A28}
 </style>
 
 <div id="login">
@@ -444,7 +506,7 @@
       <div class="spacer"></div>
       <div class="search">🔎&nbsp; Buscar cliente, órgão, cidade…</div>
       <span class="seclock" title="Cópia, seleção e impressão bloqueadas — segredo de negócio">🔒 Sigilo ativo</span>
-      <button class="iconbtn" id="hcbtn" title="Alto contraste de cor" aria-label="Alto contraste">◐</button>
+      <button class="iconbtn" id="hcbtn" title="Tema claro / escuro" aria-label="Alternar tema">◐</button>
       <div class="adminbox"><span>Admin: editar</span><button class="sw" id="adm" aria-label="Modo edição do administrador"></button></div>
     </div>
 
@@ -495,12 +557,12 @@
       <section class="panel" id="sec-funil">
         <div class="tabs" id="tabs">
           <button class="tab on" data-tab="all">Todos <span class="cnt">12</span></button>
-          <button class="tab" data-tab="prospeccao" style="--tc:#5B7A98"><span class="stdot"></span>Prospecção <span class="cnt">4</span></button>
-          <button class="tab" data-tab="qualificacao" style="--tc:#2E5AAC"><span class="stdot"></span>Qualificação <span class="cnt">2</span></button>
-          <button class="tab" data-tab="proposta" style="--tc:#B0771A"><span class="stdot"></span>Proposta <span class="cnt">2</span></button>
-          <button class="tab" data-tab="negociacao" style="--tc:#C4611C"><span class="stdot"></span>Negociação <span class="cnt">2</span></button>
-          <button class="tab" data-tab="fechamento" style="--tc:#2C8A57"><span class="stdot"></span>Fechamento <span class="cnt">1</span></button>
-          <button class="tab" data-tab="posvenda" style="--tc:#12626E"><span class="stdot"></span>Pós-venda <span class="cnt">1</span></button>
+          <button class="tab" data-tab="prospeccao" style="--tc:var(--st-pros)"><span class="stdot"></span>Prospecção <span class="cnt">4</span></button>
+          <button class="tab" data-tab="qualificacao" style="--tc:var(--st-qual)"><span class="stdot"></span>Qualificação <span class="cnt">2</span></button>
+          <button class="tab" data-tab="proposta" style="--tc:var(--st-prop)"><span class="stdot"></span>Proposta <span class="cnt">2</span></button>
+          <button class="tab" data-tab="negociacao" style="--tc:var(--st-nego)"><span class="stdot"></span>Negociação <span class="cnt">2</span></button>
+          <button class="tab" data-tab="fechamento" style="--tc:var(--st-fech)"><span class="stdot"></span>Fechamento <span class="cnt">1</span></button>
+          <button class="tab" data-tab="posvenda" style="--tc:var(--st-pos)"><span class="stdot"></span>Pós-venda <span class="cnt">1</span></button>
         </div>
 
         <div id="view-tree" class="tree"></div>
@@ -516,12 +578,12 @@
 
         <div class="legend">
           <span>Linhas coloridas por estágio:</span>
-          <span class="k"><i style="background:#5B7A98"></i>Prospecção</span>
-          <span class="k"><i style="background:#2E5AAC"></i>Qualificação</span>
-          <span class="k"><i style="background:#B0771A"></i>Proposta</span>
-          <span class="k"><i style="background:#C4611C"></i>Negociação</span>
-          <span class="k"><i style="background:#2C8A57"></i>Fechamento</span>
-          <span class="k"><i style="background:#12626E"></i>Pós-venda</span>
+          <span class="k"><i style="background:var(--st-pros)"></i>Prospecção</span>
+          <span class="k"><i style="background:var(--st-qual)"></i>Qualificação</span>
+          <span class="k"><i style="background:var(--st-prop)"></i>Proposta</span>
+          <span class="k"><i style="background:var(--st-nego)"></i>Negociação</span>
+          <span class="k"><i style="background:var(--st-fech)"></i>Fechamento</span>
+          <span class="k"><i style="background:var(--st-pos)"></i>Pós-venda</span>
           <span style="margin-left:auto;color:var(--faint)">A cada interação o lead troca de aba; em <b>“Todos”</b> permanece com o status atualizado.</span>
         </div>
       </section>
@@ -789,19 +851,22 @@
   <div class="mfoot"><button class="btn-ghost" id="tm-cancel">Cancelar</button><button class="btn-primary" id="tm-save">Salvar</button></div>
 </div>
 
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=DM+Sans:opsz,wght@9..40,300..700&display=swap" rel="stylesheet">
 <script src="../config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   document.getElementById('adm').addEventListener('click',()=>document.body.classList.toggle('admin'));
   document.getElementById('hamb').addEventListener('click',()=>document.body.classList.toggle('sidehide'));
-  document.getElementById('hcbtn').addEventListener('click',()=>document.body.classList.toggle('hc'));
+  document.getElementById('hcbtn').addEventListener('click',()=>{const l=document.body.classList.toggle('light');try{localStorage.setItem('crm-theme',l?'light':'dark')}catch(e){}});
+  try{if(localStorage.getItem('crm-theme')==='light')document.body.classList.add('light')}catch(e){}
 
   const ST={
-    prospeccao:['Prospecção','#5B7A98','#EBEFF3'], qualificacao:['Qualificação','#2E5AAC','#E8EDF7'],
-    proposta:['Proposta','#B0771A','#F7EFDD'], negociacao:['Negociação','#C4611C','#F7EADD'],
-    fechamento:['Ganha','#2C8A57','#E6F1EA'], posvenda:['Pós-venda','#12626E','#E7F0F1']
+    prospeccao:['Prospecção','var(--st-pros)','var(--stw-pros)'], qualificacao:['Qualificação','var(--st-qual)','var(--stw-qual)'],
+    proposta:['Proposta','var(--st-prop)','var(--stw-prop)'], negociacao:['Negociação','var(--st-nego)','var(--stw-nego)'],
+    fechamento:['Ganha','var(--st-fech)','var(--stw-fech)'], posvenda:['Pós-venda','var(--st-pos)','var(--stw-pos)']
   };
-  const AV={A:'#7A5296',F:'#12626E',K:'#2C8A57',D:'#B0771A',E:'#C4611C',W:'#5B7A98'};
+  const AV={A:'#9A6FBF',F:'#4FB8C4',K:'#3E9A68',D:'#C08A28',E:'#C4611C',W:'#5B7A98'};
   const av=(i)=>`<span class="av" style="background:${AV[i]||'#5B7A98'}">${i}</span>`;
 
   // celular (9 dígitos após DDD) vira hiperlink p/ conversa no WhatsApp; fixo fica texto
@@ -988,7 +1053,7 @@
 
   const countEnts=n=>n.t==='ent'?1:n.children.reduce((s,c)=>s+countEnts(c),0);
   const areaChip=a=>a==='gp'?'<span class="tag gp">Gestão Pública</span>':a==='leg'?'<span class="tag leg">Legislativo</span>':'';
-  const TEMACOR={Obras:'#B0771A',Saúde:'#2C8A57',Educação:'#2E5AAC',Administração:'#5B7A98',Legislativo:'#7A5296','Controle Externo':'#0E7C86',Parceria:'#B85C8A'};
+  const TEMACOR={Obras:'var(--tm-obras)',Saúde:'var(--tm-saude)',Educação:'var(--tm-edu)',Administração:'var(--tm-adm)',Legislativo:'var(--tm-leg)','Controle Externo':'var(--tm-controle)',Parceria:'var(--tm-parceria)'};
   const SVREG=[]; // registro de servidores p/ a ficha (modal)
   function svLine(v,ctx){
     const i=SVREG.length, info=[];
@@ -1001,7 +1066,7 @@
     return `<div class="svline"><span class="cttag serv">Servidor</span><button type="button" class="snm" data-sv="${i}">${v.nome}</button><span class="scargo">· ${v.cargo}</span><button type="button" class="svcapbtn" data-svcapi="${i}" title="Capturar para campanha">⊕ capturar</button><span class="svcap" data-svcap="${i}"></span><span class="grow2"></span><span class="ctval"><a href="mailto:${v.email||''}">${v.email||'—'}</a></span><span class="ctmeta">${WAPP(v.tel||'')}</span></div>`;
   }
   function renderOrg(sec,orgao,area,orgId){ // secretaria (1º) -> unidade (2º) -> servidor (folha); cadência de cor por tema
-    const cor=TEMACOR[sec.tema]||'#5B7A98';
+    const cor=TEMACOR[sec.tema]||'var(--st-pros)';
     const tema=sec.tema?`<span class="temachip">${sec.tema}</span>`:'';
     const email=sec.email?`<span class="emailchip">✉ ${sec.email}</span>`:'';
     const unis=(sec.unidades&&sec.unidades.length)?sec.unidades.map(u=>{
@@ -1019,7 +1084,7 @@
   function renderNode(n,depth){
     const pad=`padding-left:${16+depth*16}px`;
     if(n.t==='ent'){
-      const s=ST[n.st]||['—','#5B7A98','#EBEFF3'];
+      const s=ST[n.st]||['—','var(--st-pros)','var(--stw-pros)'];
       const m=FMETA[n.id]||{}; const rp=m.resp||'Sem vendedor';
       const vend=rp==='Sem vendedor'?`<span class="vend"><span class="none">⚠ Sem vendedor</span></span>`
                                      :`<span class="vend">Vendedor: ${av(rp[0])}<b>${rp}</b></span>`;
@@ -1098,12 +1163,12 @@
   const OPPS={}; let CUR=null; // atuações capturadas sobrepõem o lead base
   window.o_nome=document.getElementById('o-nome');window.o_val=document.getElementById('o-val');
   function render360(l){
-    CUR=l; const s=ST[l.st]||['—','#5B7A98','#EBEFF3'];
+    CUR=l; const s=ST[l.st]||['—','var(--st-pros)','var(--stw-pros)'];
     o_nome.textContent=l.cli;
     const a=document.getElementById('o-area'); a.className=l.area==='gp'?'tag gp':l.area==='leg'?'tag leg':'tag'; a.textContent=l.area==='gp'?'Gestão Pública':l.area==='leg'?'Legislativo':(l.areaLabel||'—');
     o_val.textContent=l.val; document.getElementById('o-vsub').textContent=l.vsub;
     const order=['prospeccao','qualificacao','proposta','negociacao','fechamento','posvenda']; const idx=order.indexOf(l.st);
-    document.getElementById('o-stage').innerHTML=order.map((k,i)=>`<i style="background:${i<idx?'#12626E':i===idx?s[1]:'#E4E8EB'}"></i>`).join('');
+    document.getElementById('o-stage').innerHTML=order.map((k,i)=>`<i style="background:${i<idx?'var(--accent)':i===idx?s[1]:'var(--border-2)'}"></i>`).join('');
     document.getElementById('o-atores').innerHTML=l.atores.map(t=>`<div class="actor">${av(t[0])}<div class="info"><b>${t[1]}</b><span>${t[2]}</span><div class="rateiobar"><i style="width:${t[4]}%"></i></div></div><span class="role ${t[5]?'resp':''}">${t[3]}</span></div>`).join('');
     document.getElementById('o-tl').innerHTML=l.tl.map(e=>`<div class="ev ${e[3]?'mut':''}"><span class="d"></span><div class="c"><b>${e[0]}</b><p>${e[1]}</p><time>${e[2]}</time></div></div>`).join('');
     const tot=l.comm.reduce((s,c)=>s+(parseInt(c[1].replace(/\D/g,''))||0),0);
@@ -1260,7 +1325,7 @@
   function renderSvVinc(i){
     const box=document.getElementById('sv-vinc'), c=CAPTURES[capKey(i)];
     if(!c){box.innerHTML=`<div class="box"><span>Sem vínculo de campanha.</span><span style="flex:1"></span><button class="btn-primary" id="sv-cap-open">＋ Capturar para campanha</button></div>`;}
-    else{const camp=campById(c.campId), s=ST[c.estagio]||['—','#5B7A98','#EBEFF3'];
+    else{const camp=campById(c.campId), s=ST[c.estagio]||['—','var(--st-pros)','var(--stw-pros)'];
       box.innerHTML=`<div class="box"><span class="campchip">${camp?camp.nome.split(' · ')[0]:'Campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">Responsável: ${avmini(c.responsavel)} <b>${c.responsavel}</b></span><span style="flex:1"></span><button class="btn-ghost" id="sv-cap-open">${isGestor()?'Remanejar':'Ver / atualizar'}</button></div>`;}
     document.getElementById('sv-cap-open').onclick=()=>{closeSv();openCaptureSv(i);};
   }
@@ -1294,7 +1359,7 @@
   function closeCapture(){capModal.classList.remove('open');capScrim.classList.remove('open');}
   function updateSvBadge(i){
     const el=document.querySelector('.svcap[data-svcap="'+i+'"]'); if(!el)return; const c=CAPTURES[capKey(i)];
-    if(!c){el.innerHTML='';return;} const camp=campById(c.campId), s=ST[c.estagio]||['—','#5B7A98','#EBEFF3'];
+    if(!c){el.innerHTML='';return;} const camp=campById(c.campId), s=ST[c.estagio]||['—','var(--st-pros)','var(--stw-pros)'];
     el.innerHTML=`<span class="campchip">${camp?camp.nome.split(' · ')[0]:'campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">${avmini(c.responsavel)} ${c.responsavel}</span>`;
     const b=document.querySelector('.svcapbtn[data-svcapi="'+i+'"]'); if(b)b.textContent='⊕ vínculo';
   }
@@ -1613,7 +1678,7 @@
     ME=meRow?TEAM.find(t=>t.id===meRow.id):null;
     window.GESTOR=!!(meRow&&(meRow.funcao!=='vendedor'||meRow.acesso_irrestrito));
     CURRENT=meRow?meRow.nome:(user.email||'—'); USER=CURRENT; renderWM();
-    document.getElementById('me-box').innerHTML='<div class="av" style="background:#12626E">'+ini(CURRENT)+'</div><div><b>'+CURRENT+'</b><span>'+(meRow?(meRow.funcao+(meRow.acesso_irrestrito?' · acesso irrestrito':'')):'sem cadastro de funcionário')+'</span></div>';
+    document.getElementById('me-box').innerHTML='<div class="av" style="background:#4FB8C4">'+ini(CURRENT)+'</div><div><b>'+CURRENT+'</b><span>'+(meRow?(meRow.funcao+(meRow.acesso_irrestrito?' · acesso irrestrito':'')):'sem cadastro de funcionário')+'</span></div>';
     if(!window.GESTOR){const ab=document.querySelector('.adminbox'); if(ab)ab.style.display='none';}
 
     say('Carregando campanhas e regras…');
