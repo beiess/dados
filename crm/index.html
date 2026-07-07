@@ -508,6 +508,9 @@
   .loterow{display:flex;gap:12px;align-items:center;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12px;flex-wrap:wrap}
   .loterow .rm{border:none;background:none;color:var(--faint);cursor:pointer;margin-left:auto}
   .loterow .rm:hover{color:var(--crit)}
+
+  .p1block .orgnm{color:var(--muted)}
+  .p1block>.bt .bt-sub{font-family:var(--mono);font-size:10px}
 </style>
 
 <div id="login">
@@ -1120,7 +1123,7 @@
     if(ctx&&ctx.setor) info.push({tipo:'Setor',val:ctx.setor+(ctx.unidade?(' · '+ctx.unidade):'')});
     if(v.cargo) info.push({tipo:'Responsabilidade',val:v.cargo});
     (v.extras||[]).forEach(x=>info.push({tipo:x.tipo,val:x.valor,rede:x.rede||undefined}));
-    SVREG.push({nome:v.nome,cargo:v.cargo||'',orgao:(ctx&&ctx.orgao)||'',orgId:(ctx&&ctx.orgId)||'',area:(ctx&&ctx.area)||null,setor:(ctx&&ctx.setor)||'',unidade:(ctx&&ctx.unidade)||'',sid:(v.id||''),eid:(ctx&&(ctx.entId||ctx.orgId))||'',setid:(ctx&&ctx.setorId)||'',info});
+    SVREG.push({nome:v.nome,cargo:v.cargo||'',orgao:(ctx&&ctx.orgao)||'',orgId:(ctx&&ctx.orgId)||'',area:(ctx&&ctx.area)||null,setor:(ctx&&ctx.setor)||'',unidade:(ctx&&ctx.unidade)||'',sid:(v.id||''),eid:(ctx&&(ctx.entId||ctx.orgId))||'',setid:(ctx&&ctx.setorId)||'',p1:(v.p1||null),info});
     const tel=(v.tel&&v.tel!=='—')?String(v.tel).trim():'';
     return `<div class="svline"><span class="svacts"><label class="svsel" title="${tel?'Marcar servidor (tem contato)':'Sem número de contato'}"><input type="checkbox" data-svsel="${i}" ${tel?'':'disabled'}></label><button type="button" class="svcapbtn" data-svcapi="${i}" title="Capturar para campanha">⊕ capturar</button><button type="button" class="addbtn mini" data-add="contato-sv" data-svi="${i}" title="Adicionar contato ao servidor">＋ contato</button></span><span class="svmain"><button type="button" class="snm" data-sv="${i}">${v.nome}</button>${TELX(tel)}${v.cargo?`<span class="scargo">· ${v.cargo}</span>`:''}<span class="svcap" data-svcap="${i}"></span></span><span class="ctval sv-email"><a href="mailto:${v.email||''}">${v.email||'—'}</a></span></div>`;
   }
@@ -1159,7 +1162,7 @@
                                      :`<span class="vend">Vendedor: ${av(rp[0])}<b>${rp}</b></span>`;
       ENTDATA[n.id]=n;
       ENTMAP[n.id]={nome:n.nome,area:n.area,st:n.st};
-      return `<div class="tnode lv-ent" data-eid="${n.id}" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${rp}" style="--sc:${s[1]};--scw:${s[2]}">
+      return `<div class="tnode lv-ent" data-eid="${n.id}" data-ibge="${n.ibge||''}" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${rp}" style="--sc:${s[1]};--scw:${s[2]}">
         <div class="trow" style="${pad}"><span class="tchev">›</span>
           <span class="ent-nm">${n.nome}</span> ${areaChip(n.area)}
           <span class="grow"></span>${vend}
@@ -1838,7 +1841,7 @@
         const unidades=(unitsByParent[s1.id]||[]).map(u=>({id:u.id,nome:u.nome,servidores:mapSrv(srvBySetor[u.id])}));
         if((srvBySetor[s1.id]||[]).length)unidades.push({id:s1.id,nome:'Servidores do setor',servidores:mapSrv(srvBySetor[s1.id])});
         return {id:s1.id,nome:s1.nome,tema:s1.tema,email:s1.email,unidades};});
-      return ent({id:e.id,nome:e.nome,area:e.area==='Legislativo'?'leg':'gp',st:(ENTSTATE[e.id]||{}).st||'prospeccao',contatos,estrutura});
+      return ent({id:e.id,nome:e.nome,area:e.area==='Legislativo'?'leg':'gp',st:(ENTSTATE[e.id]||{}).st||'prospeccao',ibge:e.cod_ibge||'',poder:e.poder||'',contatos,estrutura});
     }
     const g={};
     ents.forEach(e=>{const a=e.esfera||'Municipal',b=e.poder||'—',c=e.tipo_orgao||'Órgão';
@@ -1920,6 +1923,36 @@
     d.innerHTML=`<div class="eblock"><div class="bt">🏛 Estrutura &amp; servidores <span class="bt-sub">${nsec} secretaria${nsec===1?'':'s'} · ${ntot} servidor${ntot===1?'':'es'}</span><span class="btacts"><button type="button" class="addbtn mini" data-add="secretaria" data-orgao="${n.nome}" data-area="${n.area||''}" data-entid="${n.id}">＋ Secretaria</button></span></div>${estr}</div>
       <div class="eblock"><div class="bt">📇 Contato institucional<span class="btacts"><button type="button" class="addbtn mini" data-add="contato" data-orgao="${n.nome}" data-entid="${n.id}">＋ Contato</button><button type="button" class="addbtn mini" data-add="tipocontato">＋ Tipo</button></span></div>${cts}</div>`;
     d.querySelectorAll('.svcapbtn').forEach(b=>{const i=+b.dataset.svcapi; if(CAPTURES[capKey(i)])updateSvBadge(i);});
+    if(n.ibge&&typeof sbc!=='undefined'){
+      d.insertAdjacentHTML('beforeend',`<div class="eblock p1block"><div class="bt">📋 Todos os servidores · Painel 1 <span class="bt-sub p1status">carregando…</span></div><div class="p1body"></div></div>`);
+      loadP1(d.querySelector('.p1block'),n,0);
+    }
+  }
+
+  // Painel 1 (1,36M registros) integrado SOB DEMANDA por órgão — dedup c/ a base do CRM
+  async function loadP1(block,nd,offset){
+    const st=block.querySelector('.p1status'), body=block.querySelector('.p1body');
+    try{
+      let q=sbc.from('painel1_servidores').select('setor,cargo_funcao,nome,cpf,responsabilidade')
+        .eq('ibge',nd.ibge).order('nome').range(offset,offset+999);
+      q=(nd.poder==='Legislativo')?q.ilike('orgao','%CAMARA%'):q.not('orgao','ilike','%CAMARA%');
+      const {data,error}=await q; if(error)throw error;
+      const seen=(window.SRVN&&window.SRVN[nd.id])||[];
+      const novos=(data||[]).filter(p=>p.nome&&!seen.includes(norm(p.nome)));
+      const g={};
+      novos.forEach(p=>{const k=String(p.setor||'Sem setor informado').trim().slice(0,80)||'Sem setor informado';(g[k]=g[k]||[]).push(p);});
+      body.insertAdjacentHTML('beforeend',Object.keys(g).sort((a,b)=>a.localeCompare(b,'pt')).map(setor=>{
+        const lines=g[setor].map(p=>svLine({id:'',nome:p.nome,cargo:[p.cargo_funcao,p.responsabilidade].filter(Boolean).join(' · '),email:'',tel:'',p1:p},
+          {orgao:nd.nome,setor,unidade:'',entId:nd.id,setorId:'',area:nd.area})).join('');
+        return `<div class="tnode orgnode lv-sec" style="--sc:var(--st-pros)"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm">📋 ${setor}</span><span class="cnt2">👥 ${g[setor].length}</span><span class="grow2"></span></div><div class="tchildren">${lines}</div></div>`;
+      }).join(''));
+      if(window.P1HL){body.querySelectorAll('.snm').forEach(b=>{if(norm(b.textContent).includes(window.P1HL)){b.classList.add('hit');const s=b.closest('.lv-sec');if(s)s.classList.add('open');}});}
+      const tot=offset+((data&&data.length)||0);
+      if(data&&data.length===1000){
+        st.innerHTML=`${tot}+ registros · <button type="button" class="addbtn mini p1more">＋ carregar mais</button>`;
+        st.querySelector('.p1more').onclick=()=>{st.textContent='carregando…';loadP1(block,nd,tot);};
+      }else st.textContent=`${tot} registro${tot===1?'':'s'} do órgão · integrado (emails/contatos ficam na base curada acima)`;
+    }catch(e){st.textContent='Painel 1 indisponível: '+(e.message||e);}
   }
 
   // header da campanha
@@ -1969,9 +2002,20 @@
       renderCampHeader(); warn('Campanha gravada no banco ✓');
     }catch(e){warn('⚠ Campanha não gravada: '+(e.message||e));}
   };
+  async function ensureSrv(r){
+    if(r.sid)return r.sid;
+    if(!r.eid)throw new Error('servidor sem entidade');
+    const p=r.p1||{};
+    const {data,error}=await sbc.from('crm_servidores').insert({entidade_id:r.eid,setor_id:r.setid||null,
+      nome:r.nome,cargo:r.cargo||null,cpf:(p.cpf||null),origem:'painel1'}).select('id').single();
+    if(error)throw error;
+    r.sid=data.id;
+    if(window.SRVN)(window.SRVN[r.eid]=window.SRVN[r.eid]||[]).push(norm(r.nome));
+    return data.id;
+  }
   window.dbSaveCap=async function(i,campId,resp,st,obs){
-    const r=SVREG[i];
-    if(!r||!r.sid){warn('⚠ Servidor sem vínculo no banco — adicione-o pelo ＋ Servidor antes de capturar.');return;}
+    const r=SVREG[i]; if(!r)return;
+    try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}
     const respId=(TEAM.find(t=>t.n===resp)||{}).id, k=capKey(i), cur=CAPTURES[k];
     try{
       if(cur&&cur.dbId){
@@ -2029,7 +2073,8 @@
     }catch(e){warn('⚠ Não gravado: '+(e.message||e));}
   };
   window.dbSaveInfo=async function(svIdx,it){
-    const r=SVREG[svIdx]; if(!r||!r.sid)return;
+    const r=SVREG[svIdx]; if(!r)return;
+    try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}
     try{const{error}=await sbc.from('crm_contatos').insert({servidor_id:r.sid,tipo:it.tipo,valor:it.val,rede:it.rede||null});if(error)throw error;}
     catch(e){warn('⚠ Info não gravada: '+(e.message||e));}
   };
@@ -2072,10 +2117,16 @@
 
 
   // ===== busca por servidor (topo) + aplicar filtros + marcação =====
-  function applyAll(){
+  async function applyAll(){
     document.querySelectorAll('.snm.hit').forEach(x=>x.classList.remove('hit'));
     applyFilters();
-    const q=document.getElementById('q-serv'), qs=q?norm(q.value.trim()):'';
+    const q=document.getElementById('q-serv'), raw=q?q.value.trim():'', qs=raw?norm(raw):'';
+    window.P1HL=qs||'';
+    let p1set=null;
+    if(qs&&qs.length>=4&&typeof sbc!=='undefined'){
+      try{const{data}=await sbc.from('painel1_servidores').select('ibge').ilike('nome','%'+raw.replace(/[%_]/g,'')+'%').limit(500);
+        p1set=new Set((data||[]).map(x=>String(x.ibge)));}catch(e){}
+    }
     if(qs){
       let shown=0;
       document.querySelectorAll('#view-tree .lv-ent').forEach(el=>{
@@ -2083,6 +2134,7 @@
         const idx=(window.SRVN&&window.SRVN[el.dataset.eid])||[];
         let has=idx.some(x=>x.includes(qs));
         if(!has)has=[...el.querySelectorAll('.snm')].some(b=>norm(b.textContent).includes(qs));
+        if(!has&&p1set&&p1set.has(String(el.dataset.ibge)))has=true;
         el.style.display=has?'':'none';
         if(has&&shown<30){shown++;
           el.classList.add('open');
