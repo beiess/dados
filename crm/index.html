@@ -533,6 +533,9 @@
   }
   .snm.hit-flash{animation:hitblink .5s ease-in-out 6}
   @media (prefers-reduced-motion: reduce){.snm.hit-flash{animation:none;outline:2px solid var(--gold)}}
+
+  .p1hits{border-color:color-mix(in srgb,var(--gold) 45%,transparent)!important}
+  .p1hits>.orgrow .orgnm{color:var(--accent)}
 </style>
 
 <div id="login">
@@ -1967,10 +1970,25 @@
   async function loadP1(block,nd,offset){
     const st=block.querySelector('.p1status'), body=block.querySelector('.p1body');
     try{
+      // busca ativa: resultado vem PRIMEIRO, independente da paginação alfabética
+      if(offset===0&&window.P1RAW&&window.P1RAW.length){
+        block._skip=new Set();
+        let achados=[];
+        for(const termo of window.P1RAW.slice(0,5)){
+          try{const{data:hs}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_nome:String(termo).replace(/[%_]/g,''),p_limit:20});
+            (hs||[]).forEach(p=>{if(!block._skip.has(norm(p.nome))){block._skip.add(norm(p.nome));achados.push(p);}});}catch(e){}
+        }
+        if(achados.length){
+          const linhas=achados.map(p=>svLine({id:'',nome:p.nome,cargo:[p.cargo,p.responsabilidade].filter(Boolean).join(' · '),email:p.email||'',tel:p.telefone?fmtTel(p.telefone):'',p1:p,cpf:p.cpf||'',p1id:p.painel1_id},
+            {orgao:nd.nome,setor:p.setor||'—',unidade:'',entId:nd.id,setorId:'',area:nd.area})).join('');
+          body.insertAdjacentHTML('beforeend',`<div class="tnode orgnode lv-sec open p1hits" style="--sc:var(--gold)"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm">🔎 Resultado da busca</span><span class="cnt2">👥 ${achados.length}</span><span class="grow2"></span></div><div class="tchildren">${linhas}</div></div>`);
+          body.querySelectorAll('.p1hits .snm').forEach(b=>revealHit(b));
+        }
+      }
       const {data,error}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_limit:1000,p_offset:offset});
       if(error)throw error;
       const seen=(window.SRVN&&window.SRVN[nd.id])||[];
-      const novos=(data||[]).filter(p=>p.nome&&!seen.includes(norm(p.nome)));
+      const novos=(data||[]).filter(p=>p.nome&&!seen.includes(norm(p.nome))&&!(block._skip&&block._skip.has(norm(p.nome))));
       const g={};
       novos.forEach(p=>{const k=String(p.setor||'Sem setor informado').trim().slice(0,80)||'Sem setor informado';(g[k]=g[k]||[]).push(p);});
       body.insertAdjacentHTML('beforeend',Object.keys(g).sort((a,b)=>a.localeCompare(b,'pt')).map(setor=>{
@@ -2178,6 +2196,7 @@
     const raw=((document.getElementById('f-nome')||{}).value||(document.getElementById('q-serv')||{}).value||'').trim(), qs=raw?norm(raw):'';
     const HL=NAMESEL.length?NAMESEL.map(s=>norm(s.n)):(qs?[qs]:[]);
     window.P1HL=HL;
+    window.P1RAW=NAMESEL.length?NAMESEL.map(s=>s.n):(raw?[raw]:[]);
     if(!HL.length)return;
     let p1set=null;
     if(!NAMESEL.length&&qs.length>=4&&typeof sbc!=='undefined'){
