@@ -1481,9 +1481,21 @@
   }
   function checkConc(){
     const c=CAPTURES[capKey(CAPI)], warnEl=document.getElementById('cap-warn'), save=document.getElementById('cap-save');
-    if(c){const camp=campById(c.campId);
-      warnEl.hidden=false; warnEl.innerHTML=`⚠ Servidor já vinculado à campanha <b>${camp?camp.nome.split(' · ')[0]:''}</b> (responsável ${c.responsavel}). Um servidor não participa de campanhas concomitantes.${isGestor()?' Como gestor, você pode remanejar.':' Só gerente/admin pode remanejar.'}`;
-      save.disabled=!isGestor(); save.textContent=isGestor()?'Remanejar':'Bloqueado';
+    if(c){const camp=campById(c.campId), nomeC=camp?camp.nome.split(' · ')[0]:'', own=c.responsavel===CURRENT;
+      warnEl.hidden=false;
+      if(own){
+        warnEl.innerHTML=`Você é o responsável por este servidor na campanha <b>${nomeC}</b> — atualize o estágio e a observação.`;
+        save.disabled=false; save.textContent='Atualizar captura';
+      }else if(window.IS_ADMIN){
+        warnEl.innerHTML=`⚠ Já vinculado (responsável <b>${c.responsavel}</b>). Como administrador, você pode remanejar e avançar o estágio.`;
+        save.disabled=false; save.textContent='Remanejar';
+      }else if(isGestor()){
+        warnEl.innerHTML=`⚠ Já vinculado (responsável <b>${c.responsavel}</b>). Como gestor você pode <b>remanejar o responsável</b>; o estágio só avança pelo responsável ou administrador.`;
+        save.disabled=false; save.textContent='Remanejar';
+      }else{
+        warnEl.innerHTML=`⚠ Servidor vinculado à campanha <b>${nomeC}</b> (responsável <b>${c.responsavel}</b>). Somente o responsável ou um administrador avança o estágio.`;
+        save.disabled=true; save.textContent='Bloqueado';
+      }
     } else {warnEl.hidden=true; save.disabled=false; save.textContent='Registrar captura';}
   }
   function openCaptureSv(i){
@@ -1498,6 +1510,7 @@
     if(isGestor()){lock.hidden=true; rsel.hidden=false; rsel.innerHTML=VEND.map(v=>`<option ${v[1]===resp?'selected':''}>${v[1]}</option>`).join('');}
     else{rsel.hidden=true; lock.hidden=false; document.getElementById('cap-resp-av').innerHTML=avmini(resp); document.getElementById('cap-resp-nome').textContent=resp;}
     renderCapParams(); checkConc();
+    document.getElementById('cap-st').disabled=!!(c&&!(c.responsavel===CURRENT||window.IS_ADMIN));
     capModal.classList.add('open'); capScrim.classList.add('open');
   }
   function closeCapture(){capModal.classList.remove('open');capScrim.classList.remove('open');}
@@ -1850,6 +1863,7 @@
     document.getElementById('me-box').innerHTML='<div class="av" style="background:#4FB8C4">'+ini(CURRENT)+'</div><div><b>'+CURRENT+'</b><span>'+(meRow?(meRow.funcao+(meRow.acesso_irrestrito?' · acesso irrestrito':'')):'sem cadastro de funcionário')+'</span></div>';
     if(!window.GESTOR){const ab=document.querySelector('.adminbox'); if(ab)ab.style.display='none';}
     const ADMIN=!!(meRow&&(meRow.funcao==='admin'||meRow.acesso_irrestrito));
+    window.IS_ADMIN=ADMIN;
     if(!ADMIN){
       document.querySelectorAll('.nav a:not(#nav-campanhas), .nav .sec').forEach(el=>el.style.display='none');
     }
