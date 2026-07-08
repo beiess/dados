@@ -526,6 +526,13 @@
   .namechip button{border:none;background:none;color:inherit;cursor:pointer;padding:0;font-size:11px}
 
   .sugwait{padding:8px 10px;font-size:11px;color:var(--faint);font-family:var(--mono)}
+
+  @keyframes hitblink{
+    0%,100%{background:var(--accent-wash);box-shadow:0 0 0 0 rgba(201,162,39,0)}
+    50%{background:var(--gold);color:#0A0F1A;box-shadow:0 0 16px 3px rgba(201,162,39,.55)}
+  }
+  .snm.hit-flash{animation:hitblink .5s ease-in-out 6}
+  @media (prefers-reduced-motion: reduce){.snm.hit-flash{animation:none;outline:2px solid var(--gold)}}
 </style>
 
 <div id="login">
@@ -1971,7 +1978,7 @@
           {orgao:nd.nome,setor,unidade:'',entId:nd.id,setorId:'',area:nd.area})).join('');
         return `<div class="tnode orgnode lv-sec" style="--sc:var(--st-pros)"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm">📋 ${setor}</span><span class="cnt2">👥 ${g[setor].length}</span><span class="grow2"></span></div><div class="tchildren">${lines}</div></div>`;
       }).join(''));
-      if(window.P1HL&&window.P1HL.length){body.querySelectorAll('.snm').forEach(b=>{const t=norm(b.textContent);if(window.P1HL.some(hh=>t.includes(hh))){b.classList.add('hit');const s=b.closest('.lv-sec');if(s)s.classList.add('open');}});}
+      if(window.P1HL&&window.P1HL.length){body.querySelectorAll('.snm').forEach(b=>{const t=norm(b.textContent);if(window.P1HL.some(hh=>t.includes(hh)))revealHit(b);});}
       const tot=offset+((data&&data.length)||0);
       if(data&&data.length===1000){
         st.innerHTML=`${tot}+ registros · <button type="button" class="addbtn mini p1more">＋ carregar mais</button>`;
@@ -2165,7 +2172,8 @@
 
   // ===== busca por servidor (topo) + aplicar filtros + marcação =====
   async function applyAll(){
-    document.querySelectorAll('.snm.hit').forEach(x=>x.classList.remove('hit'));
+    window.__hitScrolled=false;
+    document.querySelectorAll('.snm.hit').forEach(x=>x.classList.remove('hit','hit-flash'));
     applyFilters();
     const raw=((document.getElementById('f-nome')||{}).value||(document.getElementById('q-serv')||{}).value||'').trim(), qs=raw?norm(raw):'';
     const HL=NAMESEL.length?NAMESEL.map(s=>norm(s.n)):(qs?[qs]:[]);
@@ -2194,7 +2202,8 @@
         el.classList.add('open');
         const d=el.querySelector(':scope > .edetail');
         if(d&&d.dataset.lazy&&!d.dataset.built&&typeof buildDetail==='function')buildDetail(d);
-        el.querySelectorAll('.snm').forEach(b=>{const t=norm(b.textContent);b.classList.toggle('hit',HL.some(hh=>t.includes(hh)));});}
+        el.querySelectorAll('.snm').forEach(b=>{const t=norm(b.textContent);
+          if(HL.some(hh=>t.includes(hh)))revealHit(b); else b.classList.remove('hit');});}
     });
     ['.lv-tipo','.lv-poder','.lv-esfera'].forEach(cls=>document.querySelectorAll('#view-tree '+cls).forEach(g=>{
       let any=false;g.querySelectorAll('.lv-ent').forEach(e2=>{if(e2.style.display!=='none')any=true;});
@@ -2213,6 +2222,16 @@
       document.getElementById('selcount').textContent=nsel?('✓ '+nsel+' marcado'+(nsel>1?'s':'')):'';
     }
   });
+
+  // ===== revelar resultado da busca: abre só a seção do nome, pisca 3s e rola =====
+  function revealHit(b){
+    const uni=b.closest('.lv-uni'); if(uni)uni.classList.add('open');
+    const sec=b.closest('.lv-sec'); if(sec)sec.classList.add('open');
+    b.classList.add('hit','hit-flash');
+    setTimeout(()=>b.classList.remove('hit-flash'),3000);
+    if(!window.__hitScrolled){window.__hitScrolled=true;
+      setTimeout(()=>b.scrollIntoView({behavior:'smooth',block:'center'}),120);}
+  }
 
   // ===== validação de contato por tipo (espelho do trigger do banco) =====
   function fmtTel(d){d=String(d||'').replace(/\D/g,'');
