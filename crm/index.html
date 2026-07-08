@@ -1141,7 +1141,7 @@
     if(ctx&&ctx.setor) info.push({tipo:'Setor',val:ctx.setor+(ctx.unidade?(' · '+ctx.unidade):'')});
     if(v.cargo) info.push({tipo:'Responsabilidade',val:v.cargo});
     (v.extras||[]).forEach(x=>info.push({tipo:x.tipo,val:x.valor,rede:x.rede||undefined}));
-    SVREG.push({nome:v.nome,cargo:v.cargo||'',orgao:(ctx&&ctx.orgao)||'',orgId:(ctx&&ctx.orgId)||'',area:(ctx&&ctx.area)||null,setor:(ctx&&ctx.setor)||'',unidade:(ctx&&ctx.unidade)||'',sid:(v.id||''),eid:(ctx&&(ctx.entId||ctx.orgId))||'',setid:(ctx&&ctx.setorId)||'',p1:(v.p1||null),info});
+    SVREG.push({nome:v.nome,cargo:v.cargo||'',orgao:(ctx&&ctx.orgao)||'',orgId:(ctx&&ctx.orgId)||'',area:(ctx&&ctx.area)||null,setor:(ctx&&ctx.setor)||'',unidade:(ctx&&ctx.unidade)||'',sid:(v.id||''),eid:(ctx&&(ctx.entId||ctx.orgId))||'',setid:(ctx&&ctx.setorId)||'',p1:(v.p1||null),cpf:(v.cpf||''),p1id:(v.p1id||null),info});
     const tel=(v.tel&&v.tel!=='—')?String(v.tel).trim():'';
     return `<div class="svline"><span class="svacts"><label class="svsel" title="${tel?'Marcar servidor (tem contato)':'Sem número de contato'}"><input type="checkbox" data-svsel="${i}" ${tel?'':'disabled'}></label><button type="button" class="svcapbtn" data-svcapi="${i}" title="Capturar para campanha">⊕ capturar</button><button type="button" class="addbtn mini" data-add="contato-sv" data-svi="${i}" title="Adicionar contato ao servidor">＋ contato</button></span><span class="svmain"><button type="button" class="snm" data-sv="${i}">${v.nome}</button>${TELX(tel)}${v.cargo?`<span class="scargo">· ${v.cargo}</span>`:''}<span class="svcap" data-svcap="${i}"></span></span><span class="ctval sv-email"><a href="mailto:${v.email||''}">${v.email||'—'}</a></span></div>`;
   }
@@ -1295,6 +1295,8 @@
   svTipo.addEventListener('change',()=>{svRede.hidden = svTipo.value!=='Rede social';});
   document.getElementById('sv-addbtn').addEventListener('click',()=>{
     const v=svVal.value.trim(); if(!v||svCur<0)return;
+    const chk=(typeof validaContato==='function')?validaContato(svTipo.value,v):{ok:true};
+    if(!chk.ok){warn('⚠ '+chk.motivo);return;}
     const it={tipo:svTipo.value,val:v}; if(svTipo.value==='Rede social'&&svRede.value.trim()) it.rede=svRede.value.trim();
     SVREG[svCur].info.push(it); if(window.dbSaveInfo)window.dbSaveInfo(svCur,it); svVal.value=''; svRede.value=''; renderSvInfo();
   });
@@ -1369,6 +1371,7 @@
     });
     document.getElementById('crit-n').textContent=MATCHED.length;
     document.getElementById('crit-ns').textContent=MATCHED.reduce((s,l)=>s+((l.cargos&&l.cargos.length)||0),0);
+    if(window.contarServidores)window.contarServidores();
     document.getElementById('crit-prev').innerHTML = MATCHED.length
       ? MATCHED.slice(0,16).map(l=>`<span class="previtem">${l.nome}</span>`).join('')+(MATCHED.length>16?`<span class="previtem">+${MATCHED.length-16}</span>`:'')
       : '<span class="ctmeta">Nenhuma entidade — ajuste os critérios.</span>';
@@ -1735,6 +1738,10 @@
       else{const ar=container.querySelector(':scope > .addrow');
         if(ar)ar.insertAdjacentHTML('beforebegin',html); else container.insertAdjacentHTML('beforeend',html);}
     };
+    if((kind==='contato'||kind==='contato-sv')&&V.valor){
+      const vv=validaSolto(V.valor); if(!vv.ok){warn('⚠ '+vv.motivo);return;}
+      if(V.meta){const vm=validaSolto(V.meta); if(!vm.ok){warn('⚠ Complemento: '+vm.motivo);return;}}
+    }
     if(kind==='contato'&&V.valor){
       put(btn.closest('.eblock'),`<div class="ctline"><span class="svacts"><label class="svsel"><input type="checkbox" data-ctsel ${/\(\d{2}\)/.test(V.meta||'')?'':'disabled'}></label><button type="button" class="addbtn mini" data-add="contato" data-entid="${btn.dataset.entid||''}" title="Adicionar contato">＋ contato</button></span><span class="cttag ${/secretaria|ouvidoria/i.test(V.tipo)?'sec':''}">${V.tipo}</span><b class="ctnome"><a href="mailto:${V.valor}">${V.valor}</a></b><span class="ctmeta">${WAPP(V.meta||'')}</span></div>`);
     } else if(kind==='contato-sv'&&V.valor){
@@ -1821,7 +1828,7 @@
     say('Carregando cascata (entidades/servidores)…');
     const ents=await q('crm_entidades','*');
     const sets=await q('crm_setores','*');
-    const srvs=await q('crm_servidores','id,entidade_id,setor_id,nome,cargo,email,telefone');
+    const srvs=await q('crm_servidores','id,entidade_id,setor_id,nome,cargo,email,telefone,cpf,painel1_id');
     const ctsx=await q('crm_contatos','*');
     say('Carregando capturas…');
     window.CAPS=await q('capturas','*');
@@ -1850,7 +1857,7 @@
         ENTSTATE[c.entidade_id]={db:c.estagio,st:uiStage(c.estagio),resp:(funcById[c.responsavel_id]||{}).nome||'Sem vendedor'};}});
 
     // TREE
-    const mapSrv=list=>(list||[]).map(v=>({id:v.id,nome:v.nome,cargo:v.cargo||'',email:v.email,tel:v.telefone,extras:ctBySrv[v.id]||[]}));
+    const mapSrv=list=>(list||[]).map(v=>({id:v.id,nome:v.nome,cargo:v.cargo||'',email:v.email,tel:v.telefone,cpf:v.cpf||'',p1id:v.painel1_id||null,extras:ctBySrv[v.id]||[]}));
     function entNode(e){
       FMETA[e.id]={uf:e.uf||'',cid:e.municipio||'',esf:e.esfera||'',tema:e.tema||'',resp:(ENTSTATE[e.id]||{}).resp||'Sem vendedor'};
       CNAE_MAP[e.id]=e.cnae||'';
@@ -1953,16 +1960,14 @@
   async function loadP1(block,nd,offset){
     const st=block.querySelector('.p1status'), body=block.querySelector('.p1body');
     try{
-      let q=sbc.from('painel1_servidores').select('setor,cargo_funcao,nome,cpf,responsabilidade')
-        .eq('ibge',nd.ibge).order('nome').range(offset,offset+999);
-      q=(nd.poder==='Legislativo')?q.ilike('orgao','%CAMARA%'):q.not('orgao','ilike','%CAMARA%');
-      const {data,error}=await q; if(error)throw error;
+      const {data,error}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_limit:1000,p_offset:offset});
+      if(error)throw error;
       const seen=(window.SRVN&&window.SRVN[nd.id])||[];
       const novos=(data||[]).filter(p=>p.nome&&!seen.includes(norm(p.nome)));
       const g={};
       novos.forEach(p=>{const k=String(p.setor||'Sem setor informado').trim().slice(0,80)||'Sem setor informado';(g[k]=g[k]||[]).push(p);});
       body.insertAdjacentHTML('beforeend',Object.keys(g).sort((a,b)=>a.localeCompare(b,'pt')).map(setor=>{
-        const lines=g[setor].map(p=>svLine({id:'',nome:p.nome,cargo:[p.cargo_funcao,p.responsabilidade].filter(Boolean).join(' · '),email:'',tel:'',p1:p},
+        const lines=g[setor].map(p=>svLine({id:'',nome:p.nome,cargo:[p.cargo,p.responsabilidade].filter(Boolean).join(' · '),email:p.email||'',tel:p.telefone?fmtTel(p.telefone):'',p1:p,cpf:p.cpf||'',p1id:p.painel1_id},
           {orgao:nd.nome,setor,unidade:'',entId:nd.id,setorId:'',area:nd.area})).join('');
         return `<div class="tnode orgnode lv-sec" style="--sc:var(--st-pros)"><div class="trow orgrow"><span class="tchev">›</span><span class="orgnm">📋 ${setor}</span><span class="cnt2">👥 ${g[setor].length}</span><span class="grow2"></span></div><div class="tchildren">${lines}</div></div>`;
       }).join(''));
@@ -1971,8 +1976,8 @@
       if(data&&data.length===1000){
         st.innerHTML=`${tot}+ registros · <button type="button" class="addbtn mini p1more">＋ carregar mais</button>`;
         st.querySelector('.p1more').onclick=()=>{st.textContent='carregando…';loadP1(block,nd,tot);};
-      }else st.textContent=`${tot} registro${tot===1?'':'s'} do órgão · integrado (emails/contatos ficam na base curada acima)`;
-    }catch(e){st.textContent='Painel 1 indisponível: '+(e.message||e);}
+      }else st.textContent=`${tot} registro${tot===1?'':'s'} · registro-ouro (Painel 1 + contatos consolidados por CPF)`;
+    }catch(e){st.textContent='Registro-ouro indisponível (migração v3 pendente?): '+(e.message||e);}
   }
 
   // header da campanha
@@ -2027,7 +2032,7 @@
     if(!r.eid)throw new Error('servidor sem entidade');
     const p=r.p1||{};
     const {data,error}=await sbc.from('crm_servidores').insert({entidade_id:r.eid,setor_id:r.setid||null,
-      nome:r.nome,cargo:r.cargo||null,cpf:(p.cpf||null),origem:'painel1'}).select('id').single();
+      nome:r.nome,cargo:r.cargo||null,cpf:(r.cpf||p.cpf||null),painel1_id:(r.p1id||null),origem:'painel1'}).select('id').single();
     if(error)throw error;
     r.sid=data.id;
     if(window.SRVN)(window.SRVN[r.eid]=window.SRVN[r.eid]||[]).push(norm(r.nome));
@@ -2094,9 +2099,31 @@
   };
   window.dbSaveInfo=async function(svIdx,it){
     const r=SVREG[svIdx]; if(!r)return;
-    try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}
-    try{const{error}=await sbc.from('crm_contatos').insert({servidor_id:r.sid,tipo:it.tipo,valor:it.val,rede:it.rede||null});if(error)throw error;}
-    catch(e){warn('⚠ Info não gravada: '+(e.message||e));}
+    try{
+      const{error}=await sbc.from('servidor_contatos').insert({cpf:(r.cpf||null),painel1_id:(r.p1id||null),
+        entidade_id:(r.eid||null),tipo:it.tipo,valor:it.val,rede:it.rede||null,
+        fonte:'crm:'+CURRENT,origem_input:'manual'});
+      if(error)throw error; warn('Contato gravado no razão ✓ (fonte: você)');
+    }catch(e){warn('⚠ Contato não gravado: '+(e.message||e));}
+  };
+
+  // ---------- contagem na base COMPLETA (registro-ouro) p/ os critérios ----------
+  let CTSEQ=0;
+  window.contarServidores=async function(){
+    if(typeof sbc==='undefined')return;
+    const seq=++CTSEQ;
+    const params={
+      p_cargo:val('crit-cargo')||null, p_setor:val('crit-setor')||null,
+      p_resp:(RESPKW[document.getElementById('crit-resp2').value]||null),
+      p_nome:val('crit-kw')||null,
+      p_tema:(critTema.size===1?[...critTema][0]:null)
+    };
+    try{
+      const{data,error}=await sbc.rpc('crm_contar_servidores',params);
+      if(error||seq!==CTSEQ||!data||!data[0])return;
+      document.getElementById('crit-ns').textContent=(+data[0].n_servidores).toLocaleString('pt-BR');
+      document.getElementById('crit-n').textContent=(+data[0].n_entidades).toLocaleString('pt-BR');
+    }catch(e){}
   };
 
   // ---------- lotes do produto (campanha) ----------
@@ -2146,8 +2173,8 @@
     if(!HL.length)return;
     let p1set=null;
     if(!NAMESEL.length&&qs.length>=4&&typeof sbc!=='undefined'){
-      try{const{data}=await sbc.from('painel1_servidores').select('ibge').ilike('nome','%'+raw.replace(/[%_]/g,'')+'%').limit(500);
-        p1set=new Set((data||[]).map(x=>String(x.ibge)));}catch(e){}
+      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_limit:1000});
+        p1set=new Set((data||[]).map(x=>String(x.entidade_id)));}catch(e){}
     }
     let shown=0;
     document.querySelectorAll('#view-tree .lv-ent').forEach(el=>{
@@ -2160,7 +2187,7 @@
       }else{
         has=idx.some(x=>x.includes(qs));
         if(!has)has=[...el.querySelectorAll('.snm')].some(b=>norm(b.textContent).includes(qs));
-        if(!has&&p1set&&p1set.has(ibge))has=true;
+        if(!has&&p1set&&(p1set.has(eid)||p1set.has(ibge)))has=true;
       }
       el.style.display=has?'':'none';
       if(has&&shown<30){shown++;
@@ -2186,6 +2213,30 @@
       document.getElementById('selcount').textContent=nsel?('✓ '+nsel+' marcado'+(nsel>1?'s':'')):'';
     }
   });
+
+  // ===== validação de contato por tipo (espelho do trigger do banco) =====
+  function fmtTel(d){d=String(d||'').replace(/\D/g,'');
+    return d.length===11?`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`
+          :d.length===10?`(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`:d;}
+  function validaContato(tipo,valor){
+    const t=norm(tipo||'');
+    if(t.includes('mail')){const e=String(valor).trim().toLowerCase();
+      return /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(e)?{ok:true}:{ok:false,motivo:'Email fora do formato nome@dominio.ext'};}
+    if(t.includes('tele')||t.includes('fone')||t.includes('celular')||t.includes('whats')){
+      const d=String(valor).replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');
+      if(d.length===11&&d[2]==='9'&&+d.slice(0,2)>=11)return{ok:true};
+      if(d.length===10&&+d.slice(0,2)>=11)return{ok:true};
+      return{ok:false,motivo:'Telefone: DDD + fixo (31) 3690-7001 ou celular (31) 98811-2233'};}
+    if(!String(valor).trim())return{ok:false,motivo:'Valor vazio'};
+    return{ok:true};
+  }
+  function validaSolto(valor){
+    const s=String(valor).trim();
+    if(s.includes('@'))return validaContato('email',s);
+    const d=s.replace(/\D/g,'');
+    if(d.length>=8&&d.length<=13&&/^[\d\s()+.\-]+$/.test(s))return validaContato('telefone',s);
+    return{ok:true};
+  }
 
   // ===== busca por LISTAGEM (typeahead) e SELEÇÃO INCREMENTAL (chips) =====
   const NAMESEL=[]; let sugTimer=null;
@@ -2220,10 +2271,9 @@
     // 2) Painel 1: assíncrono; só a ÚLTIMA requisição renderiza
     if(typeof sbc==='undefined')return;
     try{
-      const{data,error}=await sbc.from('painel1_servidores').select('nome,ibge')
-        .ilike('nome','%'+raw.replace(/[%_]/g,'')+'%').limit(12);
+      const{data,error}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_limit:12});
       if(seq!==SUGSEQ)return;                              // chegou atrasada — outra busca assumiu
-      if(!error)(data||[]).forEach(x=>add({n:x.nome,eid:null,ibge:String(x.ibge||''),mun:(window.IBGE2MUN||{})[x.ibge]||('IBGE '+x.ibge),org:'P1'}));
+      if(!error)(data||[]).forEach(x=>add({n:x.nome,eid:x.entidade_id,ibge:'',mun:x.municipio||'—',org:'P1'}));
       sugPaint(inp,items,false);
     }catch(e){if(seq===SUGSEQ)sugPaint(inp,items,false);}
   }
