@@ -55,11 +55,11 @@ def get(url, timeout=180, tries=8, raise_net=False):
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
-            if e.code == 429:                     # rate limit: espera (Retry-After) e tenta de novo
-                ra = e.headers.get("Retry-After")
+            if e.code == 429 or e.code >= 500:    # rate limit ou erro de servidor (500/502/503/504)
+                ra = e.headers.get("Retry-After") # -> transitório no PNCP; espera e tenta de novo
                 wait = int(ra) if (ra and str(ra).isdigit()) else min(90, 5 * (r429 + 1))
                 r429 += 1
-                if r429 <= 20:
+                if r429 <= 25:                    # bastante paciência p/ ondas de 5xx/429
                     time.sleep(wait)
                     continue                      # não conta como queda de rede
                 last = e
