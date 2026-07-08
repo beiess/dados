@@ -536,6 +536,19 @@
 
   .p1hits{border-color:color-mix(in srgb,var(--gold) 45%,transparent)!important}
   .p1hits>.orgrow .orgnm{color:var(--accent)}
+
+  /* totais trabalhados + campanha retrátil */
+  .stagetotais{display:flex;gap:10px;flex-wrap:wrap;padding:12px 20px;border-top:1px solid var(--border-2)}
+  .sttile{flex:1;min-width:150px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:10px 14px}
+  .sttile .k{font-size:9.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+  .sttile .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px;font-weight:600;margin-top:3px}
+  .sttile.tot{border-color:color-mix(in srgb,var(--gold) 40%,transparent)}
+  .sttile.tot .v{color:var(--accent)}
+  .campmini{padding:5px 12px;font-size:11.5px;height:fit-content;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
+  .campmini:hover{color:var(--ink)}
+  #sec-camp.collapsed .attach,#sec-camp.collapsed .sub,#sec-camp.collapsed .stagetotais{display:none}
+  #sec-camp.collapsed .camp-head{padding:12px 20px;border-bottom:none}
+  #sec-camp.collapsed h1{font-size:16px;margin:6px 0 0}
 </style>
 
 <div id="login">
@@ -584,6 +597,7 @@
             <h1 class="editable" id="campTitle">Campanha Obras 2026 · Gestão Pública — MG</h1>
             <div class="sub" id="camp-sub"><span>Período <b>—</b></span><span>Meta <b class="num">R$ 1,2 mi</b></span><span>Regra <b>Progressiva por nível</b></span><span>Leads do <b>Painel Estratégico · Obras</b></span></div>
           </div>
+          <button class="btn-ghost campmini" id="campToggle" title="Recolher / expandir a campanha">▾ Recolher</button>
           <button class="editbtn" id="editCampBtn">✎ Editar campanha</button>
         </div>
         <div class="attach">
@@ -603,6 +617,7 @@
             </div>
           </div>
         </div>
+        <div class="stagetotais" id="stage-totais"></div>
       </section>
 
       <!-- FILTROS -->
@@ -946,6 +961,12 @@
 <script>
   document.getElementById('adm').addEventListener('click',()=>document.body.classList.toggle('admin'));
   document.getElementById('hamb').addEventListener('click',()=>document.body.classList.toggle('sidehide'));
+  document.getElementById('campToggle').addEventListener('click',()=>{
+    const c=document.getElementById('sec-camp').classList.toggle('collapsed');
+    document.getElementById('campToggle').textContent=c?'▸ Expandir':'▾ Recolher';
+    try{localStorage.setItem('crm-camp-col',c?'1':'0')}catch(e){}
+  });
+  try{if(localStorage.getItem('crm-camp-col')==='1'){document.getElementById('sec-camp').classList.add('collapsed');document.getElementById('campToggle').textContent='▸ Expandir';}}catch(e){}
   document.getElementById('hcbtn').addEventListener('click',()=>{const l=document.body.classList.toggle('light');try{localStorage.setItem('crm-theme',l?'light':'dark')}catch(e){}});
   try{if(localStorage.getItem('crm-theme')==='light')document.body.classList.add('light')}catch(e){}
 
@@ -1828,6 +1849,10 @@
     CURRENT=meRow?meRow.nome:(user.email||'—'); USER=CURRENT; renderWM();
     document.getElementById('me-box').innerHTML='<div class="av" style="background:#4FB8C4">'+ini(CURRENT)+'</div><div><b>'+CURRENT+'</b><span>'+(meRow?(meRow.funcao+(meRow.acesso_irrestrito?' · acesso irrestrito':'')):'sem cadastro de funcionário')+'</span></div>';
     if(!window.GESTOR){const ab=document.querySelector('.adminbox'); if(ab)ab.style.display='none';}
+    const ADMIN=!!(meRow&&(meRow.funcao==='admin'||meRow.acesso_irrestrito));
+    if(!ADMIN){
+      document.querySelectorAll('.nav a:not(#nav-campanhas), .nav .sec').forEach(el=>el.style.display='none');
+    }
 
     say('Carregando campanhas e regras…');
     const cps=await q('campanhas','*');
@@ -1890,19 +1915,7 @@
         children:Object.keys(g[esf][pod]).sort().map(tp=>({t:'tipo',nome:tp,
           children:g[esf][pod][tp].sort((a,b)=>String(a.nome).localeCompare(String(b.nome),'pt')).map(entNode)}))}))});});
 
-    // capturas -> badges + LEADS (abas de estágio) + 360
-    for(const k in CAPTURES)delete CAPTURES[k];
-    LEADS.length=0;
-    window.CAPS.filter(c=>c.ativo&&c.estagio!=='perdida').forEach(c=>{
-      const e=entById[c.entidade_id]||{},s=srvById[c.servidor_id]||{},camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
-      const respN=(funcById[c.responsavel_id]||{}).nome||'—';
-      CAPTURES[c.servidor_id]={campId:c.campanha_id,responsavel:respN,estagio:uiStage(c.estagio),obs:c.obs,dbId:c.id};
-      const baseV=+c.valor_contrato||+camp.valorUnit||0;
-      LEADS.push({id:c.id,cli:e.nome||'—',mun:(s.nome||'')+' · '+(e.municipio||''),area:e.area==='Legislativo'?'leg':'gp',
-        obras:e.n_obras||'—',val:baseV?money(baseV):'—',vsub:'',st:uiStage(c.estagio),avs:[ini(respN)],
-        ult:fmtD(c.atualizado_em),ultq:respN,next:'—',nextw:0,comm:money(Math.round(baseV*(+camp.pct||0)/100))});
-      FMETA[c.id]={uf:e.uf||'',cid:e.municipio||'',esf:e.esfera||'',tema:e.tema||'',resp:respN};
-      OPPS[c.id]=capRec(c);});
+    rebuildCapState();
 
     // COMM (consolidado por vendedor) + APUR (histórico imutável)
     COMM.length=0;
@@ -1928,8 +1941,58 @@
     LEADSET=buildLeadset();
     renderTree(); renderRows(); renderFilters(); applyFilters();
     renderComm(); renderApur(); renderRulelog(); renderTeam(); renderCampHeader();
+    renderTabCounts(); renderStageTotais();
   }
 
+  // estado das capturas -> badges + LEADS (abas) + 360 (rechamável após cada captura)
+  function rebuildCapState(){
+    for(const k in CAPTURES)delete CAPTURES[k];
+    LEADS.length=0;
+    (window.CAPS||[]).filter(c=>c.ativo&&c.estagio!=='perdida').forEach(c=>{
+      const e=entById[c.entidade_id]||{},s=srvById[c.servidor_id]||{},camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
+      const respN=(funcById[c.responsavel_id]||{}).nome||'—';
+      CAPTURES[c.servidor_id]={campId:c.campanha_id,responsavel:respN,estagio:uiStage(c.estagio),obs:c.obs,dbId:c.id};
+      const baseV=+c.valor_contrato||+camp.valorUnit||0;
+      LEADS.push({id:c.id,cli:e.nome||'—',mun:(s.nome||'')+' · '+(e.municipio||''),area:e.area==='Legislativo'?'leg':'gp',
+        obras:e.n_obras||'—',val:baseV?money(baseV):'—',vsub:'',st:uiStage(c.estagio),avs:[ini(respN)],
+        ult:fmtD(c.atualizado_em),ultq:respN,next:'—',nextw:0,comm:money(Math.round(baseV*(+camp.pct||0)/100))});
+      FMETA[c.id]={uf:e.uf||'',cid:e.municipio||'',esf:e.esfera||'',tema:e.tema||'',resp:respN};
+      OPPS[c.id]=capRec(c);});
+  }
+  // contadores REAIS das abas (substituem os números estáticos do conceito)
+  function renderTabCounts(){
+    const by={all:LEADS.length};
+    LEADS.forEach(l=>{by[l.st]=(by[l.st]||0)+1;});
+    document.querySelectorAll('#tabs .tab').forEach(t=>{const c=t.querySelector('.cnt');if(c)c.textContent=by[t.dataset.tab]||0;});
+  }
+  // totais trabalhados por estágio — SEM percentual de comissão
+  function renderStageTotais(){
+    const el=document.getElementById('stage-totais'); if(!el)return;
+    const S={proposta:0,negociacao:0,fechamento:0};
+    (window.CAPS||[]).filter(c=>c.ativo).forEach(c=>{
+      const st=uiStage(c.estagio); if(!(st in S))return;
+      const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
+      S[st]+=(+c.valor_contrato||+camp.valorUnit||0);});
+    const tot=S.proposta+S.negociacao+S.fechamento;
+    el.innerHTML=
+      '<div class="sttile"><div class="k">Em proposta</div><div class="v">'+money(S.proposta)+'</div></div>'+
+      '<div class="sttile"><div class="k">Em negociação</div><div class="v">'+money(S.negociacao)+'</div></div>'+
+      '<div class="sttile"><div class="k">Em fechamento</div><div class="v">'+money(S.fechamento)+'</div></div>'+
+      '<div class="sttile tot"><div class="k">Total trabalhado</div><div class="v">'+money(tot)+'</div></div>';
+  }
+  // recarrega capturas do banco e atualiza abas/contadores/totais na hora
+  window.refreshCaps=async function(){
+    try{
+      window.CAPS=await q('capturas','*');
+      PARTS=await q('participacoes','*'); ATIVS=await q('atividades','*');
+      const falta=[...new Set(window.CAPS.map(c=>c.servidor_id))].filter(id=>id&&!srvById[id]);
+      if(falta.length){
+        const {data}=await sbc.from('crm_servidores').select('id,entidade_id,setor_id,nome,cargo,email,telefone,cpf,painel1_id').in('id',falta);
+        (data||[]).forEach(v=>srvById[v.id]=v);
+      }
+      rebuildCapState(); renderRows(); renderTabCounts(); renderStageTotais(); renderCampHeader(); applyFilters();
+    }catch(e){}
+  };
   function capRec(c){
     const e=entById[c.entidade_id]||{},s=srvById[c.servidor_id]||{},camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
     const resp=funcById[c.responsavel_id]||{};
@@ -2080,6 +2143,7 @@
         await sbc.from('atividades').insert({captura_id:data.id,tipo:'captura',descricao:obs||null,estagio_para:dbStage(st)});
       }
       warn('Captura gravada no banco ✓');
+      if(window.refreshCaps)window.refreshCaps();
     }catch(e){warn('⚠ Captura não gravada: '+(e.message||e));}
   };
   window.dbSaveFunc=async function(rec,existing){
