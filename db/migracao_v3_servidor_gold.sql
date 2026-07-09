@@ -277,3 +277,44 @@ begin
   new.atualizado_em := now();
   return new;
 end $$;
+
+-- ============================================================================
+-- MIGRAÇÃO v3.2 — captura única por campanha + avanço sequencial de fase
+-- (JÁ APLICADA em produção via conexão direta em 09/07/2026 — registro)
+-- ============================================================================
+create unique index if not exists ux_cap_camp_srv on capturas(campanha_id, servidor_id);
+
+create or replace function trg_capturas_resp() returns trigger
+language plpgsql security definer as $$
+declare ordem text[] := array['prospeccao','qualificacao','proposta','negociacao','fechamento','pos_venda'];
+begin
+  if auth.uid() is not null then
+    if new.responsavel_id is distinct from old.responsavel_id and not app_is_gestor() then
+      raise exception 'Transferência de responsável permitida apenas a gerente/admin';
+    end if;
+    if new.estagio is distinct from old.estagio then
+      if not (coalesce(old.responsavel_id = app_me_id(), false) or app_is_admin()) then
+        raise exception 'Somente o vendedor responsável ou um administrador pode avançar o estágio';
+      end if;
+      if not app_is_admin() and new.estagio <> 'perdida'
+         and array_position(ordem, new.estagio) is distinct from array_position(ordem, old.estagio) + 1 then
+        raise exception 'Avanço sequencial: da fase % só é possível ir para %',
+          old.estagio, coalesce(ordem[array_position(ordem, old.estagio)+1], '(fim do funil)');
+      end if;
+    end if;
+  end if;
+  new.atualizado_em := now();
+  return new;
+end $$;
+
+create or replace function trg_capturas_ins() returns trigger
+language plpgsql security definer as $$
+begin
+  if auth.uid() is not null and not app_is_admin() then
+    new.estagio := 'prospeccao';                 -- vendedor sempre inicia o funil
+  end if;
+  return new;
+end $$;
+drop trigger if exists t_capturas_ins on capturas;
+create trigger t_capturas_ins before insert on capturas
+  for each row execute function trg_capturas_ins();
