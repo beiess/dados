@@ -66,6 +66,7 @@ jobs:
   merge-load:
     name: "merge + carga Supabase"
     needs: sweep
+    if: ${{ !cancelled() }}   # carrega o que deu certo mesmo se alguma modalidade falhar
     runs-on: self-hosted
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
