@@ -769,6 +769,7 @@
     <span class="tag gp" id="o-area">—</span>
     <div class="v"><span id="o-val">—</span> <small id="o-vsub"></small></div>
     <div class="stagebar" id="o-stage"></div>
+    <button class="btn-primary" id="drawerUpd" style="margin-top:12px;width:100%">✎ Atualizar estágio / observação</button>
   </div>
   <div class="sec360"><div class="h"><span class="t">Quem atuou · rateio</span><a class="add360" href="#">+ pessoa</a></div><div id="o-atores"></div></div>
   <div class="sec360"><div class="h"><span class="t">Linha do tempo</span><a class="add360" href="#">+ atividade</a></div><div class="tl" id="o-tl"></div></div>
@@ -1296,10 +1297,21 @@
     const tot=l.comm.reduce((s,c)=>s+(parseInt(c[1].replace(/\D/g,''))||0),0);
     document.getElementById('o-comm').innerHTML=l.comm.map(c=>`<div class="commrow"><span class="who">${c[0]}</span><span class="amt">${c[1]}</span></div>`).join('')+`<div class="commtot"><span>Total previsto</span><span class="amt">${tot?('R$ '+tot.toLocaleString('pt-BR')):'a definir'}</span></div>`;
     document.getElementById('o-rule').innerHTML='Regra <b>'+l.rule+'</b>';
+    const upd=document.getElementById('drawerUpd');
+    if(upd)upd.style.display=((window.CAPS||[]).some(x=>x.id===l.id))?'':'none';
     drawer.classList.add('open'); scrim.classList.add('open');
   }
   function openLead(id){const l=OPPS[id]||LEADS.find(x=>x.id===id);if(!l)return;rows.querySelectorAll('tr').forEach(t=>t.classList.toggle('sel',t.dataset.id===id));render360(l);}
   rows.addEventListener('click',e=>{const tr=e.target.closest('tr[data-id]');if(tr)openLead(tr.dataset.id)});
+  document.getElementById('drawerUpd').addEventListener('click',()=>{
+    if(!CUR)return;
+    const cap=(window.CAPS||[]).find(x=>x.id===CUR.id);
+    if(!cap){warn('Captura não sincronizada — recarregue a página.');return;}
+    const s=(typeof srvById!=='undefined'&&srvById[cap.servidor_id])||{}, e=(typeof entById!=='undefined'&&entById[cap.entidade_id])||{};
+    SVREG.push({nome:s.nome||CUR.cli,cargo:s.cargo||'',orgao:e.nome||'',orgId:cap.entidade_id,area:null,
+      setor:'',unidade:'',sid:cap.servidor_id,eid:cap.entidade_id,p1:null,cpf:s.cpf||'',p1id:(s.painel1_id||null),info:[]});
+    close(); openCaptureSv(SVREG.length-1);
+  });
   function close(){drawer.classList.remove('open');scrim.classList.remove('open');rows.querySelectorAll('tr.sel').forEach(t=>t.classList.remove('sel'))}
   document.getElementById('dx').addEventListener('click',close); scrim.addEventListener('click',close);
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
