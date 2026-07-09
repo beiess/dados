@@ -586,6 +586,7 @@
       <span class="seclock" title="Cópia, seleção e impressão bloqueadas — segredo de negócio">🔒 Sigilo ativo</span>
       <button class="iconbtn" id="hcbtn" title="Tema claro / escuro" aria-label="Alternar tema">◐</button>
       <div class="adminbox"><span>Admin: editar</span><button class="sw" id="adm" aria-label="Modo edição do administrador"></button></div>
+      <button class="iconbtn" id="crm-sair" title="Encerrar sessão" style="color:#fff;background:#da3633;border-color:#da3633;font-weight:600;width:auto;padding:0 12px">⎋ Sair</button>
     </div>
 
     <div class="content">
@@ -2264,6 +2265,11 @@
     LGD.classList.add('hidden'); APPW.classList.remove('hidden');
   }
   boot();
+  // logout: encerra a sessão Supabase e volta à tela de login
+  document.getElementById('crm-sair').addEventListener('click',async()=>{
+    const b=document.getElementById('crm-sair'); b.textContent='Saindo…';
+    await sbc.auth.signOut(); location.reload();
+  });
 
 
   // ===== busca por servidor (topo) + aplicar filtros + marcação =====
