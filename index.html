@@ -698,6 +698,18 @@ function docAbrirCaixa(){
   window.open('https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf#in='+v,'_blank');
   s.innerHTML='<div class=msg style="padding:6px 0">Consulta da Caixa aberta com o CNPJ. <b>Com o userscript CRF instalado</b> (Tampermonkey — arquivo em <code>AUTOMACOES/crf-fgts/crf-fgts.user.js</code>), ele preenche, consulta, abre o certificado e dispara a impressão sozinho — é só <b>Salvar como PDF</b>. Sem o userscript, o CNPJ já foi copiado: cole em “Inscrição” → Consultar → Certificado → Visualizar → Imprimir.</div>';
 }
+// valida CPF: formato (11 díg, não todos iguais) + dígitos verificadores (mód 11)
+function validaCPF(cpf){
+  var c=(''+(cpf||'')).replace(/\D/g,'');
+  if(c.length!==11) return {ok:false,tipo:'formato',msg:'CPF deve ter 11 dígitos.'};
+  if(/^(\d)\1{10}$/.test(c)) return {ok:false,tipo:'sequencia',msg:'CPF inválido (todos os dígitos iguais).'};
+  function dv(base){var s=0,f=base.length+1;for(var i=0;i<base.length;i++)s+=parseInt(base[i],10)*(f-i);var r=(s*10)%11;return r===10?0:r;}
+  if(dv(c.slice(0,9))!==parseInt(c[9],10)||dv(c.slice(0,10))!==parseInt(c[10],10))
+    return {ok:false,tipo:'digito',msg:'CPF inválido (dígito verificador não confere).'};
+  return {ok:true,cpf:c};
+}
+// formata p/ exibição 000.000.000-00 (aplique mask() antes de expor dado real)
+function fmtCPF(c){c=(''+(c||'')).replace(/\D/g,'');return c.length===11?c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):c;}
 // entrada por CPF/CNPJ: roteia pelo nº de dígitos
 function docAuto(){var v=((document.getElementById('docUm')||{}).value||'').replace(/\D/g,'');
   if(v.length===11)return docDDcpf(); if(v.length===14)return docDossiePDF();
@@ -706,7 +718,8 @@ function docAuto(){var v=((document.getElementById('docUm')||{}).value||'').repl
 async function docDDcpf(){
   var v=((document.getElementById('docUm')||{}).value||'').replace(/\D/g,'');
   var s=document.getElementById('docUmOut');
-  if(v.length!==11){s.innerHTML='<span class=err>Informe um CPF de 11 dígitos (due diligence de pessoa). Para empresa, use CNPJ.</span>';return;}
+  var val=validaCPF(v);
+  if(!val.ok){s.innerHTML='<span class=err>'+val.msg+(val.tipo==='formato'?' Para empresa, use CNPJ.':'')+'</span>';return;}
   s.innerHTML='<div class=msg>Cruzando o CPF na base interna…<div class=barwrap><div class=bar></div></div></div>';
   try{
     var r=await Promise.all([
