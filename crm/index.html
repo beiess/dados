@@ -1496,7 +1496,7 @@
     if(c){const camp=campById(c.campId), nomeC=camp?camp.nome.split(' · ')[0]:'', own=c.responsavel===CURRENT;
       warnEl.hidden=false;
       if(own){
-        warnEl.innerHTML=`Você é o responsável por este servidor na campanha <b>${nomeC}</b> — atualize o estágio e a observação.`;
+        warnEl.innerHTML=`Você é o responsável por este servidor na campanha <b>${nomeC}</b> — atualize o estágio (avanço sequencial, uma fase por vez) e a observação.`;
         save.disabled=false; save.textContent='Atualizar captura';
       }else if(window.IS_ADMIN){
         warnEl.innerHTML=`⚠ Já vinculado (responsável <b>${c.responsavel}</b>). Como administrador, você pode remanejar e avançar o estágio.`;
@@ -1522,7 +1522,19 @@
     if(isGestor()){lock.hidden=true; rsel.hidden=false; rsel.innerHTML=VEND.map(v=>`<option ${v[1]===resp?'selected':''}>${v[1]}</option>`).join('');}
     else{rsel.hidden=true; lock.hidden=false; document.getElementById('cap-resp-av').innerHTML=avmini(resp); document.getElementById('cap-resp-nome').textContent=resp;}
     renderCapParams(); checkConc();
-    document.getElementById('cap-st').disabled=!!(c&&!(c.responsavel===CURRENT||window.IS_ADMIN));
+    (function(){
+      const stSel=document.getElementById('cap-st'), UI=['prospeccao','qualificacao','proposta','negociacao','fechamento','posvenda'];
+      const own=c&&c.responsavel===CURRENT;
+      [...stSel.options].forEach(o=>o.disabled=false); stSel.disabled=false; stSel.title='';
+      if(window.IS_ADMIN){ /* administrador: livre */ }
+      else if(!c){ stSel.value='prospeccao'; stSel.disabled=true;
+        stSel.title='Nova captura entra em Prospecção — o avanço é sequencial, fase a fase'; }
+      else if(own){ const cur=c.estagio, i=UI.indexOf(cur);
+        [...stSel.options].forEach(o=>{o.disabled=!(o.value===cur||o.value===UI[i+1]);});
+        stSel.value=cur;
+        stSel.title=UI[i+1]?('Avanço sequencial: a próxima fase é '+UI[i+1]):'Fim do funil'; }
+      else { stSel.disabled=true; }
+    })();
     capModal.classList.add('open'); capScrim.classList.add('open');
   }
   function closeCapture(){capModal.classList.remove('open');capScrim.classList.remove('open');}
