@@ -80,7 +80,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <h2>Painel Estratégico</h2>
   <p>Acesso restrito. Dados identificados protegidos por login (LGPD/LAI).</p>
   <form onsubmit="entrar();return false;">
-  <input id=email type=email placeholder="e-mail" autocomplete=username>
+  <input id=loginid type=text placeholder="CPF ou e-mail" autocomplete=username oninput="loginHint(this.value)">
   <input id=pw type=password placeholder="senha" autocomplete=current-password>
   <button type=submit>Entrar</button></form><div id=err></div>
 </div>
@@ -92,7 +92,10 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
   <span id=cnt></span><span class=sp></span>
   <a href="crm/" class=mbtn style="text-decoration:none" title="Abrir o Plenum CRM (equipe comercial)">📇 CRM</a>
-  <span id=who style="font-size:12px;opacity:.8"></span><button onclick=sair()>sair</button>
+  <span class=userbox style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0">
+    <span id=who style="font-size:12px;opacity:.8;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <button onclick=sair() title="Encerrar sessão" style="background:#da3633;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-weight:600;cursor:pointer">⎋ Sair</button>
+  </span>
 </header>
 <div class=tabs>
   <div class="tab on" id=t1 onclick="setTab(1)">👤 Painel 1 — Dados Estratégicos</div>
@@ -220,9 +223,21 @@ async function sbfetch(tbl,qs,onprog){
   return all;
 }
 function inList(ids){return ids.join(',');}
-async function entrar(){document.getElementById('err').textContent='Entrando…';
-  const {error}=await sb.auth.signInWithPassword({email:document.getElementById('email').value.trim(),password:document.getElementById('pw').value});
-  if(error){document.getElementById('err').textContent=error.message;return;}start();}
+const LOGIN_CPF_DOM='@painel.local';   // e-mail derivado do CPF (crie os usuários nesse padrão no Supabase)
+function pareceCPF(v){return /^\d{11}$/.test(v)||/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v);}
+function loginEmail(raw){var v=(raw||'').trim();
+  if(pareceCPF(v)){var val=validaCPF(v);if(!val.ok)return {err:val.msg};return {email:val.cpf+LOGIN_CPF_DOM};}
+  return {email:v};}                    // e-mail digitado direto
+function loginHint(raw){var v=(raw||'').trim(),e=document.getElementById('err'),d=v.replace(/\D/g,'');
+  if(!v||v.indexOf('@')>=0){e.textContent='';e.style.color='';return;}
+  if(pareceCPF(v)){var val=validaCPF(v);e.style.color=val.ok?'#1a7f37':'#da3633';e.textContent=val.ok?'CPF válido ✓':val.msg;}
+  else if(/^\d+$/.test(v)&&d.length<11){e.style.color='#57606a';e.textContent='CPF… ('+d.length+'/11) ou informe e-mail';}
+  else{e.textContent='';e.style.color='';}}
+async function entrar(){var e=document.getElementById('err');e.style.color='';e.textContent='Entrando…';
+  var r=loginEmail(document.getElementById('loginid').value);
+  if(r.err){e.style.color='#da3633';e.textContent=r.err;return;}
+  const {error}=await sb.auth.signInWithPassword({email:r.email,password:document.getElementById('pw').value});
+  if(error){e.style.color='#da3633';e.textContent=error.message;return;}start();}
 async function sair(){await sb.auth.signOut();location.reload();}
 async function start(){const {data:{session}}=await sb.auth.getSession();if(!session)return;
   document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
