@@ -249,3 +249,31 @@ select
   (select count(*) from painel1_servidores where entidade_id is null)      as p1_sem_vinculo,
   (select count(*) from painel1_servidores where dup_of is not null)       as p1_duplicatas,
   (select count(*) from servidor_contatos)                                 as fatos_de_contato;
+
+-- ============================================================================
+-- MIGRAÇÃO v3.1 — avanço de estágio: só o RESPONSÁVEL ou ADMINISTRADOR
+-- (JÁ APLICADA em produção via conexão direta em 08/07/2026 — registro)
+-- ============================================================================
+create or replace function app_is_admin() returns boolean
+language sql stable security definer as $$
+  select exists (select 1 from funcionarios
+                 where auth_user_id = auth.uid() and ativo
+                   and (funcao = 'admin' or acesso_irrestrito));
+$$;
+
+create or replace function trg_capturas_resp() returns trigger
+language plpgsql security definer as $$
+begin
+  if auth.uid() is not null then                            -- backend confiável passa direto
+    if new.responsavel_id is distinct from old.responsavel_id and not app_is_gestor() then
+      raise exception 'Transferência de responsável permitida apenas a gerente/admin';
+    end if;
+    -- coalesce: usuário sem cadastro não pode virar NULL-passa-livre (lógica de 3 valores)
+    if new.estagio is distinct from old.estagio
+       and not (coalesce(old.responsavel_id = app_me_id(), false) or app_is_admin()) then
+      raise exception 'Somente o vendedor responsável ou um administrador pode avançar o estágio';
+    end if;
+  end if;
+  new.atualizado_em := now();
+  return new;
+end $$;
