@@ -106,6 +106,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <div class="tab" id=t8 onclick="setTab(8)">🏢 Painel 9 — Receita Federal (CNPJ)</div>
   <div class="tab" id=t9 onclick="setTab(9)">🗂️ Painel 10 — Automação de Documentos</div>
   <div class="tab" id=t11 onclick="setTab(11)">👷 Painel 11 — Pessoas ligadas a Obras</div>
+  <div class="tab" id=t12 onclick="setTab(12)">🇧🇷 Painel 12 — Servidores Brasil (União/Justiça/AL)</div>
   <button onclick="openCols(event)">☰ colunas</button>
   <button onclick="limparFiltros()">limpar filtros</button>
   <button onclick="exportCSV()">⬇ CSV</button>
@@ -135,7 +136,7 @@ const P6C=["cod_ibge","orgao","nome","tipo_responsabilidade","cpf","email","orig
 const P7C=["masp","nome","no_painel1","situacao_atual","cargo_efetivo_atual","comissao_atual","funcao_gratif_atual","carga_horaria","sigla_lotacao_atual","desc_lotacao_atual","sigla_dotacao_atual","desc_dotacao_atual","data_inicio","data_aposentadoria","data_desligamento","n_vinculos","vinculos_adm","cargos_efetivos_periodo","comissoes_periodo","funcoes_gratif_periodo","orgaos_lotacao_periodo","situacoes_periodo","mudou_situacao","n_meses","primeiro_mes","ultimo_mes","presente_em"];
 const POBC=["municipio","razao_social","cnpj","poder","esfera","n_obras","valor_estimado_obras","n_setores_obras","setores_obras","modalidades_obras","primeira_obra","ultima_obra","email","emails_setoriais","telefone","site","situacao_cadastral","exemplos_objeto","uf"];
 const PESC=["nome","cpf","setor","email","origem","orgao","municipio"];  // Painel 11 — pessoas ligadas a obras (tabela pessoas_obras, deduplicada); cpf mascarado
-function colsOf(){return tab===10?POBC:(tab===11?PESC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C)))))));}
+function colsOf(){return tab===12?P12C:(tab===10?POBC:(tab===11?PESC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C))))))));}
 const ML={responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1,sancionado:1,mandato_eletivo:1,socio_empresa:1,objeto:1,cargo_efetivo_atual:1,desc_lotacao_atual:1,desc_dotacao_atual:1,vinculos_adm:1,cargos_efetivos_periodo:1,comissoes_periodo:1,funcoes_gratif_periodo:1,orgaos_lotacao_periodo:1,situacoes_periodo:1,situacao_atual:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};
@@ -151,6 +152,11 @@ const TOTC={1:["remuneracao"],2:[],3:["valor_empenho_obra","valor_licitacao"],4:
 Object.assign(WID,{municipio:170,razao_social:260,cnpj:140,poder:110,esfera:110,n_obras:80,valor_estimado_obras:150,n_setores_obras:90,setores_obras:300,modalidades_obras:220,primeira_obra:100,ultima_obra:100,site:180,situacao_cadastral:150,exemplos_objeto:420,uf:60,emails_setoriais:340,origem:120,setor:240});
 Object.assign(ML,{setores_obras:1,modalidades_obras:1,exemplos_objeto:1,emails_setoriais:1,setor:1});
 Object.assign(NUMC,{n_obras:1,valor_estimado_obras:1,n_setores_obras:1});
+// Painel 12 — servidores Brasil (federal/justiça/AL), tabela servidores_brasil_2026
+const P12C=["esfera","poder","uf","entidade","orgao","setor","nome","cpf","matricula","cargo","classe_cargo","funcao","atividade","tipo_vinculo","situacao","regime","jornada","data_ingresso_orgao","remuneracao","competencia","fonte"];
+Object.assign(WID,{entidade:260,atividade:200,tipo_vinculo:130,situacao:150,regime:170,jornada:110,data_ingresso_orgao:110,competencia:95,fonte:130,poder:130,classe_cargo:90,cargo:220});
+Object.assign(ML,{entidade:1,orgao:1,cargo:1,atividade:1});
+TOTC[12]=["remuneracao"];
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let tab=1,dados={1:[],2:[],3:[],4:[],5:[],6:[],7:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
 let fstate={1:{},2:{},3:{},4:{},5:{},6:{},7:{}}, colw={1:{},2:{},3:{},4:{},5:{},6:{},7:{}};
@@ -248,8 +254,8 @@ function msel2(ib,on){on?sel.add(ib):sel.delete(ib);}
 function mall(on){sel=new Set(on?munis.map(m=>m.ibge):[]);closePop();toggleMuni({target:document.getElementById('msel')});}
 function closePop(){['mpop','fpop','cpop'].forEach(id=>{var e=document.getElementById(id);if(e)e.remove();});}
 let panelSig={1:'',2:'',3:'',4:'',5:'',6:'',7:''}, curSig='';
-// Painel 7 (obras) usa índice interno 10 — inicializa suas fatias de estado
-[10,11].forEach(t=>{dados[t]=[];fstate[t]={};colw[t]={};sortState[t]=null;visState[t]=null;groupBy[t]=[];expanded[t]=new Set();capped[t]=0;panelSig[t]='';});
+// Painéis extras (obras=10/11, servidores Brasil=12) — inicializa suas fatias de estado
+[10,11,12].forEach(t=>{dados[t]=[];fstate[t]={};colw[t]={};sortState[t]=null;visState[t]=null;groupBy[t]=[];expanded[t]=new Set();capped[t]=0;panelSig[t]='';});
 // carrega UM painel (por município, ou MG-wide no caso do P3). Sem order= no servidor (ordenação é no cliente).
 async function loadPanel(n,ids){
   const todos=ids.length>300, key=(n===1?'ibge':'cod_ibge');
@@ -288,9 +294,10 @@ async function carregar(){closePop();const ids=[...sel];
   try{await loadPanel(1,ids);}catch(e){showErr(e.message);return;}
   tab=1;setTabUI();render();
 }
-const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11};
+const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11,t12:12};
 function setTabUI(){Object.entries(TABIDS).forEach(([id,n])=>{const e=document.getElementById(id);if(e)e.classList.toggle('on',tab===n);});}
 async function setTab(n){tab=n;setTabUI();closePop();
+  if(n===12&&!dados[12].length){renderBR();return;}
   if(n===3||n===7){if(panelSig[n]!=='ALL'){try{await loadPanel(n,[]);}catch(e){showErr('Painel '+(n===7?8:n)+': '+e.message);return;}}}
   else if(n===1||n===4||n===5||n===6||n===10||n===11){
     if(!sel.size && panelSig[n]!=='XREF'){showErr('Selecione município(s) em “Municípios ▾” e clique Carregar.');return;}
@@ -298,6 +305,33 @@ async function setTab(n){tab=n;setTabUI();closePop();
   }
   render();
 }
+// ── Painel 12 — servidores Brasil (União/Justiça/AL) ────────────────
+function renderBR(){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='';
+  tw().innerHTML='<div class=msg><b>🇧🇷 Painel 12 — Servidores públicos: Executivo federal · Justiça · Alagoas</b><br>'
+  +'~890 mil vínculos com estrutura organizacional (entidade → órgão → setor → cargo/função). Fontes: Portal da Transparência/CGU (SIAPE 05/2026), DadosJusBr (magistrados e membros do MP), Transparência AL (06/2026). CPF já vem mascarado da origem.<br><br>'
+  +'<div class=row style="flex-wrap:wrap;gap:6px">'
+  +'<select id=bresf class=s><option value="">todas as esferas</option><option value=federal>federal (Executivo civil)</option><option value=justica>justiça (magistrados/MP)</option><option value=estadual>estadual (AL)</option></select>'
+  +'<input class=s id=brorg placeholder="órgão ou entidade (ex.: IBAMA, TJSP)" style="width:250px">'
+  +'<input class=s id=brnome placeholder="nome do servidor" style="width:200px">'
+  +'<input class=s id=brcargo placeholder="cargo, função ou atividade" style="width:200px">'
+  +'<button onclick="loadBR()" style="background:#0969da;color:#fff">Carregar</button></div>'
+  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Combine os filtros à vontade; deixe tudo vazio para baixar a base inteira (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas — prefira filtrar).</div></div>';}
+function brReset(){dados[12]=[];fstate[12]={};sortState[12]=null;groupBy[12]=[];expanded[12]=new Set();capped[12]=0;render();}
+async function loadBR(){
+  const esf=(document.getElementById('bresf')||{}).value||'',
+        org=((document.getElementById('brorg')||{}).value||'').trim(),
+        nome=((document.getElementById('brnome')||{}).value||'').trim(),
+        cargo=((document.getElementById('brcargo')||{}).value||'').trim();
+  let q='select='+P12C.join(',');
+  if(esf)q+='&esfera=eq.'+esf;
+  if(org)q+='&or=(orgao.ilike.*'+encodeURIComponent(org)+'*,entidade.ilike.*'+encodeURIComponent(org)+'*,cod_orgao.ilike.*'+encodeURIComponent(org)+'*)';
+  if(nome)q+='&nome=ilike.*'+encodeURIComponent(nome)+'*';
+  if(cargo)q+='&and=(or(cargo.ilike.*'+encodeURIComponent(cargo)+'*,funcao.ilike.*'+encodeURIComponent(cargo)+'*,atividade.ilike.*'+encodeURIComponent(cargo)+'*))';
+  loading('Carregando Painel 12 (servidores Brasil)…');
+  try{dados[12]=await sbfetch('servidores_brasil_2026',q,prog);capped[12]=_lastCapped;}
+  catch(e){showErr(e.message);return;}
+  if(!dados[12].length){renderBR();var d=document.createElement('div');d.className='msg err';d.textContent='Nenhum registro para esses filtros.';tw().appendChild(d);return;}
+  panelSig[12]='BR';fstate[12]={};sortState[12]=null;expanded[12]=new Set();render();}
 async function buscaResp(roles){closePop();loading('Buscando responsabilidade em todo o MG…');
   try{const byId={};
     for(const role of roles){const rows=await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+'&responsabilidade=ilike.*'+encodeURIComponent(role)+'*',prog);
@@ -357,7 +391,7 @@ async function exportServer(){
   try{await loadPanel(tab,[...sel]);}catch(e){capOverride=0;showErr(e.message);return;}
   capOverride=0;render();exportCSV();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
-let allOpen={1:false,2:false,3:false,4:false,5:false,6:false,7:false,10:false,11:false};
+let allOpen={1:false,2:false,3:false,4:false,5:false,6:false,7:false,10:false,11:false,12:false};
 // célula de uma linha-folha (usa as colunas visíveis)
 function leafHTML(r){const cols=visibleCols();
   return '<tr>'+cols.map(c=>{let v=r[c]||'';
@@ -405,6 +439,7 @@ function onScroll(){const t=tw();if(_shown>=_disp.length)return;
 function render(){if(document.getElementById('app').classList.contains('hidden'))return;
   if(tab===8){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='';if(!document.getElementById('rfbq'))renderRFB();return;}
   if(tab===9){var gb9=document.getElementById('gbar');if(gb9)gb9.innerHTML='';if(!document.getElementById('docAlvo'))renderDOC();return;}
+  if(tab===12&&!dados[12].length){var gb12=document.getElementById('gbar');if(gb12)gb12.innerHTML='';if(!document.getElementById('brorg'))renderBR();return;}
   ensureVis();const cols=visibleCols(),fs=fstate[tab],so=sortState[tab];
   const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
   const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
@@ -414,7 +449,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
   _disp=buildDisplay(flt);_shown=Math.min(_disp.length,CHUNK);
   const body=_disp.slice(0,_shown).map(rowHTML).join('')||'<tr><td>sem dados</td></tr>';
   const t=tw();t.innerHTML='<table>'+cg+head+'<tbody id=tb>'+body+'</tbody></table>';t.onscroll=onScroll;
-  const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos',5:'linhas de despesa',6:'responsáveis',7:'servidores do estado',10:'órgãos que contratam obra',11:'pessoas ligadas a obras'}[tab];
+  const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos',5:'linhas de despesa',6:'responsáveis',7:'servidores do estado',10:'órgãos que contratam obra',11:'pessoas ligadas a obras',12:'servidores (Brasil)'}[tab];
   const cap=capped[tab]?(' ⚠ baixados '+capped[tab].toLocaleString('pt-BR')+' (teto); use “⬇ do servidor” p/ exportar TUDO'):'';
   const gi=groupBy[tab].length?(' · '+_disp.filter(d=>d.k==='g'&&d.lv===0).length.toLocaleString('pt-BR')+' grupos'):'';
   document.getElementById('cnt').textContent=flt.length.toLocaleString('pt-BR')+' '+nm+gi+cap;
@@ -436,7 +471,7 @@ function colsAll(on){const v=ensureVis();v.hidden=on?new Set():new Set(v.order);
 function colsReset(){visState[tab]=null;ensureVis();renderClst();render();}
 // ── barra de cascata (agrupar por) ──────────────────────────────────
 function renderGbar(){const bar=document.getElementById('gbar');if(!bar)return;const gb=groupBy[tab];
-  let h='<span class=lbl>Cascata — agrupar por:</span>';
+  let h=(tab===12?'<span class=gadd onclick="brReset()">🔎 nova busca</span> ':'')+'<span class=lbl>Cascata — agrupar por:</span>';
   h+=gb.length?gb.map((c,i)=>'<span class=gchip><span class=n>'+(i+1)+'.</span> '+esc(c)
       +' <span class=o onclick="gMove('+i+',-1)">◂</span><span class=o onclick="gMove('+i+',1)">▸</span> <span class=x onclick="gRemove('+i+')">✕</span></span>').join('')
     :'<span class=none>(nenhum — clique “+ campo” para montar a árvore)</span>';
