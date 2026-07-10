@@ -42,7 +42,19 @@ create table if not exists servidores_brasil_2026 (
   esfera_adm text,                   -- federal | estadual (esfera administrativa)
   id_servidor_portal text,           -- id individual no Portal da Transparência (federal)
   remuneracao_liquida numeric,       -- após deduções obrigatórias (federal)
-  instituidor_pensao text            -- de quem deriva a pensão (pensionistas federais)
+  instituidor_pensao text,           -- de quem deriva a pensão (pensionistas federais)
+  -- contatos (10/07/2026)
+  email text,                        -- individual (parlamentares: Câmara/Senado/ALESP/ALMG)
+  telefone text,                     -- individual (gabinete)
+  email_institucional text,          -- do órgão (SIORG), atribuído a federais por nome
+  telefone_institucional text,       -- do órgão (SIORG)
+  partido text                       -- parlamentares
+);
+
+-- contato institucional por órgão federal (SIORG/MGI), casa por nome_norm
+create table if not exists siorg_orgaos_contatos (
+  codigo_siorg text primary key, sigla text, nome text, nome_norm text,
+  uf text, email text, telefone text, site text, fonte_url text
 );
 
 create index if not exists idx_sb26_nome_trgm on servidores_brasil_2026 using gin (nome gin_trgm_ops);
