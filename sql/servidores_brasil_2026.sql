@@ -37,7 +37,12 @@ create table if not exists servidores_brasil_2026 (
   regime text,
   jornada text,
   data_ingresso_orgao text,
-  remuneracao numeric
+  remuneracao numeric,               -- básica bruta (federal) / total (AL, Justiça)
+  -- enriquecimento (09-10/07/2026)
+  esfera_adm text,                   -- federal | estadual (esfera administrativa)
+  id_servidor_portal text,           -- id individual no Portal da Transparência (federal)
+  remuneracao_liquida numeric,       -- após deduções obrigatórias (federal)
+  instituidor_pensao text            -- de quem deriva a pensão (pensionistas federais)
 );
 
 create index if not exists idx_sb26_nome_trgm on servidores_brasil_2026 using gin (nome gin_trgm_ops);
