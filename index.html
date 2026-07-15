@@ -107,6 +107,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <div class="tab" id=t9 onclick="setTab(9)">🗂️ Painel 10 — Automação de Documentos</div>
   <div class="tab" id=t11 onclick="setTab(11)">👷 Painel 11 — Pessoas ligadas a Obras</div>
   <div class="tab" id=t12 onclick="setTab(12)">🇧🇷 Painel 12 — Servidores Brasil (União/Justiça/AL)</div>
+  <div class="tab" id=t13 onclick="setTab(13)">📇 Painel 13 — Contatos (Outras Fontes)</div>
   <button onclick="openCols(event)">☰ colunas</button>
   <button onclick="limparFiltros()">limpar filtros</button>
   <button onclick="exportCSV()">⬇ CSV</button>
@@ -136,12 +137,12 @@ const P6C=["cod_ibge","orgao","nome","tipo_responsabilidade","cpf","email","orig
 const P7C=["masp","nome","no_painel1","situacao_atual","cargo_efetivo_atual","comissao_atual","funcao_gratif_atual","carga_horaria","sigla_lotacao_atual","desc_lotacao_atual","sigla_dotacao_atual","desc_dotacao_atual","data_inicio","data_aposentadoria","data_desligamento","n_vinculos","vinculos_adm","cargos_efetivos_periodo","comissoes_periodo","funcoes_gratif_periodo","orgaos_lotacao_periodo","situacoes_periodo","mudou_situacao","n_meses","primeiro_mes","ultimo_mes","presente_em"];
 const POBC=["municipio","razao_social","cnpj","poder","esfera","n_obras","valor_estimado_obras","n_setores_obras","setores_obras","modalidades_obras","primeira_obra","ultima_obra","email","emails_setoriais","telefone","site","situacao_cadastral","exemplos_objeto","uf"];
 const PESC=["nome","cpf","setor","email","origem","orgao","municipio"];  // Painel 11 — pessoas ligadas a obras (tabela pessoas_obras, deduplicada); cpf mascarado
-function colsOf(){return tab===12?P12C:(tab===10?POBC:(tab===11?PESC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C))))))));}
-const ML={redes_sociais:1,responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1,sancionado:1,mandato_eletivo:1,socio_empresa:1,objeto:1,cargo_efetivo_atual:1,desc_lotacao_atual:1,desc_dotacao_atual:1,vinculos_adm:1,cargos_efetivos_periodo:1,comissoes_periodo:1,funcoes_gratif_periodo:1,orgaos_lotacao_periodo:1,situacoes_periodo:1,situacao_atual:1};
+function colsOf(){return tab===13?P13C:(tab===12?P12C:(tab===10?POBC:(tab===11?PESC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C)))))))));}
+const ML={redes_sociais:1,responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1,sancionado:1,mandato_eletivo:1,socio_empresa:1,objeto:1,cargo_efetivo_atual:1,desc_lotacao_atual:1,desc_dotacao_atual:1,vinculos_adm:1,cargos_efetivos_periodo:1,comissoes_periodo:1,funcoes_gratif_periodo:1,orgaos_lotacao_periodo:1,situacoes_periodo:1,situacao_atual:1,obs:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1};
 const LINKC={site_oficial:1,portal_transparencia:1,site:1};
-const WID={redes_sociais:240,orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,objeto:380,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120};
+const WID={redes_sociais:240,orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,objeto:380,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120,tipo_orgao:100,municipio:160,entidade:280,nome_pessoa:200,cargo:180,telefone1:130,telefone2:130,melhor_contato:110,obs:220,fonte_arquivo:120};
 Object.assign(WID,{cod_ibge:90,seq_orgao:100,seq_unidade:110,cod_orgao:90,cod_unidade:100,funcao:170,subfuncao:200,programa:250,acao:280,subacao:150,natureza_despesa:300,fonte_recurso:300,valor:140});
 Object.assign(WID,{tipo_responsabilidade:300,origem:110,no_painel1:100,email:230});
 Object.assign(WID,{masp:90,situacao_atual:160,cargo_efetivo_atual:260,comissao_atual:200,funcao_gratif_atual:220,carga_horaria:90,sigla_lotacao_atual:120,desc_lotacao_atual:280,sigla_dotacao_atual:120,desc_dotacao_atual:280,data_inicio:100,data_aposentadoria:120,data_desligamento:120,n_vinculos:90,vinculos_adm:110,cargos_efetivos_periodo:300,comissoes_periodo:220,funcoes_gratif_periodo:240,orgaos_lotacao_periodo:210,situacoes_periodo:170,mudou_situacao:110,n_meses:80,primeiro_mes:100,ultimo_mes:100,presente_em:190});
@@ -154,6 +155,8 @@ Object.assign(ML,{setores_obras:1,modalidades_obras:1,exemplos_objeto:1,emails_s
 Object.assign(NUMC,{n_obras:1,valor_estimado_obras:1,n_setores_obras:1});
 // Painel 12 — servidores Brasil (federal/justiça/AL), tabela servidores_brasil_2026
 const P12C=["esfera_adm","esfera","poder","uf","orgao_superior","entidade","orgao","setor","natureza_juridica","org_ref_status","codigo_siorg","nome","cpf","matricula","email","telefone","email_institucional","telefone_institucional","partido","cargo","classe_cargo","funcao","atividade","tipo_vinculo","situacao","instituidor_pensao","regime","jornada","data_ingresso_orgao","remuneracao","remuneracao_liquida","lattes","redes_sociais","competencia","fonte","id_servidor_portal"];
+// Painel 13 — contatos consolidados de "Outras Fontes" (tabela contatos_orgaos_fontes)
+const P13C=["tipo_orgao","municipio","entidade","nome_pessoa","cargo","setor","email","telefone1","telefone2","melhor_contato","obs","cnpj","fonte_arquivo"];
 Object.assign(WID,{esfera_adm:110,orgao_superior:220,natureza_juridica:150,org_ref_status:120,codigo_siorg:90,lattes:130,email:230,telefone:120,email_institucional:230,telefone_institucional:140,partido:80,remuneracao_liquida:120,instituidor_pensao:240,id_servidor_portal:110,entidade:260,atividade:200,tipo_vinculo:130,situacao:150,regime:170,jornada:110,data_ingresso_orgao:110,competencia:95,fonte:130,poder:130,classe_cargo:90,cargo:220});
 Object.assign(ML,{entidade:1,orgao:1,cargo:1,atividade:1});
 TOTC[12]=["remuneracao","remuneracao_liquida"];Object.assign(NUMC,{remuneracao_liquida:1});Object.assign(ML,{instituidor_pensao:1});
@@ -255,7 +258,7 @@ function mall(on){sel=new Set(on?munis.map(m=>m.ibge):[]);closePop();toggleMuni(
 function closePop(){['mpop','fpop','cpop'].forEach(id=>{var e=document.getElementById(id);if(e)e.remove();});}
 let panelSig={1:'',2:'',3:'',4:'',5:'',6:'',7:''}, curSig='';
 // Painéis extras (obras=10/11, servidores Brasil=12) — inicializa suas fatias de estado
-[10,11,12].forEach(t=>{dados[t]=[];fstate[t]={};colw[t]={};sortState[t]=null;visState[t]=null;groupBy[t]=[];expanded[t]=new Set();capped[t]=0;panelSig[t]='';});
+[10,11,12,13].forEach(t=>{dados[t]=[];fstate[t]={};colw[t]={};sortState[t]=null;visState[t]=null;groupBy[t]=[];expanded[t]=new Set();capped[t]=0;panelSig[t]='';});
 // carrega UM painel (por município, ou MG-wide no caso do P3). Sem order= no servidor (ordenação é no cliente).
 async function loadPanel(n,ids){
   const todos=ids.length>300, key=(n===1?'ibge':'cod_ibge');
@@ -294,10 +297,11 @@ async function carregar(){closePop();const ids=[...sel];
   try{await loadPanel(1,ids);}catch(e){showErr(e.message);return;}
   tab=1;setTabUI();render();
 }
-const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11,t12:12};
+const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11,t12:12,t13:13};
 function setTabUI(){Object.entries(TABIDS).forEach(([id,n])=>{const e=document.getElementById(id);if(e)e.classList.toggle('on',tab===n);});}
 async function setTab(n){tab=n;setTabUI();closePop();
   if(n===12&&!dados[12].length){renderBR();return;}
+  if(n===13&&!dados[13].length){renderCT();return;}
   if(n===3||n===7){if(panelSig[n]!=='ALL'){try{await loadPanel(n,[]);}catch(e){showErr('Painel '+(n===7?8:n)+': '+e.message);return;}}}
   else if(n===1||n===4||n===5||n===6||n===10||n===11){
     if(!sel.size && panelSig[n]!=='XREF'){showErr('Selecione município(s) em “Municípios ▾” e clique Carregar.');return;}
@@ -332,6 +336,37 @@ async function loadBR(){
   catch(e){showErr(e.message);return;}
   if(!dados[12].length){renderBR();var d=document.createElement('div');d.className='msg err';d.textContent='Nenhum registro para esses filtros.';tw().appendChild(d);return;}
   panelSig[12]='BR';fstate[12]={};sortState[12]=null;expanded[12]=new Set();render();}
+// ── Painel 13 — Contatos (Outras Fontes) ────────────────────
+function renderCT(){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='';
+  tw().innerHTML='<div class=msg><b>📇 Painel 13 — Contatos consolidados (Outras Fontes)</b><br>'
+  +'Contatos de prefeituras (PM), câmaras (CM), previdências e consórcios de MG, normalizados e casados por município/órgão. Cada cidade+órgão tem um <b>“melhor contato”</b> (pessoa identificada + cargo + e-mail institucional + telefone). Fontes: exports de contatos + base de e-mails, com cruzamento contra os demais painéis.<br><br>'
+  +'<div class=row style="flex-wrap:wrap;gap:6px">'
+  +'<select id=cttipo class=s><option value="">todos os tipos</option><option value=PM>Prefeitura (PM)</option><option value=CM>Câmara (CM)</option><option value=PREV>Previdência</option><option value=CONSORCIO>Consórcio</option><option value=OUTRO>Outro/estadual</option></select>'
+  +'<input class=s id=ctmun placeholder="município (ex.: Contagem)" style="width:200px">'
+  +'<input class=s id=ctorg placeholder="órgão/entidade" style="width:200px">'
+  +'<input class=s id=ctnome placeholder="nome, cargo ou e-mail" style="width:220px">'
+  +'<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type=checkbox id=ctbest> só o melhor contato por cidade+órgão</label>'
+  +'<button onclick="loadCT()" style="background:#0969da;color:#fff">Carregar</button></div>'
+  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Combine os filtros à vontade; deixe tudo vazio para baixar a base inteira (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas).</div></div>';}
+function ctReset(){dados[13]=[];fstate[13]={};sortState[13]=null;groupBy[13]=[];expanded[13]=new Set();capped[13]=0;render();}
+async function loadCT(){
+  const tp=(document.getElementById('cttipo')||{}).value||'',
+        mun=((document.getElementById('ctmun')||{}).value||'').trim(),
+        org=((document.getElementById('ctorg')||{}).value||'').trim(),
+        nome=((document.getElementById('ctnome')||{}).value||'').trim(),
+        best=(document.getElementById('ctbest')||{}).checked;
+  let q='select='+P13C.join(',');
+  if(tp)q+='&tipo_orgao=eq.'+tp;
+  if(mun)q+='&municipio=ilike.*'+encodeURIComponent(mun)+'*';
+  if(org)q+='&entidade=ilike.*'+encodeURIComponent(org)+'*';
+  if(nome)q+='&or=(nome_pessoa.ilike.*'+encodeURIComponent(nome)+'*,cargo.ilike.*'+encodeURIComponent(nome)+'*,email.ilike.*'+encodeURIComponent(nome)+'*)';
+  if(best)q+='&melhor_contato=is.true';
+  q+='&order=municipio.asc,tipo_orgao.asc,score.desc';
+  loading('Carregando Painel 13 (contatos)…');
+  try{dados[13]=await sbfetch('contatos_orgaos_fontes',q,prog);capped[13]=_lastCapped;}
+  catch(e){showErr(e.message);return;}
+  if(!dados[13].length){renderCT();var d=document.createElement('div');d.className='msg err';d.textContent='Nenhum contato para esses filtros.';tw().appendChild(d);return;}
+  panelSig[13]='CT';fstate[13]={};sortState[13]=null;expanded[13]=new Set();render();}
 async function buscaResp(roles){closePop();loading('Buscando responsabilidade em todo o MG…');
   try{const byId={};
     for(const role of roles){const rows=await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+'&responsabilidade=ilike.*'+encodeURIComponent(role)+'*',prog);
@@ -383,7 +418,7 @@ function exportXLSX(){if(typeof XLSX==='undefined'){alert('biblioteca Excel aind
   XLSX.writeFile(wb,'painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.xlsx');}
 // baixa TODA a seleção do servidor (ignora o teto de tela) e exporta — p/ o caso "MG inteiro"
 async function exportServer(){
-  if(panelSig[tab]==='XREF'||tab===7){exportCSV();return;}
+  if(panelSig[tab]==='XREF'||tab===7||tab===12||tab===13){exportCSV();return;}
   if(tab===2){alert('O Painel 2 já vem completo na tela; use ⬇ CSV / ⬇ Excel.');return;}
   if(!sel.size){alert('Selecione município(s) em “Municípios ▾” e clique Carregar antes.');return;}
   if(!confirm('Baixar TODOS os registros da seleção direto do servidor (sem o teto de tela) e então exportar? Em seleções grandes pode demorar e usar bastante memória.'))return;
@@ -391,7 +426,7 @@ async function exportServer(){
   try{await loadPanel(tab,[...sel]);}catch(e){capOverride=0;showErr(e.message);return;}
   capOverride=0;render();exportCSV();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
-let allOpen={1:false,2:false,3:false,4:false,5:false,6:false,7:false,10:false,11:false,12:false};
+let allOpen={1:false,2:false,3:false,4:false,5:false,6:false,7:false,10:false,11:false,12:false,13:false};
 // célula de uma linha-folha (usa as colunas visíveis)
 function leafHTML(r){const cols=visibleCols();
   return '<tr>'+cols.map(c=>{let v=r[c]||'';
@@ -405,6 +440,9 @@ function leafHTML(r){const cols=visibleCols();
     if(c==='consta_site')return '<td class=S>'+esc(v)+'</td>';
     if(c==='sancionado')return '<td style="color:#cf222e;font-weight:600">'+esc(v)+'</td>';
     if(tab===6&&c==='email'&&(''+v).includes('@'))return '<td class=ml><a href="mailto:'+esc(v)+'">'+esc(v)+'</a></td>';
+    if(tab===13&&c==='email'&&(''+v).includes('@'))return '<td class=ml>'+(''+v).split(' | ').map(e=>'<a href="mailto:'+esc(e)+'">'+esc(e)+'</a>').join('<br>')+'</td>';
+    if(tab===13&&(c==='telefone1'||c==='telefone2'))return '<td><a href="https://wa.me/55'+(''+v).replace(/\D/g,'')+'" target=_blank title="WhatsApp">'+esc(v)+'</a></td>';
+    if(tab===13&&c==='melhor_contato')return '<td style="text-align:center">'+(v===true||v==='true'?'<span style="color:#1a7f37;font-weight:700" title="melhor contato da cidade+órgão">★</span>':'')+'</td>';
     if(c==='instagram'&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>insta</a></td>';
     if(LINKC[c]&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>link</a></td>';
     if(ML[c])return '<td class=ml>'+(''+v).split(' | ').map(esc).join('<br>')+'</td>';
@@ -440,6 +478,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
   if(tab===8){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='';if(!document.getElementById('rfbq'))renderRFB();return;}
   if(tab===9){var gb9=document.getElementById('gbar');if(gb9)gb9.innerHTML='';if(!document.getElementById('docAlvo'))renderDOC();return;}
   if(tab===12&&!dados[12].length){var gb12=document.getElementById('gbar');if(gb12)gb12.innerHTML='';if(!document.getElementById('brorg'))renderBR();return;}
+  if(tab===13&&!dados[13].length){var gb13=document.getElementById('gbar');if(gb13)gb13.innerHTML='';if(!document.getElementById('ctmun'))renderCT();return;}
   ensureVis();const cols=visibleCols(),fs=fstate[tab],so=sortState[tab];
   const cw=cols.map(c=>colw[tab][c]||WID[c]||140);
   const cg='<colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>';
@@ -449,7 +488,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
   _disp=buildDisplay(flt);_shown=Math.min(_disp.length,CHUNK);
   const body=_disp.slice(0,_shown).map(rowHTML).join('')||'<tr><td>sem dados</td></tr>';
   const t=tw();t.innerHTML='<table>'+cg+head+'<tbody id=tb>'+body+'</tbody></table>';t.onscroll=onScroll;
-  const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos',5:'linhas de despesa',6:'responsáveis',7:'servidores do estado',10:'órgãos que contratam obra',11:'pessoas ligadas a obras',12:'servidores (Brasil)'}[tab];
+  const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos',5:'linhas de despesa',6:'responsáveis',7:'servidores do estado',10:'órgãos que contratam obra',11:'pessoas ligadas a obras',12:'servidores (Brasil)',13:'contatos'}[tab];
   const cap=capped[tab]?(' ⚠ baixados '+capped[tab].toLocaleString('pt-BR')+' (teto); use “⬇ do servidor” p/ exportar TUDO'):'';
   const gi=groupBy[tab].length?(' · '+_disp.filter(d=>d.k==='g'&&d.lv===0).length.toLocaleString('pt-BR')+' grupos'):'';
   document.getElementById('cnt').textContent=flt.length.toLocaleString('pt-BR')+' '+nm+gi+cap;
@@ -471,7 +510,7 @@ function colsAll(on){const v=ensureVis();v.hidden=on?new Set():new Set(v.order);
 function colsReset(){visState[tab]=null;ensureVis();renderClst();render();}
 // ── barra de cascata (agrupar por) ──────────────────────────────────
 function renderGbar(){const bar=document.getElementById('gbar');if(!bar)return;const gb=groupBy[tab];
-  let h=(tab===12?'<span class=gadd onclick="brReset()">🔎 nova busca</span> ':'')+'<span class=lbl>Cascata — agrupar por:</span>';
+  let h=(tab===12?'<span class=gadd onclick="brReset()">🔎 nova busca</span> ':'')+(tab===13?'<span class=gadd onclick="ctReset()">🔎 nova busca</span> ':'')+'<span class=lbl>Cascata — agrupar por:</span>';
   h+=gb.length?gb.map((c,i)=>'<span class=gchip><span class=n>'+(i+1)+'.</span> '+esc(c)
       +' <span class=o onclick="gMove('+i+',-1)">◂</span><span class=o onclick="gMove('+i+',1)">▸</span> <span class=x onclick="gRemove('+i+')">✕</span></span>').join('')
     :'<span class=none>(nenhum — clique “+ campo” para montar a árvore)</span>';
