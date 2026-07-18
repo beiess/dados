@@ -676,9 +676,10 @@
       <div id="view-comm" hidden>
         <section class="panel" style="margin-bottom:16px">
           <div class="commhead">
-            <div><div class="eyebrow">Comissões · consolidado da equipe</div><h2>Julho 2026</h2></div>
-            <select id="comm-period"><option>jul/2026</option><option>jun/2026</option><option>Campanha inteira</option></select>
+            <div><div class="eyebrow">Comissões · consolidado da equipe</div><h2 id="comm-title">—</h2></div>
+            <select id="comm-period"></select>
             <span class="spacer"></span>
+            <button class="btn-ghost adminonly" id="comm-apurar" title="Varre vendas em fechamento/pós-venda ainda sem apuração e gera as comissões">⚖ Apurar pendentes</button>
             <span class="seclock" title="Valores protegidos por segredo de negócio">🔒 Sigilo ativo</span>
           </div>
           <div class="kpis" id="comm-kpis"></div>
@@ -708,25 +709,7 @@
         </section>
 
         <div class="rulehead"><span class="eyebrow">Regras vigentes</span><span class="rulever on" id="rule-current">—</span></div>
-        <section class="rulecards">
-          <div class="rulecard"><button class="editbtn">✎</button><h4>📈 Progressiva por nível</h4><div class="sub">Base por nível + acelerador de volume</div>
-            <div class="tier"><span>Vendedor IV</span><b>5%</b></div>
-            <div class="tier"><span>Vendedor V</span><b>5%</b></div>
-            <div class="tier"><span>11–20 vendas/mês</span><b>+0,5 p.p.</b></div>
-            <div class="tier"><span>21+ vendas/mês</span><b>+1 p.p.</b></div></div>
-          <div class="rulecard"><button class="editbtn">✎</button><h4>🎯 Pós-meta</h4><div class="sub">Após atingir a meta da campanha</div>
-            <div class="tier"><span>Vendas após a meta</span><b>+1 p.p.</b></div>
-            <div class="tier"><span>Meta Obras 2026</span><b>R$ 1,2 mi</b></div>
-            <div class="tier"><span>Atingido</span><b id="rule-meta">—</b></div></div>
-          <div class="rulecard"><button class="editbtn">✎</button><h4>🤝 Cliente novo × base</h4><div class="sub">Tipo do cliente define o percentual</div>
-            <div class="tier"><span>Cliente novo</span><b>5%</b></div>
-            <div class="tier"><span>Cliente de base · renovação</span><b>3%</b></div></div>
-          <div class="rulecard"><button class="editbtn">✎</button><h4>🧩 Rateio conjunto</h4><div class="sub">Trabalhos com mais de um vendedor</div>
-            <div class="tier"><span>Individual</span><b>100%</b></div>
-            <div class="tier"><span>Com parceiro</span><b>% livre = 100</b></div>
-            <div class="tier"><span>Por equipe</span><b>divide igual</b></div>
-            <div class="tier"><span>Geral (matriz · filial)</span><b>70 · 30</b></div></div>
-        </section>
+        <section class="rulecards" id="rulecards"></section>
 
         <section class="panel" style="margin-top:16px">
           <div class="commhead"><div><div class="eyebrow">Log de versões das regras</div><h2 style="font-size:16px">Política de comissão · vigências</h2></div><span class="spacer"></span><span class="ctmeta">✎ salvar num card publica uma nova versão — as anteriores ficam no log</span></div>
@@ -1575,6 +1558,21 @@
 
   // ===== PAINEL DE COMISSÕES =====
   const money=n=>'R$ '+n.toLocaleString('pt-BR');
+  // período (competência) do painel — '' = campanha inteira
+  const MESN=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const MESA=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const compLabel=c=>/^\d{4}-\d{2}$/.test(c)?MESN[+c.slice(5)]+' '+c.slice(0,4):c;
+  const compShort=c=>/^\d{4}-\d{2}$/.test(c)?MESA[+c.slice(5)]+'/'+c.slice(0,4):c;
+  const CURMES=(d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'))(new Date());
+  let COMMPER=CURMES;
+  const memVis=m=>COMMPER===''?true:(m.s==='apurada'?m.comp===COMMPER:COMMPER===CURMES);
+  function renderPeriod(){
+    const sel=document.getElementById('comm-period'); if(!sel)return;
+    const comps=[...new Set(APUR.map(a=>a.comp).concat([CURMES]))].sort().reverse();
+    sel.innerHTML=comps.map(c=>'<option value="'+c+'"'+(c===COMMPER?' selected':'')+'>'+compShort(c)+'</option>').join('')
+      +'<option value=""'+(COMMPER===''?' selected':'')+'>Campanha inteira</option>';
+    const t=document.getElementById('comm-title'); if(t)t.textContent=COMMPER?compLabel(COMMPER):'Campanha inteira';
+  }
   const COMM=[]; const COMM_MOCK=[
    {i:'K',n:'Vendedora K.',nv:'Vendedor IV',ar:'Gestão Pública',emp:'Matriz',base:5,meta:800000,mem:[
      {cli:'Município de Patos de Minas',t:'novo',v:312000,rt:'Resp · 60%',c:'312.000 × 5% = 15.600 → 60%',r:9360,s:'apurada'},
@@ -1594,13 +1592,16 @@
    {i:'I',n:'Vendedora I.',nv:'Vendedor(a)',ar:'Gestão Pública',emp:'Matriz',base:5,meta:250000,mem:[
      {cli:'Município de Poços de Caldas',t:'novo',v:156000,rt:'Resp · 100%',c:'156.000 × 5%',r:7800,s:'prevista'}]}
   ];
-  const commAgg=v=>{const ap=v.mem.filter(m=>m.s==='apurada').reduce((s,m)=>s+m.r,0),
-    pr=v.mem.filter(m=>m.s!=='apurada').reduce((s,m)=>s+m.r,0),
-    ganhas=v.mem.filter(m=>m.s==='apurada').length,
-    val=v.mem.reduce((s,m)=>s+m.v,0); return{ap,pr,ganhas,val};};
+  const commAgg=v=>{const vis=v.mem.filter(memVis),
+    ap=vis.filter(m=>m.s==='apurada').reduce((s,m)=>s+m.r,0),
+    pr=vis.filter(m=>m.s!=='apurada').reduce((s,m)=>s+m.r,0),
+    ganhas=vis.filter(m=>m.s==='apurada').length,
+    val=vis.reduce((s,m)=>s+m.v,0); return{ap,pr,ganhas,val,vis};};
   function renderComm(){
+    const curv=(RULEV.find(r=>!r.fim)||{}).v||'v1';
     document.getElementById('comm-rows').innerHTML=COMM.map((v,ix)=>{const a=commAgg(v);
-      const mem=v.mem.map(m=>`<div class="memline"><b>${m.cli}</b><span class="tag ${m.t}">${m.t}</span><span class="ctmeta">${m.rt}</span><span class="memcalc">${m.c}</span><span class="grow2"></span><span class="rulever${(m.rv||'v2')==='v2'?' on':''}">regra ${m.rv||'v2'}</span><span class="money">${money(m.r)}</span><span class="stpay ${m.s==='apurada'?'ap':'pr'}">${m.s}</span></div>`).join('');
+      if(!a.vis.length&&!v.meta)return '';
+      const mem=a.vis.map(m=>`<div class="memline"><b>${m.cli}</b><span class="tag ${m.t}">${m.t}</span><span class="ctmeta">${m.rt}</span><span class="memcalc">${m.c}</span><span class="grow2"></span><span class="rulever${(m.rv||curv)===curv?' on':''}">regra ${m.rv||curv}</span><span class="money">${money(m.r)}</span><span class="stpay ${m.s==='apurada'?'ap':'pr'}">${m.s}</span></div>`).join('');
       return `<tr class="vrow" data-ix="${ix}">
         <td><div class="vwho"><span class="av" style="background:${AV[v.i]||'#5B7A98'}">${v.i}</span><div><b>${v.n}</b><span>${v.nv}</span></div></div></td>
         <td><span class="tag ${v.ar==='Legislativo'?'leg':'gp'}">${v.ar}</span></td>
@@ -1615,18 +1616,23 @@
         <tr class="vdetail" hidden><td colspan="10"><div class="eyebrow" style="margin:8px 0 2px">Memória de cálculo</div>${mem}</td></tr>`;
     }).join('');
     let ap=0,pr=0; COMM.forEach(v=>{const a=commAgg(v);ap+=a.ap;pr+=a.pr;});
-    const GANH=(window.CAPS||[]).filter(c=>c.ativo&&['fechamento','pos_venda'].includes(c.estagio));
-    const vendido=GANH.reduce((s,c)=>s+(+c.valor_contrato||0),0), ganhas=GANH.length,
-          metaC=(CAMPAIGNS[0]&&CAMPAIGNS[0].meta)||0, metaPct=metaC?Math.min(999,Math.round(vendido/metaC*100)):0;
+    let ganhas,vendido;
+    if(COMMPER===''){
+      const GANH=(window.CAPS||[]).filter(c=>c.ativo&&['fechamento','pos_venda'].includes(c.estagio));
+      vendido=GANH.reduce((s,c)=>s+(+c.valor_contrato||0),0); ganhas=GANH.length;
+    }else{
+      const seen={}; (window.APSX||[]).filter(a=>a.competencia===COMMPER).forEach(a=>{if(!(a.captura_id in seen))seen[a.captura_id]=+a.base_valor||0;});
+      ganhas=Object.keys(seen).length; vendido=Object.values(seen).reduce((s,x)=>s+x,0);
+    }
+    const metaC=(CAMPAIGNS[0]&&CAMPAIGNS[0].meta)||0, metaPct=metaC?Math.min(999,Math.round(vendido/metaC*100)):0;
     document.getElementById('comm-kpis').innerHTML=
       `<div class="kpi"><div class="k">Comissão apurada</div><div class="v num" style="color:var(--good)">${money(ap)}</div></div>
        <div class="kpi accent"><div class="k">Comissão prevista</div><div class="v num">${money(pr)}</div></div>
        <div class="kpi"><div class="k">Vendas ganhas</div><div class="v num">${ganhas}</div></div>
        <div class="kpi"><div class="k">Vendido (ganhas)</div><div class="v num">${money(vendido)}</div></div>
        <div class="kpi"><div class="k">Meta da campanha</div><div class="v num">${metaPct}%</div><div class="metabar"><i style="width:${metaPct}%"></i></div></div>`;
-    document.getElementById('rule-meta').textContent=metaPct+'%';
+    const rm=document.getElementById('rule-meta'); if(rm)rm.textContent=metaPct+'%';
   }
-  renderComm();
   document.getElementById('comm-rows').addEventListener('click',e=>{
     const tr=e.target.closest('tr.vrow'); if(!tr)return;
     const d=tr.nextElementSibling; if(d)d.hidden=!d.hidden;
@@ -1642,14 +1648,17 @@
    {comp:'jun/2026',vend:'Vendedora D.',cli:'Câmara Municipal de Betim',rv:'v1',calc:'288.000 × 3% (base · renovação)',val:8640,em:'28/06/2026 · Gerente W.'},
    {comp:'jun/2026',vend:'Vendedora E.',cli:'Câmara Municipal de Juiz de Fora',rv:'v1',calc:'120.000 × 5%',val:6000,em:'05/06/2026 · Gerente W.'}];
   function renderApur(){
-    document.getElementById('apur-rows').innerHTML=APUR.map(a=>`<tr>
-      <td class="num">${a.comp}</td>
+    const list=APUR.filter(a=>!COMMPER||a.comp===COMMPER),
+          curv=(RULEV.find(r=>!r.fim)||{}).v;
+    document.getElementById('apur-rows').innerHTML=list.length?list.map(a=>`<tr>
+      <td class="num">${compShort(a.comp)}</td>
       <td><div class="vwho"><span class="av" style="background:${AV[iniOf(a.vend)]||'#5B7A98'}">${iniOf(a.vend)}</span><b>${a.vend}</b></div></td>
       <td>${a.cli}</td>
-      <td><span class="rulever${a.rv==='v2'?' on':''}">regra ${a.rv}</span></td>
+      <td><span class="rulever${a.rv===curv?' on':''}">regra ${a.rv}</span></td>
       <td class="memcalc">${a.calc}</td>
       <td class="r money">${money(a.val)}</td>
-      <td class="ctmeta">${a.em}</td></tr>`).join('');
+      <td class="ctmeta">${a.em}</td></tr>`).join('')
+      :`<tr><td colspan="7" class="ctmeta" style="padding:14px">Nenhuma apuração ${COMMPER?'em '+compLabel(COMMPER):'ainda'} — a comissão é apurada automaticamente quando a venda entra em <b>Fechamento</b>.</td></tr>`;
   }
   function renderRulelog(){
     document.getElementById('rulelog').innerHTML=RULEV.slice().reverse().map(r=>`<div class="verline">
@@ -1659,7 +1668,7 @@
     const cur=RULEV.find(r=>!r.fim);
     if(cur)document.getElementById('rule-current').textContent=cur.v+' · desde '+cur.ini;
   }
-  renderApur(); renderRulelog();
+  renderPeriod(); renderRules(); renderComm(); renderApur(); renderRulelog();
 
   // navegação sidebar: Campanhas ↔ Comissões ↔ Equipe/Organização
   const SECS=['sec-filtros','sec-camp','sec-funil','sec-note'].map(id=>document.getElementById(id));
@@ -1676,21 +1685,58 @@
     'nav-empresas':()=>{showView('team');document.getElementById('org-cards').scrollIntoView({behavior:'smooth'});document.getElementById('nav-empresas').classList.add('on');}};
   Object.keys(NAVGO).forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',e=>{e.preventDefault();NAVGO[id]();});});
 
-  // cards de regras: edição FUNCIONAL (admin) — ✎ libera os valores, ✓ salva
-  document.querySelector('.rulecards').addEventListener('click',e=>{
+  // cards de regras: renderizados do config REAL da regra vigente (regras_versoes)
+  function renderRules(){
+    const rc=document.getElementById('rulecards'); if(!rc)return;
+    const cur=RULEV.find(r=>!r.fim), cfg=(cur&&cur.cfg)||{};
+    const tier=(l,v,k)=>'<div class="tier"><span>'+l+'</span><b'+(k?' data-k="'+k+'"':'')+'>'+v+'</b></div>';
+    const base=cfg.base||{}, cli=cfg.cliente||{}, rg=cfg.rateio_geral||[], camp=CAMPAIGNS[0]||{};
+    rc.innerHTML=
+      '<div class="rulecard"><button class="editbtn adminonly">✎</button><h4>📈 Base por nível</h4><div class="sub">Percentual do vendedor por nível</div>'+
+        (Object.keys(base).length?Object.keys(base).sort().map(nv=>tier('Vendedor '+nv,base[nv]+'%','base.'+nv)).join(''):tier('Sem níveis na regra','—'))+'</div>'+
+      '<div class="rulecard"><button class="editbtn adminonly">✎</button><h4>🤝 Cliente novo × base</h4><div class="sub">Tipo do cliente define o percentual</div>'+
+        tier('Cliente novo',(cli.novo!=null?cli.novo:'—')+'%','cliente.novo')+
+        tier('Cliente de base · renovação',(cli.base!=null?cli.base:'—')+'%','cliente.base')+'</div>'+
+      '<div class="rulecard"><button class="editbtn adminonly">✎</button><h4>🧩 Rateio</h4><div class="sub">Trabalhos com mais de um vendedor</div>'+
+        tier('Individual','100%')+tier('Com participações','% da captura')+
+        tier('Geral (matriz · filial)',rg.length?rg.join(' · '):'—','rateio_geral')+'</div>'+
+      '<div class="rulecard"><h4>🎯 Campanha vigente</h4><div class="sub">'+(camp.nome||'—')+'</div>'+
+        tier('% aplicado na apuração',(+camp.pct||0)+'%')+
+        tier('Meta',camp.meta?money(camp.meta):'—')+
+        tier('Atingido','<span id="rule-meta">—</span>')+'</div>';
+  }
+  // ✎ edição (admin) — ✓ salvar lê os valores dos cards e publica NOVA VERSÃO no banco
+  document.getElementById('rulecards').addEventListener('click',async e=>{
     const b=e.target.closest('.editbtn'); if(!b)return;
     const card=b.closest('.rulecard'), on=card.classList.toggle('editing');
-    card.querySelectorAll('.tier b').forEach(el=>el.contentEditable=on?'true':'false');
+    card.querySelectorAll('.tier b[data-k]').forEach(el=>el.contentEditable=on?'true':'false');
     b.textContent=on?'✓ salvar':'✎';
-    if(on){const f=card.querySelector('.tier b'); if(f)f.focus();}
-    else{
-      const hoje=new Date().toLocaleDateString('pt-BR'), cur=RULEV.find(r=>!r.fim);
-      if(cur)cur.fim=hoje;
-      RULEV.push({v:'v'+(RULEV.length+1),ini:hoje,fim:null,desc:card.querySelector('h4').textContent.trim()+' — parâmetros ajustados',por:CURRENT+' (admin)'});
-      if(window.dbRuleVersion)window.dbRuleVersion(RULEV[RULEV.length-1],cur);
-      renderRulelog();
-      warn('Nova versão publicada (v'+RULEV.length+') — apurações passadas preservam a regra à época.');
-    }
+    if(on){const f=card.querySelector('.tier b[data-k]'); if(f)f.focus(); return;}
+    const cur=RULEV.find(r=>!r.fim);
+    const cfg=JSON.parse(JSON.stringify((cur&&cur.cfg)||{}));
+    document.querySelectorAll('#rulecards .tier b[data-k]').forEach(el=>{
+      const k=el.dataset.k, raw=el.textContent.trim();
+      if(k==='rateio_geral'){const v=raw.split(/[^0-9,\.]+/).filter(Boolean).map(x=>+x.replace(',','.')).filter(x=>!isNaN(x)); if(v.length)cfg.rateio_geral=v; return;}
+      const num=+raw.replace('%','').trim().replace(',','.'); if(isNaN(num))return;
+      const ks=k.split('.'); if(ks.length>1){cfg[ks[0]]=cfg[ks[0]]||{}; cfg[ks[0]][ks[1]]=num;} else cfg[ks[0]]=num;
+    });
+    let ok=true; if(window.dbRuleVersion)ok=await window.dbRuleVersion(cfg);
+    renderRules(); renderRulelog();
+    if(ok)warn('Nova versão da regra publicada — apurações passadas preservam a regra à época.');
+  });
+  // troca de competência + apurar pendentes (admin)
+  document.getElementById('comm-period').addEventListener('change',e=>{
+    COMMPER=e.target.value; renderPeriod(); renderComm(); renderApur();
+  });
+  document.getElementById('comm-apurar').addEventListener('click',async e=>{
+    const b=e.currentTarget; b.disabled=true;
+    try{
+      const {data,error}=await sbc.rpc('crm_apurar_pendentes');
+      if(error)throw error;
+      if(window.refreshCaps)await window.refreshCaps();
+      warn(data>0?data+' apuração(ões) gerada(s).':'Nenhuma venda fechada pendente de apuração.');
+    }catch(err){warn('Erro ao apurar: '+(err.message||err));}
+    b.disabled=false;
   });
 
   // ===== EQUIPE & ORGANIZAÇÃO (cadastro · somente admin) =====
@@ -1896,7 +1942,7 @@
     const cps=await q('campanhas','*');
     CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
     const rvs=await q('regras_versoes','*');
-    RULEV.length=0; rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—'}));
+    RULEV.length=0; rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
 
     say('Carregando cascata (entidades/servidores)…');
     const ents=await q('crm_entidades','*');
@@ -1956,28 +2002,12 @@
     rebuildCapState();
 
     // COMM (consolidado por vendedor) + APUR (histórico imutável)
-    COMM.length=0;
-    TEAM.filter(t=>t.fn==='Vendedor').forEach(t=>{
-      const mem=[];
-      window.CAPS.filter(c=>c.ativo&&c.responsavel_id===t.id&&c.estagio!=='perdida').forEach(c=>{
-        const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{},e=entById[c.entidade_id]||{};
-        const baseV=+c.valor_contrato||+camp.valorUnit||0;
-        mem.push({cli:(e.nome||'—'),t:(e.tipo_cliente==='base'?'base':'novo'),v:baseV,rt:'Resp · 100%',
-          c:money(baseV)+' × '+(+camp.pct||0)+'%',r:Math.round(baseV*(+camp.pct||0)/100),s:'prevista',
-          rv:'v'+(camp.regra||(RULEV.length?RULEV[RULEV.length-1].versao:1))});});
-      APS.filter(a=>a.funcionario_id===t.id).forEach(a=>{
-        const cap=window.CAPS.find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
-        mem.push({cli:(e&&e.nome)||'—',t:'novo',v:+a.base_valor||0,rt:(a.rateio_pct||100)+'%',
-          c:a.memoria||'',r:+a.valor,s:'apurada',rv:'v'+a.regra_versao});});
-      if(mem.length||t.meta)COMM.push({i:t.i,n:t.n,nv:t.nv,ar:t.ar==='—'?'Gestão Pública':t.ar,emp:t.emp,base:t.base,meta:t.meta,mem});});
-    APUR.length=0;
-    APS.forEach(a=>{const cap=window.CAPS.find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
-      APUR.push({comp:a.competencia,vend:(funcById[a.funcionario_id]||{}).nome||'—',cli:(e&&e.nome)||'—',
-        rv:'v'+a.regra_versao,calc:a.memoria||'',val:+a.valor,em:fmtD(a.apurado_em)+' · '+((funcById[a.apurado_por]||{}).nome||'')});});
+    window.APSX=APS; rebuildComm();
 
     // re-render geral
     LEADSET=buildLeadset();
     renderTree(); renderRows(); renderFilters(); applyFilters();
+    renderPeriod(); renderRules();
     renderComm(); renderApur(); renderRulelog(); renderTeam(); renderCampHeader();
     renderTabCounts(); renderStageTotais();
   }
@@ -1996,6 +2026,35 @@
         ult:fmtD(c.atualizado_em),ultq:respN,next:'—',nextw:0,comm:money(Math.round(baseV*(+camp.pct||0)/100))});
       FMETA[c.id]={uf:e.uf||'',cid:e.municipio||'',esf:e.esfera||'',tema:e.tema||'',resp:respN};
       OPPS[c.id]=capRec(c);});
+  }
+  // consolida COMM (por vendedor) + APUR (histórico) a partir de CAPS/PARTS/APS
+  // prevista respeita participações (rateio) e NÃO duplica captura já apurada
+  function rebuildComm(){
+    COMM.length=0;
+    TEAM.filter(t=>t.fn==='Vendedor').forEach(t=>{
+      const mem=[];
+      (window.CAPS||[]).filter(c=>c.ativo&&c.estagio!=='perdida').forEach(c=>{
+        if(APS.some(a=>a.captura_id===c.id&&a.funcionario_id===t.id))return;
+        const parts=PARTS.filter(p=>p.captura_id===c.id);
+        let rat=100, papel='Resp';
+        if(parts.length){const p=parts.find(x=>x.funcionario_id===t.id); if(!p)return; rat=+p.rateio_pct||100; papel=p.papel==='responsavel'?'Resp':'Parceiro';}
+        else if(c.responsavel_id!==t.id)return;
+        const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{},e=entById[c.entidade_id]||{};
+        const baseV=+c.valor_contrato||+camp.valorUnit||0;
+        mem.push({cli:(e.nome||'—'),t:(e.tipo_cliente==='base'?'base':'novo'),v:baseV,rt:papel+' · '+rat+'%',
+          c:money(baseV)+' × '+(+camp.pct||0)+'%'+(rat!==100?' → '+rat+'%':''),
+          r:Math.round(baseV*(+camp.pct||0)/100*rat/100),s:'prevista',
+          rv:'v'+(camp.regra||(RULEV.length?RULEV[RULEV.length-1].versao:1))});});
+      APS.filter(a=>a.funcionario_id===t.id).forEach(a=>{
+        const cap=(window.CAPS||[]).find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
+        mem.push({cli:(e&&e.nome)||'—',t:'novo',v:+a.base_valor||0,rt:(+a.rateio_pct||100)+'%',
+          c:a.memoria||'',r:+a.valor,s:'apurada',rv:'v'+a.regra_versao,comp:a.competencia});});
+      if(mem.length||t.meta)COMM.push({i:t.i,n:t.n,nv:t.nv,ar:t.ar==='—'?'Gestão Pública':t.ar,emp:t.emp,base:t.base,meta:t.meta,mem});});
+    APUR.length=0;
+    APS.slice().sort((a,b)=>String(b.apurado_em||'').localeCompare(String(a.apurado_em||''))).forEach(a=>{
+      const cap=(window.CAPS||[]).find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
+      APUR.push({comp:a.competencia,vend:(funcById[a.funcionario_id]||{}).nome||'—',cli:(e&&e.nome)||'—',
+        rv:'v'+a.regra_versao,calc:a.memoria||'',val:+a.valor,em:fmtD(a.apurado_em)+' · '+((funcById[a.apurado_por]||{}).nome||'fechamento')});});
   }
   // contadores REAIS das abas (substituem os números estáticos do conceito)
   function renderTabCounts(){
@@ -2023,13 +2082,31 @@
     try{
       window.CAPS=await q('capturas','*');
       PARTS=await q('participacoes','*'); ATIVS=await q('atividades','*');
+      APS=await q('apuracoes','*'); window.APSX=APS;
       const falta=[...new Set(window.CAPS.map(c=>c.servidor_id))].filter(id=>id&&!srvById[id]);
       if(falta.length){
         const {data}=await sbc.from('crm_servidores').select('id,entidade_id,setor_id,nome,cargo,email,telefone,cpf,painel1_id').in('id',falta);
         (data||[]).forEach(v=>srvById[v.id]=v);
       }
-      rebuildCapState(); renderRows(); renderTabCounts(); renderStageTotais(); renderCampHeader(); applyFilters();
+      rebuildCapState(); rebuildComm(); renderRows(); renderTabCounts(); renderStageTotais(); renderCampHeader(); applyFilters();
+      renderPeriod(); renderComm(); renderApur();
     }catch(e){}
+  };
+  // publica nova versão da regra de comissão (fecha a vigência atual — snapshot imutável)
+  window.dbRuleVersion=async function(cfg){
+    try{
+      const cur=RULEV.find(r=>!r.fim), nv=(cur?cur.versao:0)+1, hoje=new Date().toISOString().slice(0,10);
+      const cl=cfg.cliente||{};
+      const desc='Base '+Object.entries(cfg.base||{}).map(([k,v])=>k+' '+v+'%').join('/')+
+        ' · cliente novo '+(cl.novo!=null?cl.novo:'—')+'% · base/renovação '+(cl.base!=null?cl.base:'—')+'%'+
+        ((cfg.rateio_geral||[]).length?' · rateio geral '+cfg.rateio_geral.join('·'):'');
+      if(cur){const r1=await sbc.from('regras_versoes').update({vigente_ate:hoje}).eq('versao',cur.versao); if(r1.error)throw r1.error;}
+      const r2=await sbc.from('regras_versoes').insert({versao:nv,vigente_de:hoje,descricao:desc,config:cfg});
+      if(r2.error)throw r2.error;
+      if(cur)cur.fim=fmtD(hoje);
+      RULEV.push({v:'v'+nv,versao:nv,ini:fmtD(hoje),fim:null,desc,por:CURRENT,cfg});
+      return true;
+    }catch(err){warn('Erro ao publicar regra: '+(err.message||err)); return false;}
   };
   function capRec(c){
     const e=entById[c.entidade_id]||{},s=srvById[c.servidor_id]||{},camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
