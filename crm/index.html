@@ -1955,11 +1955,15 @@
 
     rebuildCapState();
 
-    // COMM (consolidado por vendedor) + APUR (histórico imutável)
+    // COMM (consolidado por vendedor) + APUR (histórico imutável) — motor v2.3
+    // venda fechada vira APURAÇÃO (trigger no banco); aqui ela sai da coluna "prevista"
+    const MESPT=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const fmtComp=k=>{const m=/^(\d{4})-(\d{2})$/.exec(k||'');return m?MESPT[+m[2]-1]+'/'+m[1]:(k||'—');};
+    window.buildComm=function(){
     COMM.length=0;
     TEAM.filter(t=>t.fn==='Vendedor').forEach(t=>{
       const mem=[];
-      window.CAPS.filter(c=>c.ativo&&c.responsavel_id===t.id&&c.estagio!=='perdida').forEach(c=>{
+      window.CAPS.filter(c=>c.ativo&&c.responsavel_id===t.id&&c.estagio!=='perdida'&&!APS.some(a=>a.captura_id===c.id)).forEach(c=>{
         const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{},e=entById[c.entidade_id]||{};
         const baseV=+c.valor_contrato||+camp.valorUnit||0;
         mem.push({cli:(e.nome||'—'),t:(e.tipo_cliente==='base'?'base':'novo'),v:baseV,rt:'Resp · 100%',
@@ -1971,9 +1975,12 @@
           c:a.memoria||'',r:+a.valor,s:'apurada',rv:'v'+a.regra_versao});});
       if(mem.length||t.meta)COMM.push({i:t.i,n:t.n,nv:t.nv,ar:t.ar==='—'?'Gestão Pública':t.ar,emp:t.emp,base:t.base,meta:t.meta,mem});});
     APUR.length=0;
-    APS.forEach(a=>{const cap=window.CAPS.find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
-      APUR.push({comp:a.competencia,vend:(funcById[a.funcionario_id]||{}).nome||'—',cli:(e&&e.nome)||'—',
-        rv:'v'+a.regra_versao,calc:a.memoria||'',val:+a.valor,em:fmtD(a.apurado_em)+' · '+((funcById[a.apurado_por]||{}).nome||'')});});
+    APS.slice().sort((a,b)=>String(b.apurado_em||'').localeCompare(String(a.apurado_em||''))).forEach(a=>{
+      const cap=window.CAPS.find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
+      APUR.push({comp:fmtComp(a.competencia),vend:(funcById[a.funcionario_id]||{}).nome||'—',cli:(e&&e.nome)||'—',
+        rv:'v'+a.regra_versao,calc:a.memoria||'',val:+a.valor,em:fmtD(a.apurado_em)+' · '+((funcById[a.apurado_por]||{}).nome||'fechamento')});});
+    };
+    buildComm();
 
     // re-render geral
     LEADSET=buildLeadset();
@@ -2023,12 +2030,14 @@
     try{
       window.CAPS=await q('capturas','*');
       PARTS=await q('participacoes','*'); ATIVS=await q('atividades','*');
+      APS=await q('apuracoes','*');
       const falta=[...new Set(window.CAPS.map(c=>c.servidor_id))].filter(id=>id&&!srvById[id]);
       if(falta.length){
         const {data}=await sbc.from('crm_servidores').select('id,entidade_id,setor_id,nome,cargo,email,telefone,cpf,painel1_id').in('id',falta);
         (data||[]).forEach(v=>srvById[v.id]=v);
       }
       rebuildCapState(); renderRows(); renderTabCounts(); renderStageTotais(); renderCampHeader(); applyFilters();
+      if(window.buildComm){window.buildComm(); renderComm(); renderApur();}
     }catch(e){}
   };
   function capRec(c){
