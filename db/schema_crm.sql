@@ -374,3 +374,73 @@ alter table capturas add column if not exists modalidade text
 create extension if not exists pg_trgm;
 create index if not exists ix_p1_nome_trgm
   on painel1_servidores using gin (nome gin_trgm_ops);
+
+-- ============================================================================
+-- MIGRAÇÃO v2.3 — MOTOR DE APURAÇÃO DE COMISSÕES (Fase 2)  [APLICADA 17/07/2026]
+-- Venda ganha (captura → fechamento/pos_venda) gera apurações automáticas:
+-- 1 por participante (participacoes; sem participações = responsável 100%),
+-- com a regra vigente à época (versão + snapshot imutável) e memória de cálculo.
+-- Idempotente: 1 apuração por (captura, funcionário) — reapurar não duplica.
+-- ============================================================================
+create unique index if not exists ux_apur_cap_func on apuracoes(captura_id, funcionario_id);
+
+create or replace function crm_apurar_captura(p_cap uuid) returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  c capturas%rowtype; cp campanhas%rowtype; rv regras_versoes%rowtype;
+  base numeric; comp text; fmt_base text; pcttxt text;
+  p record; v numeric; mem text; n int := 0; rc int;
+begin
+  select * into c from capturas where id = p_cap;
+  if not found or not c.ativo then return 0; end if;
+  select * into cp from campanhas where id = c.campanha_id;
+  select * into rv from regras_versoes
+    where org_id = c.org_id and vigente_ate is null
+    order by versao desc limit 1;
+  if rv.versao is null then
+    select * into rv from regras_versoes where org_id = c.org_id order by versao desc limit 1;
+  end if;
+  if rv.versao is null then return 0; end if;   -- sem regra cadastrada: não bloqueia a venda
+  base := coalesce(c.valor_contrato, cp.valor_unitario, 0);
+  comp := to_char(now() at time zone 'America/Sao_Paulo', 'YYYY-MM');
+  fmt_base := replace(to_char(round(base), 'FM999G999G999G999'), ',', '.');
+  pcttxt  := replace(rtrim(rtrim(to_char(coalesce(cp.pct_comissao,0),'FM990D99'),'0'),'.'),'.',',');
+  for p in
+    select * from (
+      select funcionario_id, coalesce(rateio_pct,100) as rateio_pct, papel
+        from participacoes where captura_id = c.id
+      union all
+      select c.responsavel_id, 100::numeric, 'responsavel'
+       where not exists (select 1 from participacoes where captura_id = c.id)
+    ) x
+  loop
+    v := round(base * coalesce(cp.pct_comissao,0)/100.0 * p.rateio_pct/100.0, 2);
+    mem := 'R$ '||fmt_base||' × '||pcttxt||'%'||
+           case when p.rateio_pct <> 100
+                then ' → '||replace(rtrim(rtrim(to_char(p.rateio_pct,'FM990D99'),'0'),'.'),'.',',')||'% ('||p.papel||')'
+                else '' end;
+    insert into apuracoes (org_id, captura_id, funcionario_id, competencia, regra_versao, regra_snapshot,
+                           base_valor, pct_aplicado, rateio_pct, memoria, valor, apurado_por)
+    values (c.org_id, c.id, p.funcionario_id, comp, rv.versao, rv.config,
+            base, coalesce(cp.pct_comissao,0), p.rateio_pct, mem, v, app_me_id())
+    on conflict (captura_id, funcionario_id) do nothing;
+    get diagnostics rc = row_count; n := n + rc;
+  end loop;
+  return n;
+end $$;
+
+-- só o trigger chama (security definer); PostgREST não expõe a apuração manual
+revoke execute on function crm_apurar_captura(uuid) from public, anon, authenticated;
+
+create or replace function trg_capturas_apura() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.estagio in ('fechamento','pos_venda')
+     and coalesce(old.estagio,'') not in ('fechamento','pos_venda') then
+    perform crm_apurar_captura(new.id);
+  end if;
+  return new;
+end $$;
+drop trigger if exists t_capturas_apura on capturas;
+create trigger t_capturas_apura after update on capturas
+  for each row execute function trg_capturas_apura();
