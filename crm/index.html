@@ -318,6 +318,12 @@
   .stpay{font-size:10.5px;font-weight:650;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .stpay.ap{background:#E6F1EA;color:var(--good)}
   .stpay.pr{background:#F7EFDD;color:var(--warn)}
+  .stpay.es{background:#F5E3DF;color:#B5533C}
+  .cprow{display:flex;gap:6px;align-items:center;margin:4px 0}
+  .cprow select{flex:1;min-width:0}
+  .cprow input[type=number]{flex:0 0 74px;max-width:74px}
+  .cprow .rm{cursor:pointer;opacity:.55;padding:0 4px}
+  .cprow .rm:hover{opacity:1}
   .tag.base{background:#EEF1F3;color:var(--muted)}
   .tag.novo{background:var(--accent-wash);color:var(--accent)}
   .metabar{width:120px;height:6px;border-radius:3px;background:var(--border-2);overflow:hidden;display:inline-block;vertical-align:middle;margin-top:6px}
@@ -456,6 +462,7 @@
   .pill.ativa{background:color-mix(in srgb,var(--good) 16%,var(--surface));color:var(--good)}
   .stpay.ap{background:color-mix(in srgb,var(--good) 16%,var(--surface));color:var(--good)}
   .stpay.pr{background:color-mix(in srgb,var(--warn) 16%,var(--surface));color:var(--warn)}
+  .stpay.es{background:color-mix(in srgb,#D96A55 16%,var(--surface));color:#D96A55}
   .tag.base,.rulever,.temachip{background:color-mix(in srgb,var(--ink) 9%,var(--surface));color:var(--muted)}
   .rulever.on{background:var(--accent-wash);color:var(--accent)}
   .tag.novo{background:var(--accent-wash);color:var(--accent)}
@@ -692,7 +699,7 @@
               <tbody id="comm-rows"></tbody>
             </table>
           </div>
-          <div class="legend"><span>Clique no vendedor para abrir a <b>memória de cálculo</b> venda a venda.</span><span style="margin-left:auto"><span class="stpay ap">apurada</span> = venda fechada · <span class="stpay pr">prevista</span> = funil em aberto</span></div>
+          <div class="legend"><span>Clique no vendedor para abrir a <b>memória de cálculo</b> venda a venda.</span><span style="margin-left:auto"><span class="stpay ap">apurada</span> = venda fechada · <span class="stpay pr">prevista</span> = funil em aberto · <span class="stpay es">estorno</span> = venda desfeita</span></div>
         </section>
 
         <section class="panel" style="margin-bottom:16px">
@@ -896,10 +903,14 @@
       <div class="caplock" id="cap-resp-lock"><span id="cap-resp-av"></span><b id="cap-resp-nome"></b><span class="lk" id="cap-resp-note">🔒 quem captura é o responsável · só gerente/admin transfere</span></div>
       <select id="cap-resp-sel" hidden></select>
     </div>
+    <div class="frow" id="cap-rateio" hidden><label>Rateio da comissão <span class="capnote" id="cap-part-note"></span></label>
+      <div id="cap-parts"></div>
+      <button class="btn-ghost" id="cap-part-add" type="button" style="align-self:flex-start;padding:4px 10px;font-size:12px">＋ participante</button>
+    </div>
     <div class="capparams" id="cap-params"></div>
     <div class="frow"><label>Observação (entra na linha do tempo)</label><textarea id="cap-obs" rows="2" placeholder="ex.: reunião na Secretaria de Obras; proposta enviada."></textarea></div>
   </div>
-  <div class="mfoot"><button class="btn-ghost" id="cap-cancel">Cancelar</button><button class="btn-primary" id="cap-save">Registrar captura</button></div>
+  <div class="mfoot"><button class="btn-ghost" id="cap-del" hidden style="margin-right:auto;color:#D96A55;border-color:#D96A55">🗑 Excluir</button><button class="btn-ghost" id="cap-cancel">Cancelar</button><button class="btn-primary" id="cap-save">Registrar captura</button></div>
 </div>
 
 <!-- MODAL ADICIONAR (contato / tipo / servidor / unidade / secretaria / empresa) -->
@@ -1504,7 +1515,7 @@
     const resp=c?c.responsavel:CURRENT, lock=document.getElementById('cap-resp-lock'), rsel=document.getElementById('cap-resp-sel');
     if(isGestor()){lock.hidden=true; rsel.hidden=false; rsel.innerHTML=VEND.map(v=>`<option ${v[1]===resp?'selected':''}>${v[1]}</option>`).join('');}
     else{rsel.hidden=true; lock.hidden=false; document.getElementById('cap-resp-av').innerHTML=avmini(resp); document.getElementById('cap-resp-nome').textContent=resp;}
-    renderCapParams(); checkConc();
+    renderCapParams(); checkConc(); initCapParts(c);
     (function(){
       const stSel=document.getElementById('cap-st'), UI=['prospeccao','qualificacao','proposta','negociacao','fechamento','posvenda'];
       const own=c&&c.responsavel===CURRENT;
@@ -1527,11 +1538,68 @@
     el.innerHTML=`<span class="campchip">${camp?camp.nome.split(' · ')[0]:'campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">${avmini(c.responsavel)} ${c.responsavel}</span>`;
     const b=document.querySelector('.svcapbtn[data-svcapi="'+i+'"]'); if(b)b.textContent='⊕ vínculo';
   }
+  // ===== RATEIO (participações múltiplas) — banco valida: só responsável/gestor =====
+  let CAPPARTS=[];
+  function capRespName(){const rs=document.getElementById('cap-resp-sel');return (rs&&!rs.hidden&&rs.value)||document.getElementById('cap-resp-nome').textContent||CURRENT;}
+  function vendOpts(sel){return TEAM.filter(t=>t.fn==='Vendedor'&&t.sit!=='inativo').map(t=>`<option value="${t.id}" ${String(t.id)===String(sel)?'selected':''}>${t.n}</option>`).join('');}
+  function partSum(){return CAPPARTS.reduce((a,p)=>a+(+p.rateio_pct||0),0);}
+  function partNote(){const n=document.getElementById('cap-part-note');if(n)n.textContent=CAPPARTS.length?(partSum()===100?'· soma 100% ✓':'· ⚠ soma '+partSum()+'% — precisa fechar 100%'):'· sem rateio = responsável 100%';}
+  function renderCapParts(){
+    const box=document.getElementById('cap-parts'); if(!box)return;
+    box.innerHTML=CAPPARTS.map((p,i)=>`<div class="cprow" data-i="${i}">
+      <select class="cp-f">${vendOpts(p.funcionario_id)}</select>
+      <select class="cp-p">${['responsavel','parceiro','equipe'].map(x=>`<option ${p.papel===x?'selected':''}>${x}</option>`).join('')}</select>
+      <input class="cp-r" type="number" min="1" max="100" value="${p.rateio_pct}"><span style="opacity:.6">%</span>
+      <span class="rm" title="remover">✕</span></div>`).join('');
+    partNote();
+  }
+  function readCapParts(){
+    document.querySelectorAll('#cap-parts .cprow').forEach(row=>{
+      const i=+row.dataset.i; if(!CAPPARTS[i])return;
+      CAPPARTS[i].funcionario_id=row.querySelector('.cp-f').value;
+      CAPPARTS[i].papel=row.querySelector('.cp-p').value;
+      CAPPARTS[i].rateio_pct=+row.querySelector('.cp-r').value||0;});
+  }
+  function initCapParts(c){
+    const row=document.getElementById('cap-rateio'); if(!row)return;
+    const own=c&&c.responsavel===CURRENT;
+    row.hidden=!(isGestor()||own||!c);
+    CAPPARTS=(c&&c.dbId)?PARTS.filter(p=>p.captura_id===c.dbId).map(p=>({funcionario_id:p.funcionario_id,papel:p.papel,rateio_pct:+p.rateio_pct})):[];
+    renderCapParts();
+    const del=document.getElementById('cap-del');
+    if(del){del.hidden=!(window.IS_ADMIN&&c&&c.dbId); del.textContent='🗑 Excluir'; del.dataset.arm=''; del.dataset.capid=(c&&c.dbId)||'';}
+  }
+  document.getElementById('cap-part-add').addEventListener('click',()=>{readCapParts();
+    const respId=(TEAM.find(t=>t.n===capRespName())||TEAM.find(t=>t.fn==='Vendedor')||{}).id;
+    CAPPARTS.push(CAPPARTS.length?{funcionario_id:(TEAM.find(t=>t.fn==='Vendedor'&&String(t.id)!==String(respId))||{}).id,papel:'parceiro',rateio_pct:30}
+                                 :{funcionario_id:respId,papel:'responsavel',rateio_pct:70});
+    renderCapParts();});
+  document.getElementById('cap-parts').addEventListener('click',e=>{const rm=e.target.closest('.rm'); if(!rm)return;
+    readCapParts(); CAPPARTS.splice(+rm.closest('.cprow').dataset.i,1); renderCapParts();});
+  document.getElementById('cap-parts').addEventListener('input',()=>{readCapParts(); partNote();});
+  document.getElementById('cap-del').addEventListener('click',async e=>{
+    const b=e.currentTarget;
+    if(!b.dataset.arm){b.dataset.arm='1'; b.textContent='Confirmar exclusão?'; return;}
+    b.dataset.arm=''; b.textContent='🗑 Excluir';
+    const id=b.dataset.capid; if(!id)return;
+    const{data,error}=await sbc.from('capturas').delete().eq('id',id).select('id');
+    if(error||!data||!data.length){warn('⚠ Não excluída — captura com comissão apurada não pode ser excluída (mude para “perdida”: o estorno é automático).');return;}
+    const k=capKey(CAPI); delete CAPTURES[k]; updateSvBadge(CAPI); closeCapture();
+    warn('Captura excluída (admin).'); if(window.refreshCaps)window.refreshCaps();
+  });
   document.getElementById('cap-camp').addEventListener('change',renderCapParams);
   document.getElementById('cap-mod').addEventListener('change',renderCapParams);
   document.getElementById('cap-save').addEventListener('click',()=>{
     if(document.getElementById('cap-save').disabled)return;
     const r=SVREG[CAPI]; if(!r)return;
+    readCapParts();
+    if(!document.getElementById('cap-rateio').hidden&&CAPPARTS.length){
+      if(partSum()!==100){warn('⚠ Rateio precisa somar 100% (soma atual: '+partSum()+'%).');return;}
+      const ids=CAPPARTS.map(p=>String(p.funcionario_id));
+      if(new Set(ids).size!==ids.length){warn('⚠ Rateio com participante duplicado.');return;}
+      if(!CAPPARTS.some(p=>p.papel==='responsavel')){warn('⚠ O rateio precisa ter um participante com papel “responsavel”.');return;}
+    }
+    window.CAPPARTS_SAVE=document.getElementById('cap-rateio').hidden?null:CAPPARTS.map(p=>({funcionario_id:p.funcionario_id,papel:p.papel,rateio_pct:p.rateio_pct}));
     const campId=document.getElementById('cap-camp').value, st=document.getElementById('cap-st').value,
           obs=document.getElementById('cap-obs').value.trim(),
           resp=isGestor()?document.getElementById('cap-resp-sel').value:CURRENT;
@@ -1593,15 +1661,15 @@
      {cli:'Município de Poços de Caldas',t:'novo',v:156000,rt:'Resp · 100%',c:'156.000 × 5%',r:7800,s:'prevista'}]}
   ];
   const commAgg=v=>{const vis=v.mem.filter(memVis),
-    ap=vis.filter(m=>m.s==='apurada').reduce((s,m)=>s+m.r,0),
-    pr=vis.filter(m=>m.s!=='apurada').reduce((s,m)=>s+m.r,0),
-    ganhas=vis.filter(m=>m.s==='apurada').length,
-    val=vis.reduce((s,m)=>s+m.v,0); return{ap,pr,ganhas,val,vis};};
+    ap=vis.filter(m=>m.s!=='prevista').reduce((s,m)=>s+m.r,0),
+    pr=vis.filter(m=>m.s==='prevista').reduce((s,m)=>s+m.r,0),
+    ganhas=vis.filter(m=>m.s==='apurada').length-vis.filter(m=>m.s==='estorno').length,
+    val=vis.reduce((s,m)=>s+(m.s==='estorno'?-m.v:m.v),0); return{ap,pr,ganhas,val,vis};};
   function renderComm(){
     const curv=(RULEV.find(r=>!r.fim)||{}).v||'v1';
     document.getElementById('comm-rows').innerHTML=COMM.map((v,ix)=>{const a=commAgg(v);
       if(!a.vis.length&&!v.meta)return '';
-      const mem=a.vis.map(m=>`<div class="memline"><b>${m.cli}</b><span class="tag ${m.t}">${m.t}</span><span class="ctmeta">${m.rt}</span><span class="memcalc">${m.c}</span><span class="grow2"></span><span class="rulever${(m.rv||curv)===curv?' on':''}">regra ${m.rv||curv}</span><span class="money">${money(m.r)}</span><span class="stpay ${m.s==='apurada'?'ap':'pr'}">${m.s}</span></div>`).join('');
+      const mem=a.vis.map(m=>`<div class="memline"><b>${m.cli}</b><span class="tag ${m.t}">${m.t}</span><span class="ctmeta">${m.rt}</span><span class="memcalc">${m.c}</span><span class="grow2"></span><span class="rulever${(m.rv||curv)===curv?' on':''}">regra ${m.rv||curv}</span><span class="money"${m.r<0?' style="color:#D96A55"':''}>${money(m.r)}</span><span class="stpay ${m.s==='apurada'?'ap':m.s==='estorno'?'es':'pr'}">${m.s}</span></div>`).join('');
       return `<tr class="vrow" data-ix="${ix}">
         <td><div class="vwho"><span class="av" style="background:${AV[v.i]||'#5B7A98'}">${v.i}</span><div><b>${v.n}</b><span>${v.nv}</span></div></div></td>
         <td><span class="tag ${v.ar==='Legislativo'?'leg':'gp'}">${v.ar}</span></td>
@@ -1656,7 +1724,7 @@
       <td>${a.cli}</td>
       <td><span class="rulever${a.rv===curv?' on':''}">regra ${a.rv}</span></td>
       <td class="memcalc">${a.calc}</td>
-      <td class="r money">${money(a.val)}</td>
+      <td class="r money"${a.val<0?' style="color:#D96A55"':''}>${money(a.val)}</td>
       <td class="ctmeta">${a.em}</td></tr>`).join('')
       :`<tr><td colspan="7" class="ctmeta" style="padding:14px">Nenhuma apuração ${COMMPER?'em '+compLabel(COMMPER):'ainda'} — a comissão é apurada automaticamente quando a venda entra em <b>Fechamento</b>.</td></tr>`;
   }
@@ -2034,7 +2102,7 @@
     TEAM.filter(t=>t.fn==='Vendedor').forEach(t=>{
       const mem=[];
       (window.CAPS||[]).filter(c=>c.ativo&&c.estagio!=='perdida').forEach(c=>{
-        if(APS.some(a=>a.captura_id===c.id&&a.funcionario_id===t.id))return;
+        if(APS.some(a=>a.captura_id===c.id&&a.funcionario_id===t.id&&!a.estorno_de&&!APS.some(e2=>e2.estorno_de===a.id)))return;
         const parts=PARTS.filter(p=>p.captura_id===c.id);
         let rat=100, papel='Resp';
         if(parts.length){const p=parts.find(x=>x.funcionario_id===t.id); if(!p)return; rat=+p.rateio_pct||100; papel=p.papel==='responsavel'?'Resp':'Parceiro';}
@@ -2048,7 +2116,7 @@
       APS.filter(a=>a.funcionario_id===t.id).forEach(a=>{
         const cap=(window.CAPS||[]).find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
         mem.push({cli:(e&&e.nome)||'—',t:'novo',v:+a.base_valor||0,rt:(+a.rateio_pct||100)+'%',
-          c:a.memoria||'',r:+a.valor,s:'apurada',rv:'v'+a.regra_versao,comp:a.competencia});});
+          c:a.memoria||'',r:+a.valor,s:(a.estorno_de?'estorno':'apurada'),rv:'v'+a.regra_versao,comp:a.competencia});});
       if(mem.length||t.meta)COMM.push({i:t.i,n:t.n,nv:t.nv,ar:t.ar==='—'?'Gestão Pública':t.ar,emp:t.emp,base:t.base,meta:t.meta,mem});});
     APUR.length=0;
     APS.slice().sort((a,b)=>String(b.apurado_em||'').localeCompare(String(a.apurado_em||''))).forEach(a=>{
@@ -2256,6 +2324,16 @@
         const{data,error}=await sbc.from('capturas').insert({servidor_id:r.sid,entidade_id:r.eid,campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc2.mod||null,valor_contrato:cc2.valor||null}).select('id').single();
         if(error)throw error; CAPTURES[k].dbId=data.id;
         await sbc.from('atividades').insert({captura_id:data.id,tipo:'captura',descricao:obs||null,estagio_para:dbStage(st)});
+      }
+      const capId=(cur&&cur.dbId)||CAPTURES[k].dbId;
+      if(window.CAPPARTS_SAVE&&capId){
+        const{error:pd}=await sbc.from('participacoes').delete().eq('captura_id',capId);
+        if(pd)warn('⚠ Rateio não gravado: '+pd.message);
+        else if(window.CAPPARTS_SAVE.length){
+          const{error:pi}=await sbc.from('participacoes').insert(window.CAPPARTS_SAVE.map(p=>({captura_id:capId,funcionario_id:p.funcionario_id,papel:p.papel,rateio_pct:p.rateio_pct})));
+          if(pi)warn('⚠ Rateio não gravado: '+pi.message);
+        }
+        window.CAPPARTS_SAVE=null;
       }
       warn('Captura gravada no banco ✓');
       if(window.refreshCaps)window.refreshCaps();
