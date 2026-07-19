@@ -444,3 +444,30 @@ end $$;
 drop trigger if exists t_capturas_apura on capturas;
 create trigger t_capturas_apura after update on capturas
   for each row execute function trg_capturas_apura();
+
+-- ============================================================================
+-- MIGRAÇÃO v4 — PAINEL DE COMISSÕES  [APLICADA 18/07/2026]
+-- crm_apurar_pendentes(): varredura de vendas fechadas ainda sem apuração —
+-- botão "⚖ Apurar pendentes" do painel. Só gestor/admin (conexão de serviço,
+-- auth.uid() null, passa); revogada de anon/public no nível de role, porque
+-- anon também tem auth.uid() null e furaria a guarda.
+-- ============================================================================
+create or replace function crm_apurar_pendentes() returns int
+language plpgsql security definer set search_path = public as $$
+declare r record; n int := 0;
+begin
+  if auth.uid() is not null and not app_is_gestor() then
+    raise exception 'apenas gestor ou administrador pode apurar comissões';
+  end if;
+  for r in
+    select cp.id from capturas cp
+     where cp.ativo
+       and cp.estagio in ('fechamento','pos_venda')
+       and not exists (select 1 from apuracoes a where a.captura_id = cp.id)
+  loop
+    n := n + crm_apurar_captura(r.id);
+  end loop;
+  return n;
+end $$;
+revoke execute on function crm_apurar_pendentes() from public, anon;
+grant execute on function crm_apurar_pendentes() to authenticated;
