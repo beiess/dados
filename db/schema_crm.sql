@@ -471,3 +471,152 @@ begin
 end $$;
 revoke execute on function crm_apurar_pendentes() from public, anon;
 grant execute on function crm_apurar_pendentes() to authenticated;
+
+-- ============================================================================
+-- MIGRAÇÃO v5 — ESTORNO + ENDURECIMENTO + EXCLUSÃO ADMIN + GUARDA DE RATEIO
+-- [APLICADA 19/07/2026 — migração crm_v5_estorno_guardas_exclusao]
+-- (1) venda desfeita (sai de fechamento/pós-venda, vira perdida ou é
+--     desativada) gera ESTORNO automático (lançamento negativo, histórico
+--     preservado); refechar reapura. 1 estorno por apuração (ux_apur_estorno);
+--     reapuração só de quem não tem apuração ATIVA (positiva não estornada).
+-- (2) alterar captura (valor, obs, ativo…): só responsável ou gerente/admin.
+-- (3) DELETE em capturas: só admin e só SEM apuração (política cap_del + FK).
+-- (4) participacoes (rateio): só responsável da captura ou gerente/admin.
+-- ============================================================================
+alter table apuracoes add column if not exists estorno_de uuid references apuracoes(id);
+drop index if exists ux_apur_cap_func;
+create unique index if not exists ux_apur_estorno on apuracoes(estorno_de) where estorno_de is not null;
+
+create or replace function crm_apurar_captura(p_cap uuid) returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  c capturas%rowtype; cp campanhas%rowtype; rv regras_versoes%rowtype;
+  base numeric; comp text; fmt_base text; pcttxt text;
+  p record; v numeric; mem text; n int := 0;
+begin
+  select * into c from capturas where id = p_cap;
+  if not found or not c.ativo then return 0; end if;
+  select * into cp from campanhas where id = c.campanha_id;
+  select * into rv from regras_versoes
+    where org_id = c.org_id and vigente_ate is null
+    order by versao desc limit 1;
+  if rv.versao is null then
+    select * into rv from regras_versoes where org_id = c.org_id order by versao desc limit 1;
+  end if;
+  if rv.versao is null then return 0; end if;
+  base := coalesce(c.valor_contrato, cp.valor_unitario, 0);
+  comp := to_char(now() at time zone 'America/Sao_Paulo', 'YYYY-MM');
+  fmt_base := replace(to_char(round(base), 'FM999G999G999G999'), ',', '.');
+  pcttxt  := replace(rtrim(rtrim(to_char(coalesce(cp.pct_comissao,0),'FM990D99'),'0'),'.'),'.',',');
+  for p in
+    select * from (
+      select funcionario_id, coalesce(rateio_pct,100) as rateio_pct, papel
+        from participacoes where captura_id = c.id
+      union all
+      select c.responsavel_id, 100::numeric, 'responsavel'
+       where not exists (select 1 from participacoes where captura_id = c.id)
+    ) x
+  loop
+    if exists (select 1 from apuracoes a
+                where a.captura_id = c.id and a.funcionario_id = p.funcionario_id
+                  and a.estorno_de is null
+                  and not exists (select 1 from apuracoes e where e.estorno_de = a.id)) then
+      continue;
+    end if;
+    v := round(base * coalesce(cp.pct_comissao,0)/100.0 * p.rateio_pct/100.0, 2);
+    mem := 'R$ '||fmt_base||' × '||pcttxt||'%'||
+           case when p.rateio_pct <> 100
+                then ' → '||replace(rtrim(rtrim(to_char(p.rateio_pct,'FM990D99'),'0'),'.'),'.',',')||'% ('||p.papel||')'
+                else '' end;
+    insert into apuracoes (org_id, captura_id, funcionario_id, competencia, regra_versao, regra_snapshot,
+                           base_valor, pct_aplicado, rateio_pct, memoria, valor, apurado_por)
+    values (c.org_id, c.id, p.funcionario_id, comp, rv.versao, rv.config,
+            base, coalesce(cp.pct_comissao,0), p.rateio_pct, mem, v, app_me_id());
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+revoke execute on function crm_apurar_captura(uuid) from public, anon, authenticated;
+
+create or replace function crm_estornar_captura(p_cap uuid) returns int
+language plpgsql security definer set search_path = public as $$
+declare a record; n int := 0; comp text;
+begin
+  comp := to_char(now() at time zone 'America/Sao_Paulo', 'YYYY-MM');
+  for a in
+    select * from apuracoes x
+     where x.captura_id = p_cap and x.estorno_de is null
+       and not exists (select 1 from apuracoes e where e.estorno_de = x.id)
+  loop
+    insert into apuracoes (org_id, captura_id, funcionario_id, competencia, regra_versao, regra_snapshot,
+                           base_valor, pct_aplicado, rateio_pct, memoria, valor, apurado_por, estorno_de)
+    values (a.org_id, a.captura_id, a.funcionario_id, comp, a.regra_versao, a.regra_snapshot,
+            a.base_valor, a.pct_aplicado, a.rateio_pct,
+            'ESTORNO — '||coalesce(a.memoria,''), -a.valor, app_me_id(), a.id);
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+revoke execute on function crm_estornar_captura(uuid) from public, anon, authenticated;
+
+create or replace function trg_capturas_apura() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.ativo and new.estagio in ('fechamento','pos_venda')
+     and (not coalesce(old.ativo,true) or coalesce(old.estagio,'') not in ('fechamento','pos_venda')) then
+    perform crm_apurar_captura(new.id);
+  elsif coalesce(old.ativo,true) and coalesce(old.estagio,'') in ('fechamento','pos_venda')
+     and (not new.ativo or new.estagio not in ('fechamento','pos_venda')) then
+    perform crm_estornar_captura(new.id);
+  end if;
+  return new;
+end $$;
+
+create or replace function trg_capturas_resp() returns trigger
+language plpgsql security definer as $$
+declare ordem text[] := array['prospeccao','qualificacao','proposta','negociacao','fechamento','pos_venda'];
+begin
+  if auth.uid() is not null then
+    if not (coalesce(old.responsavel_id = app_me_id(), false) or app_is_gestor()) then
+      raise exception 'Somente o vendedor responsável ou gerente/admin pode alterar esta captura';
+    end if;
+    if new.responsavel_id is distinct from old.responsavel_id and not app_is_gestor() then
+      raise exception 'Transferência de responsável permitida apenas a gerente/admin';
+    end if;
+    if new.estagio is distinct from old.estagio then
+      if not (coalesce(old.responsavel_id = app_me_id(), false) or app_is_admin()) then
+        raise exception 'Somente o vendedor responsável ou um administrador pode avançar o estágio';
+      end if;
+      if not app_is_admin() and new.estagio <> 'perdida'
+         and array_position(ordem, new.estagio) is distinct from array_position(ordem, old.estagio) + 1 then
+        raise exception 'Avanço sequencial: da fase % só é possível ir para %',
+          old.estagio, coalesce(ordem[array_position(ordem, old.estagio)+1], '(fim do funil)');
+      end if;
+    end if;
+  end if;
+  new.atualizado_em := now();
+  return new;
+end $$;
+
+drop policy if exists cap_del on capturas;
+create policy cap_del on capturas for delete to authenticated
+  using (org_id = app_org() and app_is_admin()
+         and not exists (select 1 from apuracoes a where a.captura_id = capturas.id));
+
+create or replace function trg_participacoes_guard() returns trigger
+language plpgsql security definer as $$
+declare cid uuid;
+begin
+  if auth.uid() is not null then
+    cid := coalesce(new.captura_id, old.captura_id);
+    if not (app_is_gestor() or exists
+        (select 1 from capturas c where c.id = cid and c.responsavel_id = app_me_id())) then
+      raise exception 'Somente o responsável pela captura ou gerente/admin pode alterar o rateio';
+    end if;
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end $$;
+drop trigger if exists t_part_guard on participacoes;
+create trigger t_part_guard before insert or update or delete on participacoes
+  for each row execute function trg_participacoes_guard();
