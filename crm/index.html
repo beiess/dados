@@ -1524,9 +1524,11 @@
       else if(!c){ stSel.value='prospeccao'; stSel.disabled=true;
         stSel.title='Nova captura entra em Prospecção — o avanço é sequencial, fase a fase'; }
       else if(own){ const cur=c.estagio, i=UI.indexOf(cur);
-        [...stSel.options].forEach(o=>{o.disabled=!(o.value===cur||o.value===UI[i+1]);});
+        // responsável: fase atual, próxima (avanço sequencial) OU reciclar p/ Prospecção
+        [...stSel.options].forEach(o=>{o.disabled=!(o.value===cur||o.value===UI[i+1]||o.value==='prospeccao');});
         stSel.value=cur;
-        stSel.title=UI[i+1]?('Avanço sequencial: a próxima fase é '+UI[i+1]):'Fim do funil'; }
+        stSel.title=(UI[i+1]?('Avanço sequencial: a próxima fase é '+UI[i+1]):'Fim do funil')+
+          (cur!=='prospeccao'?' · você pode devolver o lead para Prospecção a qualquer momento':''); }
       else { stSel.disabled=true; }
     })();
     capModal.classList.add('open'); capScrim.classList.add('open');
@@ -1604,6 +1606,8 @@
           obs=document.getElementById('cap-obs').value.trim(),
           resp=isGestor()?document.getElementById('cap-resp-sel').value:CURRENT;
     const _k=capKey(CAPI);
+    const stPrev=(CAPTURES[_k]||{}).estagio;
+    const reciclou=st==='prospeccao'&&['fechamento','posvenda'].includes(stPrev);
     CAPTURES[_k]=Object.assign(CAPTURES[_k]||{},{campId,responsavel:resp,estagio:st,obs});
     updateSvBadge(CAPI);
     if(window.dbSaveCap)window.dbSaveCap(CAPI,campId,resp,st,obs);
@@ -1617,7 +1621,9 @@
       comm:[[resp+' · 100%','R$ '+com.toLocaleString('pt-BR')]],
       rule:camp.escopo+' · '+camp.pct+'% · valor unitário R$ '+camp.valorUnit.toLocaleString('pt-BR')+' (definido pelo admin)'};
     closeCapture(); render360(rec);
-    warn('Servidor capturado — '+r.nome+' → '+camp.nome.split(' · ')[0]+' · '+(ST[st]?ST[st][0]:st)+'.');
+    warn(reciclou
+      ? 'Lead devolvido para Prospecção — '+r.nome+'. A comissão apurada foi estornada automaticamente.'
+      : 'Servidor capturado — '+r.nome+' → '+camp.nome.split(' · ')[0]+' · '+(ST[st]?ST[st][0]:st)+'.');
   });
   document.getElementById('capx').addEventListener('click',closeCapture);
   document.getElementById('cap-cancel').addEventListener('click',closeCapture);
