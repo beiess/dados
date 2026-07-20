@@ -910,7 +910,7 @@
     <div class="capparams" id="cap-params"></div>
     <div class="frow"><label>Observação (entra na linha do tempo)</label><textarea id="cap-obs" rows="2" placeholder="ex.: reunião na Secretaria de Obras; proposta enviada."></textarea></div>
   </div>
-  <div class="mfoot"><button class="btn-ghost" id="cap-del" hidden style="margin-right:auto;color:#D96A55;border-color:#D96A55">🗑 Excluir</button><button class="btn-ghost" id="cap-cancel">Cancelar</button><button class="btn-primary" id="cap-save">Registrar captura</button></div>
+  <div class="mfoot"><button class="btn-ghost" id="cap-free" hidden style="margin-right:8px">↩ Liberar (voltar p/ Todos)</button><button class="btn-ghost" id="cap-del" hidden style="margin-right:auto;color:#D96A55;border-color:#D96A55">🗑 Excluir</button><button class="btn-ghost" id="cap-cancel">Cancelar</button><button class="btn-primary" id="cap-save">Registrar captura</button></div>
 </div>
 
 <!-- MODAL ADICIONAR (contato / tipo / servidor / unidade / secretaria / empresa) -->
@@ -1048,7 +1048,7 @@
   rows.innerHTML=LEADS.map(l=>{
     const s=ST[l.st]; const area=l.area==='gp'?['tag gp','Gestão Pública']:['tag leg','Legislativo']; const m=FMETA[l.id]||{};
     return `<tr data-st="${l.st}" data-id="${l.id}" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${m.resp||''}" style="--sc:${s[1]};--scw:${s[2]}">
-      <td class="cli"><b>${l.cli}</b><span>${l.mun}</span></td>
+      <td class="cli"><b>${l.srv||l.cli}</b><span>${l.srv?l.org:l.mun}</span></td>
       <td><span class="${area[0]}">${area[1]}</span></td>
       <td class="r num">${l.obras}</td>
       <td class="r money">${l.val}</td>
@@ -1281,9 +1281,9 @@
   window.o_nome=document.getElementById('o-nome');window.o_val=document.getElementById('o-val');
   function render360(l){
     CUR=l; const s=ST[l.st]||['—','var(--st-pros)','var(--stw-pros)'];
-    o_nome.textContent=l.cli;
+    o_nome.textContent=l.srv||l.cli;
     const a=document.getElementById('o-area'); a.className=l.area==='gp'?'tag gp':l.area==='leg'?'tag leg':'tag'; a.textContent=l.area==='gp'?'Gestão Pública':l.area==='leg'?'Legislativo':(l.areaLabel||'—');
-    o_val.textContent=l.val; document.getElementById('o-vsub').textContent=l.vsub;
+    o_val.textContent=l.val; document.getElementById('o-vsub').textContent=[l.srv?l.org:'',l.vsub].filter(Boolean).join(' · ');
     const order=['prospeccao','qualificacao','proposta','negociacao','fechamento','posvenda']; const idx=order.indexOf(l.st);
     document.getElementById('o-stage').innerHTML=order.map((k,i)=>`<i style="background:${i<idx?'var(--accent)':i===idx?s[1]:'var(--border-2)'}"></i>`).join('');
     document.getElementById('o-atores').innerHTML=l.atores.map(t=>`<div class="actor">${av(t[0])}<div class="info"><b>${t[1]}</b><span>${t[2]}</span><div class="rateiobar"><i style="width:${t[4]}%"></i></div></div><span class="role ${t[5]?'resp':''}">${t[3]}</span></div>`).join('');
@@ -1524,9 +1524,11 @@
       else if(!c){ stSel.value='prospeccao'; stSel.disabled=true;
         stSel.title='Nova captura entra em Prospecção — o avanço é sequencial, fase a fase'; }
       else if(own){ const cur=c.estagio, i=UI.indexOf(cur);
-        [...stSel.options].forEach(o=>{o.disabled=!(o.value===cur||o.value===UI[i+1]);});
+        // responsável: fase atual, próxima (avanço sequencial) OU reciclar p/ Prospecção
+        [...stSel.options].forEach(o=>{o.disabled=!(o.value===cur||o.value===UI[i+1]||o.value==='prospeccao');});
         stSel.value=cur;
-        stSel.title=UI[i+1]?('Avanço sequencial: a próxima fase é '+UI[i+1]):'Fim do funil'; }
+        stSel.title=(UI[i+1]?('Avanço sequencial: a próxima fase é '+UI[i+1]):'Fim do funil')+
+          (cur!=='prospeccao'?' · você pode devolver o lead para Prospecção a qualquer momento':''); }
       else { stSel.disabled=true; }
     })();
     capModal.classList.add('open'); capScrim.classList.add('open');
@@ -1568,6 +1570,10 @@
     renderCapParts();
     const del=document.getElementById('cap-del');
     if(del){del.hidden=!(window.IS_ADMIN&&c&&c.dbId); del.textContent='🗑 Excluir'; del.dataset.arm=''; del.dataset.capid=(c&&c.dbId)||'';}
+    const free=document.getElementById('cap-free'), own2=c&&c.responsavel===CURRENT;
+    if(free){free.hidden=!((own2||window.IS_ADMIN||isGestor())&&c&&c.dbId);
+      free.textContent='↩ Liberar (voltar p/ Todos)'; free.dataset.arm=''; free.dataset.capid=(c&&c.dbId)||'';
+      free.dataset.won=(c&&['fechamento','posvenda'].includes(c.estagio))?'1':'';}
   }
   document.getElementById('cap-part-add').addEventListener('click',()=>{readCapParts();
     const respId=(TEAM.find(t=>t.n===capRespName())||TEAM.find(t=>t.fn==='Vendedor')||{}).id;
@@ -1577,6 +1583,19 @@
   document.getElementById('cap-parts').addEventListener('click',e=>{const rm=e.target.closest('.rm'); if(!rm)return;
     readCapParts(); CAPPARTS.splice(+rm.closest('.cprow').dataset.i,1); renderCapParts();});
   document.getElementById('cap-parts').addEventListener('input',()=>{readCapParts(); partNote();});
+  document.getElementById('cap-free').addEventListener('click',async e=>{
+    const b=e.currentTarget;
+    if(!b.dataset.arm){b.dataset.arm='1'; b.textContent=b.dataset.won?'Confirmar? (estorna a comissão)':'Confirmar — voltar para Todos?'; return;}
+    b.dataset.arm=''; b.textContent='↩ Liberar (voltar p/ Todos)';
+    const id=b.dataset.capid; if(!id)return;
+    const{error}=await sbc.from('capturas').update({ativo:false}).eq('id',id);
+    if(error){warn('⚠ Não foi possível liberar: '+error.message);return;}
+    const k=capKey(CAPI); delete CAPTURES[k]; updateSvBadge(CAPI); closeCapture();
+    warn(b.dataset.won
+      ? 'Servidor liberado — voltou para a aba Todos, disponível para nova prospecção. A comissão apurada foi estornada.'
+      : 'Servidor liberado — voltou para a aba Todos, disponível para nova prospecção.');
+    if(window.refreshCaps)window.refreshCaps();
+  });
   document.getElementById('cap-del').addEventListener('click',async e=>{
     const b=e.currentTarget;
     if(!b.dataset.arm){b.dataset.arm='1'; b.textContent='Confirmar exclusão?'; return;}
@@ -1604,12 +1623,14 @@
           obs=document.getElementById('cap-obs').value.trim(),
           resp=isGestor()?document.getElementById('cap-resp-sel').value:CURRENT;
     const _k=capKey(CAPI);
+    const stPrev=(CAPTURES[_k]||{}).estagio;
+    const reciclou=st==='prospeccao'&&['fechamento','posvenda'].includes(stPrev);
     CAPTURES[_k]=Object.assign(CAPTURES[_k]||{},{campId,responsavel:resp,estagio:st,obs});
     updateSvBadge(CAPI);
     if(window.dbSaveCap)window.dbSaveCap(CAPI,campId,resp,st,obs);
     const camp=campById(campId), cc=window.CAPCALC||{};
     const baseV=cc.valor||camp.valorUnit||0, com=Math.round(baseV*(+camp.pct||0)/100);
-    const rec={id:'sv-'+CAPI,cli:r.nome,area:r.area,st,
+    const rec={id:'sv-'+CAPI,srv:r.nome,cli:r.nome,org:[r.orgao,r.setor].filter(Boolean).join(' · '),area:r.area,st,
       val:'R$ '+baseV.toLocaleString('pt-BR'),
       vsub:(cc.mod==='online'?'online':'presencial')+(cc.lote?(' · '+cc.lote):'')+(cc.desc?(' · −'+cc.desc+'%'):'')+' · '+camp.nome.split(' · ')[0],
       atores:[[iniOf(resp),resp,'Responsável · '+camp.escopo,'Responsável · 100%',100,1]],
@@ -1617,7 +1638,9 @@
       comm:[[resp+' · 100%','R$ '+com.toLocaleString('pt-BR')]],
       rule:camp.escopo+' · '+camp.pct+'% · valor unitário R$ '+camp.valorUnit.toLocaleString('pt-BR')+' (definido pelo admin)'};
     closeCapture(); render360(rec);
-    warn('Servidor capturado — '+r.nome+' → '+camp.nome.split(' · ')[0]+' · '+(ST[st]?ST[st][0]:st)+'.');
+    warn(reciclou
+      ? 'Lead devolvido para Prospecção — '+r.nome+'. A comissão apurada foi estornada automaticamente.'
+      : 'Servidor capturado — '+r.nome+' → '+camp.nome.split(' · ')[0]+' · '+(ST[st]?ST[st][0]:st)+'.');
   });
   document.getElementById('capx').addEventListener('click',closeCapture);
   document.getElementById('cap-cancel').addEventListener('click',closeCapture);
@@ -2089,7 +2112,7 @@
       const respN=(funcById[c.responsavel_id]||{}).nome||'—';
       CAPTURES[c.servidor_id]={campId:c.campanha_id,responsavel:respN,estagio:uiStage(c.estagio),obs:c.obs,dbId:c.id};
       const baseV=+c.valor_contrato||+camp.valorUnit||0;
-      LEADS.push({id:c.id,cli:e.nome||'—',mun:(s.nome||'')+' · '+(e.municipio||''),area:e.area==='Legislativo'?'leg':'gp',
+      LEADS.push({id:c.id,srv:s.nome||'—',cli:e.nome||'—',mun:e.municipio||'',org:(e.nome||'—')+((e.municipio)?' · '+e.municipio:''),area:e.area==='Legislativo'?'leg':'gp',
         obras:e.n_obras||'—',val:baseV?money(baseV):'—',vsub:'',st:uiStage(c.estagio),avs:[ini(respN)],
         ult:fmtD(c.atualizado_em),ultq:respN,next:'—',nextw:0,comm:money(Math.round(baseV*(+camp.pct||0)/100))});
       FMETA[c.id]={uf:e.uf||'',cid:e.municipio||'',esf:e.esfera||'',tema:e.tema||'',resp:respN};
