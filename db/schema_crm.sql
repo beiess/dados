@@ -620,3 +620,39 @@ end $$;
 drop trigger if exists t_part_guard on participacoes;
 create trigger t_part_guard before insert or update or delete on participacoes
   for each row execute function trg_participacoes_guard();
+
+-- ============================================================================
+-- MIGRAÇÃO v6 — RECICLAR LEAD PARA PROSPECÇÃO  [APLICADA 20/07/2026]
+-- O vendedor responsável pode DEVOLVER seu próprio lead para 'prospeccao' a
+-- qualquer momento (além de avançar +1 fase ou marcar 'perdida'). Admin livre.
+-- Se o lead reciclado estava em fechamento/pós-venda (comissão apurada), o
+-- estorno automático (v5) zera a comissão ao sair dessas fases. Avanço PARA
+-- FRENTE segue sequencial (uma fase por vez).
+-- ============================================================================
+create or replace function trg_capturas_resp() returns trigger
+language plpgsql security definer as $$
+declare ordem text[] := array['prospeccao','qualificacao','proposta','negociacao','fechamento','pos_venda'];
+begin
+  if auth.uid() is not null then
+    if not (coalesce(old.responsavel_id = app_me_id(), false) or app_is_gestor()) then
+      raise exception 'Somente o vendedor responsável ou gerente/admin pode alterar esta captura';
+    end if;
+    if new.responsavel_id is distinct from old.responsavel_id and not app_is_gestor() then
+      raise exception 'Transferência de responsável permitida apenas a gerente/admin';
+    end if;
+    if new.estagio is distinct from old.estagio then
+      if not (coalesce(old.responsavel_id = app_me_id(), false) or app_is_admin()) then
+        raise exception 'Somente o vendedor responsável ou um administrador pode avançar o estágio';
+      end if;
+      -- não-admin: pode ir +1 fase, marcar 'perdida', OU reciclar para 'prospeccao'
+      if not app_is_admin()
+         and new.estagio <> 'perdida' and new.estagio <> 'prospeccao'
+         and array_position(ordem, new.estagio) is distinct from array_position(ordem, old.estagio) + 1 then
+        raise exception 'Avanço sequencial: da fase % só é possível ir para % (ou reciclar para Prospecção / marcar Perdida)',
+          old.estagio, coalesce(ordem[array_position(ordem, old.estagio)+1], '(fim do funil)');
+      end if;
+    end if;
+  end if;
+  new.atualizado_em := now();
+  return new;
+end $$;
