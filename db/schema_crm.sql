@@ -656,3 +656,17 @@ begin
   new.atualizado_em := now();
   return new;
 end $$;
+
+-- ============================================================================
+-- MIGRAÇÃO v7 — LIBERAR SERVIDOR DE VOLTA AO POOL (aba "Todos")  [APLICADA 20/07/2026]
+-- "Liberar" um lead = capturas.ativo=false: o servidor sai do funil, some o
+-- badge na cascata e volta a aparecer DISPONÍVEL na aba Todos, pronto para nova
+-- prospecção. Feito pelo responsável ou admin (trg_capturas_resp já exige
+-- responsável/gestor para qualquer alteração; se o lead estava ganho, o estorno
+-- automático da v5 zera a comissão ao ficar inativo).
+-- A trava de exclusividade por campanha passa a valer só enquanto ATIVO (antes
+-- era permanente e barraria recaptura no mesmo servidor+campanha). Continua
+-- garantido no máximo 1 captura ATIVA por (campanha, servidor).
+-- ============================================================================
+drop index if exists ux_cap_camp_srv;
+create unique index if not exists ux_cap_camp_srv on capturas(campanha_id, servidor_id) where ativo;
