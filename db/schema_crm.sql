@@ -670,3 +670,29 @@ end $$;
 -- ============================================================================
 drop index if exists ux_cap_camp_srv;
 create unique index if not exists ux_cap_camp_srv on capturas(campanha_id, servidor_id) where ativo;
+
+-- ============================================================================
+-- MIGRAÇÃO v8 — REALTIME (painel ao vivo entre usuários)  [APLICADA 20/07/2026]
+-- Adiciona capturas/participacoes/apuracoes ao publication supabase_realtime.
+-- O app assina postgres_changes nessas tabelas (sbc.channel('crm-live'), com
+-- sbc.realtime.setAuth(token) — sem o setAuth as mudanças com RLS não chegam)
+-- e chama refreshCaps() ao vivo. RLS continua valendo: cada usuário só recebe
+-- mudanças das linhas que pode SELECT (mesma org). REPLICA IDENTITY FULL para
+-- propagar DELETE/estorno. Idempotente.
+-- ============================================================================
+do $$
+declare t text;
+begin
+  foreach t in array array['capturas','participacoes','apuracoes'] loop
+    if not exists (
+      select 1 from pg_publication_rel pr
+      join pg_publication p on p.oid = pr.prpubid
+      join pg_class c on c.oid = pr.prrelid
+      where p.pubname = 'supabase_realtime' and c.relname = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+alter table capturas       replica identity full;
+alter table participacoes  replica identity full;
