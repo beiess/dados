@@ -56,6 +56,9 @@
   .nav a .ico{width:15px;height:15px;flex:none;opacity:.85}.nav a:hover{background:rgba(255,255,255,.06);color:#fff}.nav a.on{background:rgba(201,162,39,.17);color:#F2F6FA}
   .nav .sec{padding:14px 12px 5px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5F787C}
   .me{display:flex;align-items:center;gap:9px;padding:12px 14px;border-top:1px solid #1C2F35;margin-top:auto}
+  .rt-line{display:flex;align-items:center;gap:6px;padding:2px 16px 12px;font-size:11px;color:var(--muted)}
+  .rt-dot{width:8px;height:8px;border-radius:50%;background:#9AA6AD;transition:background .3s,box-shadow .3s}
+  .rt-dot.on{background:#5FCF7F;box-shadow:0 0 0 3px color-mix(in srgb,#5FCF7F 25%,transparent)}
   .me .av{width:30px;height:30px;border-radius:50%;background:#7A5296;color:#fff;display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
   .me b{color:#fff;font-size:12.5px;display:block;font-weight:600}.me span{font-size:11px;color:#8299a0}
 
@@ -580,6 +583,7 @@
       <a href="#" id="nav-regras"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M15 8h-2M3 8H1"/></svg>Regras de comissão</a>
     </nav>
     <div class="me" id="me-box"><div class="av">·</div><div><b>—</b><span>conectando…</span></div></div>
+    <div class="rt-line"><span id="rt-dot" class="rt-dot" title="conectando…"></span>ao vivo</div>
   </aside>
 
   <div class="main">
@@ -1536,9 +1540,15 @@
   function closeCapture(){capModal.classList.remove('open');capScrim.classList.remove('open');}
   function updateSvBadge(i){
     const el=document.querySelector('.svcap[data-svcap="'+i+'"]'); if(!el)return; const c=CAPTURES[capKey(i)];
-    if(!c){el.innerHTML='';return;} const camp=campById(c.campId), s=ST[c.estagio]||['—','var(--st-pros)','var(--stw-pros)'];
+    if(!c){el.innerHTML='';const b0=document.querySelector('.svcapbtn[data-svcapi="'+i+'"]');if(b0)b0.textContent='⊕ capturar';return;}
+    const camp=campById(c.campId), s=ST[c.estagio]||['—','var(--st-pros)','var(--stw-pros)'];
     el.innerHTML=`<span class="campchip">${camp?camp.nome.split(' · ')[0]:'campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">${avmini(c.responsavel)} ${c.responsavel}</span>`;
     const b=document.querySelector('.svcapbtn[data-svcapi="'+i+'"]'); if(b)b.textContent='⊕ vínculo';
+  }
+  // re-sincroniza os selos da cascata "Todos" (aparecem/somem conforme o CAPTURES reconstruído)
+  function refreshCascadeBadges(){
+    document.querySelectorAll('#view-tree .svcap[data-svcap]').forEach(el=>{
+      const i=+el.dataset.svcap; if(!Number.isNaN(i))updateSvBadge(i);});
   }
   // ===== RATEIO (participações múltiplas) — banco valida: só responsável/gestor =====
   let CAPPARTS=[];
@@ -2179,8 +2189,19 @@
         const {data}=await sbc.from('crm_servidores').select('id,entidade_id,setor_id,nome,cargo,email,telefone,cpf,painel1_id').in('id',falta);
         (data||[]).forEach(v=>srvById[v.id]=v);
       }
-      rebuildCapState(); rebuildComm(); renderRows(); renderTabCounts(); renderStageTotais(); renderCampHeader(); applyFilters();
+      rebuildCapState(); refreshCascadeBadges(); rebuildComm(); renderRows(); renderTabCounts(); renderStageTotais(); renderCampHeader(); applyFilters();
       renderPeriod(); renderComm(); renderApur();
+    }catch(e){}
+  };
+  // recarrega CAMPANHAS + REGRAS do banco e re-renderiza (nova campanha/regra ao vivo)
+  window.refreshCampsRules=async function(){
+    try{
+      const cps=await q('campanhas','*');
+      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+      const rvs=await q('regras_versoes','*');
+      RULEV.length=0;rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
+      renderCampHeader(); renderRules(); renderRulelog(); renderPeriod();
+      rebuildComm(); renderComm(); renderApur();
     }catch(e){}
   };
   // publica nova versão da regra de comissão (fecha a vigência atual — snapshot imutável)
@@ -2457,6 +2478,24 @@
   }
   document.getElementById('lg-btn').addEventListener('click',doLogin);
   document.getElementById('lg-pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  // ===== REALTIME — painel ao vivo entre usuários (assina mudanças e refaz refreshCaps) =====
+  let rtChannel=null, rtTimer=null;
+  async function startRealtime(){
+    if(rtChannel||typeof sbc==='undefined')return;
+    try{const{data:{session}}=await sbc.auth.getSession();
+      if(session&&sbc.realtime&&sbc.realtime.setAuth)sbc.realtime.setAuth(session.access_token);}catch(e){}
+    let rtTimerCR=null;
+    const bump=()=>{clearTimeout(rtTimer);rtTimer=setTimeout(()=>{if(window.refreshCaps)window.refreshCaps();},450);};
+    const bumpCR=()=>{clearTimeout(rtTimerCR);rtTimerCR=setTimeout(()=>{if(window.refreshCampsRules)window.refreshCampsRules();},450);};
+    rtChannel=sbc.channel('crm-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'capturas'},bump)
+      .on('postgres_changes',{event:'*',schema:'public',table:'participacoes'},bump)
+      .on('postgres_changes',{event:'*',schema:'public',table:'apuracoes'},bump)
+      .on('postgres_changes',{event:'*',schema:'public',table:'campanhas'},bumpCR)
+      .on('postgres_changes',{event:'*',schema:'public',table:'regras_versoes'},bumpCR)
+      .subscribe(st=>{const dot=document.getElementById('rt-dot');
+        if(dot){const on=st==='SUBSCRIBED';dot.classList.toggle('on',on);dot.title=on?'Ao vivo — o painel atualiza sozinho':'Reconectando…';}});
+  }
   async function boot(){
     const{data:{session}}=await sbc.auth.getSession();
     if(!session){LGD.classList.remove('hidden');APPW.classList.add('hidden');return;}
@@ -2464,6 +2503,7 @@
     try{await hydrate(st);}
     catch(e){st.style.color='var(--crit)';st.textContent='Erro ao carregar: '+(e.message||e);document.getElementById('lg-btn').textContent='Entrar';return;}
     LGD.classList.add('hidden'); APPW.classList.remove('hidden');
+    startRealtime();
   }
   boot();
 
