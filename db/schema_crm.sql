@@ -721,3 +721,277 @@ begin
 end $$;
 alter table campanhas      replica identity full;
 alter table regras_versoes replica identity full;
+
+-- ============================================================================
+-- CRM v10 (1ª ONDA — novo modelo de campanha) [APLICADA 22/07/2026]
+-- Campanha passa a conter PRODUTOS/SERVIÇOS (campanha_itens), cada um com
+-- PLANOS (item_planos) e sua própria métrica de comissão (% ou fixo, com
+-- override por plano). Comissão em dois modos: 'total' (1× no fechamento) e
+-- 'recorrente_mensal' (mês a mês enquanto o contrato estiver ativo — pg_cron).
+-- Produto vende-se ao ÓRGÃO (servidor_id nulo + captura_contatos); serviço/
+-- curso, ao SERVIDOR. Meta por item. Só admin cadastra. RETROCOMPATÍVEL:
+-- captura sem item_id usa o % único da campanha (comportamento antigo).
+-- Migrações aplicadas: v10a estrutura · v10b motor · v10c cron · v10d hardening.
+-- ============================================================================
+
+-- ---- v10a: estrutura ----
+create table if not exists campanha_itens (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null default app_org(),
+  campanha_id uuid not null references campanhas(id) on delete cascade,
+  nome text not null,
+  categoria text not null default 'produto' check (categoria in ('produto','servico','curso')),
+  nivel_venda text not null default 'orgao' check (nivel_venda in ('orgao','servidor')),
+  cobranca text not null default 'unica' check (cobranca in ('unica','mensal')),
+  comissao_modo text not null default 'total' check (comissao_modo in ('total','recorrente_mensal')),
+  comissao_tipo text not null default 'percentual' check (comissao_tipo in ('percentual','fixo')),
+  comissao_valor numeric not null default 0,
+  meta_valor numeric,
+  ordem int default 0,
+  ativo boolean default true,
+  criado_por uuid references funcionarios(id) default app_me_id(),
+  criado_em timestamptz default now()
+);
+create index if not exists ix_citem_camp on campanha_itens(campanha_id);
+
+create table if not exists item_planos (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null default app_org(),
+  item_id uuid not null references campanha_itens(id) on delete cascade,
+  nome text not null,
+  preco numeric not null default 0,
+  unidade text not null default 'unica' check (unidade in ('unica','mensal')),
+  meses_padrao int,
+  modalidade text check (modalidade in ('presencial','online') or modalidade is null),
+  vigencia_ate date,
+  comissao_ovr_tipo text check (comissao_ovr_tipo in ('percentual','fixo') or comissao_ovr_tipo is null),
+  comissao_ovr_valor numeric,
+  ordem int default 0,
+  ativo boolean default true
+);
+create index if not exists ix_iplano_item on item_planos(item_id);
+
+create table if not exists captura_contatos (
+  id uuid primary key default gen_random_uuid(),
+  captura_id uuid not null references capturas(id) on delete cascade,
+  servidor_id uuid not null references crm_servidores(id) on delete cascade,
+  papel text default 'contato',
+  criado_por uuid references funcionarios(id) default app_me_id(),
+  criado_em timestamptz default now(),
+  unique (captura_id, servidor_id)
+);
+create index if not exists ix_capct_cap on captura_contatos(captura_id);
+
+alter table capturas add column if not exists item_id uuid references campanha_itens(id);
+alter table capturas add column if not exists plano_id uuid references item_planos(id);
+alter table capturas add column if not exists meses_contrato int;
+alter table capturas add column if not exists contrato_ativo boolean;
+alter table capturas add column if not exists contrato_desde date;
+alter table capturas add column if not exists contrato_ate date;
+alter table capturas alter column servidor_id drop not null;
+
+drop index if exists ux_cap_servidor_ativo;
+drop index if exists ux_cap_camp_srv;
+create unique index if not exists ux_cap_legacy_srv on capturas(servidor_id)
+  where ativo and item_id is null and servidor_id is not null;
+create unique index if not exists ux_cap_item_srv on capturas(campanha_id, item_id, servidor_id)
+  where ativo and item_id is not null and servidor_id is not null;
+create unique index if not exists ux_cap_item_org on capturas(campanha_id, item_id, entidade_id)
+  where ativo and item_id is not null and servidor_id is null;
+
+alter table apuracoes add column if not exists tipo text not null default 'fechamento'
+  check (tipo in ('fechamento','recorrente','estorno'));
+
+alter table campanha_itens   enable row level security;
+alter table item_planos      enable row level security;
+alter table captura_contatos enable row level security;
+drop policy if exists citem_sel on campanha_itens;
+drop policy if exists citem_wr  on campanha_itens;
+create policy citem_sel on campanha_itens for select to authenticated using (org_id = app_org());
+create policy citem_wr  on campanha_itens for all to authenticated
+  using (org_id = app_org() and app_is_admin()) with check (org_id = app_org() and app_is_admin());
+drop policy if exists iplano_sel on item_planos;
+drop policy if exists iplano_wr  on item_planos;
+create policy iplano_sel on item_planos for select to authenticated using (org_id = app_org());
+create policy iplano_wr  on item_planos for all to authenticated
+  using (org_id = app_org() and app_is_admin()) with check (org_id = app_org() and app_is_admin());
+drop policy if exists capct_sel on captura_contatos;
+drop policy if exists capct_wr  on captura_contatos;
+create policy capct_sel on captura_contatos for select to authenticated
+  using (exists (select 1 from capturas c where c.id = captura_id and c.org_id = app_org()));
+create policy capct_wr on captura_contatos for all to authenticated
+  using (exists (select 1 from capturas c where c.id = captura_id and c.org_id = app_org()
+                 and (coalesce(c.responsavel_id = app_me_id(),false) or app_is_gestor())))
+  with check (exists (select 1 from capturas c where c.id = captura_id and c.org_id = app_org()
+                 and (coalesce(c.responsavel_id = app_me_id(),false) or app_is_gestor())));
+-- realtime: alter publication supabase_realtime add table campanha_itens, item_planos, captura_contatos;
+-- (+ replica identity full nas três) — ver migração aplicada.
+
+-- ---- v10b: motor ----
+create unique index if not exists ux_apur_recorrente
+  on apuracoes(captura_id, funcionario_id, competencia) where tipo = 'recorrente' and estorno_de is null;
+
+create or replace function crm_grava_apur(p_cap uuid, base numeric, ctipo text, cval numeric, comp text, p_tipo text)
+returns int language plpgsql security definer set search_path=public as $$
+declare c capturas%rowtype; rv regras_versoes%rowtype; p record; v numeric; mem text; n int:=0;
+  fmt_base text; fmt_cval text; pcttxt text; metric_lbl text;
+begin
+  select * into c from capturas where id=p_cap;
+  select * into rv from regras_versoes where org_id=c.org_id and vigente_ate is null order by versao desc limit 1;
+  if rv.versao is null then select * into rv from regras_versoes where org_id=c.org_id order by versao desc limit 1; end if;
+  if rv.versao is null then return 0; end if;
+  fmt_base := replace(to_char(round(base),'FM999G999G999G999'),',','.');
+  fmt_cval := replace(to_char(round(cval),'FM999G999G999G999'),',','.');
+  pcttxt   := replace(rtrim(rtrim(to_char(coalesce(cval,0),'FM990D99'),'0'),'.'),'.',',');
+  for p in select * from (
+      select funcionario_id, coalesce(rateio_pct,100) as rateio_pct, papel from participacoes where captura_id=c.id
+      union all select c.responsavel_id, 100::numeric, 'responsavel' where not exists(select 1 from participacoes where captura_id=c.id)
+    ) x
+  loop
+    if exists(select 1 from apuracoes a where a.captura_id=c.id and a.funcionario_id=p.funcionario_id
+              and a.competencia=comp and a.tipo=p_tipo and a.estorno_de is null
+              and not exists(select 1 from apuracoes e where e.estorno_de=a.id)) then continue; end if;
+    if ctipo='fixo' then
+      v := round(coalesce(cval,0) * p.rateio_pct/100.0, 2); metric_lbl := 'R$ '||fmt_cval||' (fixo)';
+    else
+      v := round(base * coalesce(cval,0)/100.0 * p.rateio_pct/100.0, 2); metric_lbl := 'R$ '||fmt_base||' × '||pcttxt||'%';
+    end if;
+    mem := metric_lbl || case when p_tipo='recorrente' then ' · mensal '||comp else '' end
+         || case when p.rateio_pct<>100 then ' → '||replace(rtrim(rtrim(to_char(p.rateio_pct,'FM990D99'),'0'),'.'),'.',',')||'% ('||p.papel||')' else '' end;
+    insert into apuracoes(org_id,captura_id,funcionario_id,competencia,regra_versao,regra_snapshot,
+                          base_valor,pct_aplicado,rateio_pct,memoria,valor,apurado_por,tipo)
+    values(c.org_id,c.id,p.funcionario_id,comp,rv.versao,rv.config,
+           base, case when ctipo='fixo' then null else cval end, p.rateio_pct, mem, v, app_me_id(), p_tipo);
+    n := n+1;
+  end loop;
+  return n;
+end $$;
+revoke execute on function crm_grava_apur(uuid,numeric,text,numeric,text,text) from public, anon, authenticated;
+
+create or replace function crm_apurar_captura(p_cap uuid) returns int
+language plpgsql security definer set search_path=public as $$
+declare c capturas%rowtype; cp campanhas%rowtype; it campanha_itens%rowtype; pl item_planos%rowtype;
+  base numeric; ctipo text; cval numeric; comp text; meses int;
+begin
+  select * into c from capturas where id=p_cap;
+  if not found or not c.ativo then return 0; end if;
+  comp := to_char(now() at time zone 'America/Sao_Paulo','YYYY-MM');
+  if c.item_id is not null then
+    select * into it from campanha_itens where id=c.item_id;
+    if c.plano_id is not null then select * into pl from item_planos where id=c.plano_id; end if;
+    if it.comissao_modo='recorrente_mensal' then return 0; end if;
+    meses := coalesce(c.meses_contrato, pl.meses_padrao, 1);
+    if coalesce(pl.unidade,'unica')='mensal' then base := coalesce(pl.preco,0)*meses;
+    else base := coalesce(pl.preco, c.valor_contrato, 0); end if;
+    ctipo := coalesce(pl.comissao_ovr_tipo, it.comissao_tipo, 'percentual');
+    cval  := coalesce(pl.comissao_ovr_valor, it.comissao_valor, 0);
+  else
+    select * into cp from campanhas where id=c.campanha_id;
+    base := coalesce(c.valor_contrato, cp.valor_unitario, 0);
+    ctipo := 'percentual'; cval := coalesce(cp.pct_comissao,0);
+  end if;
+  return crm_grava_apur(p_cap, base, ctipo, cval, comp, 'fechamento');
+end $$;
+revoke execute on function crm_apurar_captura(uuid) from public, anon, authenticated;
+
+create or replace function crm_apurar_recorrente(p_cap uuid, p_comp text) returns int
+language plpgsql security definer set search_path=public as $$
+declare c capturas%rowtype; it campanha_itens%rowtype; pl item_planos%rowtype; ctipo text; cval numeric;
+begin
+  select * into c from capturas where id=p_cap;
+  if not found or not c.ativo or not coalesce(c.contrato_ativo,false) then return 0; end if;
+  if c.item_id is null then return 0; end if;
+  select * into it from campanha_itens where id=c.item_id;
+  if it.comissao_modo <> 'recorrente_mensal' then return 0; end if;
+  if c.contrato_desde is not null and p_comp < to_char(c.contrato_desde,'YYYY-MM') then return 0; end if;
+  if c.contrato_ate   is not null and p_comp > to_char(c.contrato_ate,'YYYY-MM')   then return 0; end if;
+  select * into pl from item_planos where id=c.plano_id;
+  ctipo := coalesce(pl.comissao_ovr_tipo, it.comissao_tipo, 'percentual');
+  cval  := coalesce(pl.comissao_ovr_valor, it.comissao_valor, 0);
+  return crm_grava_apur(p_cap, coalesce(pl.preco,0), ctipo, cval, p_comp, 'recorrente');
+end $$;
+revoke execute on function crm_apurar_recorrente(uuid,text) from public, anon, authenticated;
+
+create or replace function crm_apurar_recorrentes(p_comp text default null) returns int
+language plpgsql security definer set search_path=public as $$
+declare comp text; r record; n int:=0;
+begin
+  if auth.uid() is not null and not app_is_gestor() then
+    raise exception 'apenas gestor/admin pode apurar comissões recorrentes';
+  end if;
+  comp := coalesce(p_comp, to_char(now() at time zone 'America/Sao_Paulo','YYYY-MM'));
+  for r in
+    select c.id from capturas c
+     where c.ativo and coalesce(c.contrato_ativo,false) and c.estagio in ('fechamento','pos_venda')
+       and exists(select 1 from campanha_itens it where it.id=c.item_id and it.comissao_modo='recorrente_mensal')
+       and (c.contrato_desde is null or comp >= to_char(c.contrato_desde,'YYYY-MM'))
+       and (c.contrato_ate   is null or comp <= to_char(c.contrato_ate,'YYYY-MM'))
+  loop n := n + crm_apurar_recorrente(r.id, comp); end loop;
+  return n;
+end $$;
+revoke execute on function crm_apurar_recorrentes(text) from public, anon, authenticated;
+
+create or replace function crm_estornar_captura(p_cap uuid) returns int
+language plpgsql security definer set search_path=public as $$
+declare a record; n int := 0; comp text;
+begin
+  comp := to_char(now() at time zone 'America/Sao_Paulo','YYYY-MM');
+  for a in select * from apuracoes x
+     where x.captura_id=p_cap and x.tipo='fechamento' and x.estorno_de is null
+       and not exists(select 1 from apuracoes e where e.estorno_de=x.id)
+  loop
+    insert into apuracoes(org_id,captura_id,funcionario_id,competencia,regra_versao,regra_snapshot,
+                          base_valor,pct_aplicado,rateio_pct,memoria,valor,apurado_por,estorno_de,tipo)
+    values(a.org_id,a.captura_id,a.funcionario_id,comp,a.regra_versao,a.regra_snapshot,
+           a.base_valor,a.pct_aplicado,a.rateio_pct,'ESTORNO — '||coalesce(a.memoria,''),-a.valor,app_me_id(),a.id,'estorno');
+    n := n+1;
+  end loop;
+  return n;
+end $$;
+revoke execute on function crm_estornar_captura(uuid) from public, anon, authenticated;
+
+create or replace function trg_capturas_contrato() returns trigger
+language plpgsql security definer set search_path=public as $$
+begin
+  if new.item_id is not null and new.ativo and new.estagio in ('fechamento','pos_venda')
+     and exists(select 1 from campanha_itens it where it.id=new.item_id and it.comissao_modo='recorrente_mensal') then
+    if new.contrato_ativo is null then
+      new.contrato_ativo := true;
+      new.contrato_desde := coalesce(new.contrato_desde,(now() at time zone 'America/Sao_Paulo')::date);
+    end if;
+  end if;
+  if tg_op='UPDATE' then
+    if coalesce(old.contrato_ativo,false) and not coalesce(new.contrato_ativo,false) and new.contrato_ate is null then
+      new.contrato_ate := (now() at time zone 'America/Sao_Paulo')::date;
+    elsif not coalesce(old.contrato_ativo,false) and coalesce(new.contrato_ativo,false) then
+      new.contrato_ate := null;
+      new.contrato_desde := coalesce(new.contrato_desde,(now() at time zone 'America/Sao_Paulo')::date);
+    end if;
+  end if;
+  return new;
+end $$;
+revoke execute on function trg_capturas_contrato() from public, anon, authenticated;
+drop trigger if exists t_capturas_contrato on capturas;
+create trigger t_capturas_contrato before insert or update on capturas
+  for each row execute function trg_capturas_contrato();
+
+create or replace function trg_capturas_apura() returns trigger
+language plpgsql security definer set search_path=public as $$
+declare recor boolean;
+begin
+  recor := new.item_id is not null and exists(select 1 from campanha_itens it where it.id=new.item_id and it.comissao_modo='recorrente_mensal');
+  if new.ativo and new.estagio in ('fechamento','pos_venda')
+     and (not coalesce(old.ativo,true) or coalesce(old.estagio,'') not in ('fechamento','pos_venda')) then
+    if recor then perform crm_apurar_recorrente(new.id, to_char(now() at time zone 'America/Sao_Paulo','YYYY-MM'));
+    else perform crm_apurar_captura(new.id); end if;
+  elsif coalesce(old.ativo,true) and coalesce(old.estagio,'') in ('fechamento','pos_venda')
+     and (not new.ativo or new.estagio not in ('fechamento','pos_venda')) then
+    perform crm_estornar_captura(new.id);
+  end if;
+  return new;
+end $$;
+revoke execute on function trg_capturas_apura() from public, anon, authenticated;
+
+-- ---- v10c: rotina mensal automática (pg_cron) ----
+create extension if not exists pg_cron;
+select cron.schedule('crm-recorrentes-mensal','0 6 1 * *',$$select crm_apurar_recorrentes()$$);
