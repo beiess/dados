@@ -675,7 +675,7 @@ let ENR={rows:null,hdr:null,name:'',ext:''};
 const ENRFLD=[['telefone','Telefone'],['email','Email'],['instagram','Instagram'],['contato_adicional','Contato adicional'],['orgao','Órgão(s)'],['setor','Setor'],['cargo_funcao','Cargo/função'],['remuneracao','Remuneração'],['data_nascimento','Data de nascimento'],['origem','Origem (fontes)']];
 function openEnriq(){const card=document.getElementById('card');
   card.innerHTML='<h3>⬆ Enriquecer arquivo pelo Painel 1 <span class=x onclick=fecharPerfil()>✕</span></h3>'
-   +'<div class=bd><div class=sec><h4>1 · Arquivo (CSV ou Excel — até 5.000 linhas; precisa ter coluna de nome ou CPF)</h4>'
+   +'<div class=bd><div class=sec><h4>1 · Arquivo (CSV ou Excel — sem limite de linhas; precisa ter coluna de nome ou CPF)</h4>'
    +'<input type=file id=enr-file accept=".csv,.xlsx,.xls"></div><div id=enr-cfg></div></div>';
   document.getElementById('modal').classList.add('on');
   document.getElementById('enr-file').addEventListener('change',enrParse);}
@@ -687,7 +687,6 @@ function enrParse(ev){const f=ev.target.files[0];if(!f)return;
     const aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
     while(aoa.length&&aoa[aoa.length-1].every(c=>(''+c).trim()===''))aoa.pop();
     if(aoa.length<2){alert('arquivo sem linhas de dados');return;}
-    if(aoa.length>5001){alert('máximo de 5.000 linhas — o arquivo tem '+(aoa.length-1));return;}
     ENR.hdr=aoa[0].map(h=>''+h);ENR.rows=aoa.slice(1);
     const guess=re=>ENR.hdr.findIndex(h=>re.test(norm(h)));
     const gN=guess(/NOME/),gC=guess(/CPF|DOCUMENTO/),gM=guess(/CIDADE|MUNICIPIO/);
