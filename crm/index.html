@@ -592,9 +592,10 @@
   .sttile.tot .v{color:var(--accent)}
   .campmini{padding:5px 12px;font-size:11.5px;height:fit-content;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
   .campmini:hover{color:var(--ink)}
-  #sec-camp.collapsed .attach,#sec-camp.collapsed .sub,#sec-camp.collapsed .stagetotais{display:none}
-  #sec-camp.collapsed .camp-head{padding:12px 20px;border-bottom:none}
-  #sec-camp.collapsed h1{font-size:16px;margin:6px 0 0}
+  #camp-sections{display:flex;flex-direction:column;gap:14px}
+  .camp.collapsed .attach,.camp.collapsed .sub,.camp.collapsed .stagetotais,.camp.collapsed .prodmetas{display:none}
+  .camp.collapsed .camp-head{padding:12px 20px;border-bottom:none}
+  .camp.collapsed h1{font-size:16px;margin:6px 0 0}
 </style>
 
 <div id="login">
@@ -638,36 +639,7 @@
 
     <div class="content">
       <!-- CAMPAIGN HEADER -->
-      <section class="camp" id="sec-camp">
-        <div class="camp-head">
-          <div class="l">
-            <span class="pill ativa">● Ativa</span>
-            <h1 class="editable" id="campTitle">Campanha Obras 2026 · Gestão Pública — MG</h1>
-            <div class="sub" id="camp-sub"><span>Período <b>—</b></span><span>Meta <b class="num">R$ 1,2 mi</b></span><span>Regra <b>Progressiva por nível</b></span><span>Leads do <b>Painel Estratégico · Obras</b></span></div>
-          </div>
-          <button class="btn-ghost campmini" id="campToggle" title="Recolher / expandir a campanha">▾ Recolher</button>
-          <button class="editbtn" id="editCampBtn">✎ Editar campanha</button>
-        </div>
-        <div class="attach">
-          <div><div class="lbl eyebrow">📎 Anexos exibidos na campanha</div>
-            <div class="row" id="hdr-anexos">
-              <span class="chip editable"><span class="ext pdf">PDF</span> Apresentação Plenum 2026</span>
-              <span class="chip editable"><span class="ext xls">XLS</span> Tabela de serviços &amp; preços</span>
-              <span class="chip editable"><span class="ext doc">DOC</span> Proposta-modelo obras</span>
-              <button class="chip add">＋ Anexar</button>
-            </div>
-          </div>
-          <div><div class="lbl eyebrow">🔗 Links vinculados</div>
-            <div class="row" id="hdr-links">
-              <a class="chip link editable" href="#">Painel Estratégico — Obras <span class="ar">↗</span></a>
-              <a class="chip link editable" href="#">Consulta PNCP <span class="ar">↗</span></a>
-              <button class="chip add">＋ Vincular link</button>
-            </div>
-          </div>
-        </div>
-        <div class="stagetotais" id="stage-totais"></div>
-        <div class="prodmetas" id="prod-metas"></div>
-      </section>
+      <div id="camp-sections"></div>
 
       <!-- FILTROS -->
       <div class="filterbar" id="sec-filtros">
@@ -1026,12 +998,14 @@
 <script>
   document.getElementById('adm').addEventListener('click',()=>document.body.classList.toggle('admin'));
   document.getElementById('hamb').addEventListener('click',()=>document.body.classList.toggle('sidehide'));
-  document.getElementById('campToggle').addEventListener('click',()=>{
-    const c=document.getElementById('sec-camp').classList.toggle('collapsed');
-    document.getElementById('campToggle').textContent=c?'▸ Expandir':'▾ Recolher';
-    try{localStorage.setItem('crm-camp-col',c?'1':'0')}catch(e){}
+  // recolher/editar/anexar por seção — delegado no container de campanhas
+  function isCampCol(id){try{return (JSON.parse(localStorage.getItem('crm-camp-col')||'{}'))[id]===1;}catch(e){return false;}}
+  function setCampCol(id,v){try{const o=JSON.parse(localStorage.getItem('crm-camp-col')||'{}');o[id]=v?1:0;localStorage.setItem('crm-camp-col',JSON.stringify(o));}catch(e){}}
+  document.getElementById('camp-sections').addEventListener('click',e=>{
+    const tog=e.target.closest('.camp-toggle'); if(tog){const sec=tog.closest('.camp'),col=sec.classList.toggle('collapsed');tog.textContent=col?'▸ Expandir':'▾ Recolher';setCampCol(tog.dataset.cid,col);return;}
+    const ed=e.target.closest('.camp-edit'); if(ed){window.CURCAMP=ed.dataset.cid;openCampanha('editar');return;}
+    const add=e.target.closest('.chip.add'); if(add){if(add.dataset.cid)window.CURCAMP=add.dataset.cid;openCampanha('editar');return;}
   });
-  try{if(localStorage.getItem('crm-camp-col')==='1'){document.getElementById('sec-camp').classList.add('collapsed');document.getElementById('campToggle').textContent='▸ Expandir';}}catch(e){}
   document.getElementById('hcbtn').addEventListener('click',()=>{const l=document.body.classList.toggle('light');try{localStorage.setItem('crm-theme',l?'light':'dark')}catch(e){}});
   try{if(localStorage.getItem('crm-theme')==='light')document.body.classList.add('light')}catch(e){}
 
@@ -1497,7 +1471,7 @@
   }
   function closeCampanha(){cModal.classList.remove('open');cScrim.classList.remove('open');}
   document.getElementById('newCampBtn').addEventListener('click',()=>openCampanha('nova'));
-  const ec=document.getElementById('editCampBtn'); if(ec) ec.addEventListener('click',()=>openCampanha('editar'));
+  // editar é por seção (delegado em #camp-sections)
   document.getElementById('c-anexos').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cAnexos.splice(+b.dataset.i,1);renderCAnexos();}});
   document.getElementById('c-links').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cLinks.splice(+b.dataset.i,1);renderCLinks();}});
   document.getElementById('c-anexo-add').addEventListener('click',()=>{const n=document.getElementById('c-anexo-nome');const v=n.value.trim();if(!v)return;cAnexos.push({nome:v,ext:extGuess(v)});n.value='';renderCAnexos();});
@@ -1941,7 +1915,7 @@
   renderPeriod(); renderRules(); renderComm(); renderApur(); renderRulelog();
 
   // navegação sidebar: Campanhas ↔ Comissões ↔ Equipe/Organização
-  const SECS=['sec-filtros','sec-camp','sec-funil','sec-note'].map(id=>document.getElementById(id));
+  const SECS=['sec-filtros','camp-sections','sec-funil','sec-note'].map(id=>document.getElementById(id));
   function showView(v){
     SECS.forEach(el=>{if(el)el.hidden=v!=='main';});
     document.getElementById('view-comm').hidden=v!=='comm';
@@ -2160,7 +2134,7 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAdd()});
   document.getElementById('org-cards').addEventListener('click',e=>{const b=e.target.closest('#org-add');if(b)openAdd(b);});
   // chips "+ Anexar / + Vincular" do cabeçalho abrem a edição da campanha
-  document.getElementById('sec-camp').addEventListener('click',e=>{const b=e.target.closest('.chip.add');if(b)openCampanha('editar');});
+
   // links "+ pessoa / + atividade" do 360 (conceito)
   document.querySelectorAll('.add360').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();warn('No conceito, participações e atividades entram pela captura do servidor (⊕ capturar).');}));
 
@@ -2342,29 +2316,8 @@
     document.querySelectorAll('#tabs .tab').forEach(t=>{const c=t.querySelector('.cnt');if(c)c.textContent=by[t.dataset.tab]||0;});
   }
   // totais trabalhados por estágio — SEM percentual de comissão
-  function renderProdMetas(){
-    const el=document.getElementById('prod-metas'); if(!el)return;
-    const c=curCamp(), itens=((c&&c.itens)||[]).filter(it=>it.meta_valor);
-    if(!itens.length){el.innerHTML=''; return;}
-    const vend={};
-    (window.CAPS||[]).filter(x=>x.ativo&&['fechamento','pos_venda'].includes(x.estagio)&&x.item_id).forEach(x=>{vend[x.item_id]=(vend[x.item_id]||0)+(+x.valor_contrato||0);});
-    el.innerHTML='<div class="pm-h">🎯 Metas por produto</div>'+itens.map(it=>{const v=vend[it.id]||0,pct=Math.min(100,Math.round(v/it.meta_valor*100));
-      return `<div class="pmrow"><span class="pmn">${it.nome}</span><div class="pmbar"><i style="width:${pct}%"></i></div><span class="pmv">${money(v)} / ${money(it.meta_valor)} · ${pct}%</span></div>`;}).join('');}
-  function renderStageTotais(){
-    const el=document.getElementById('stage-totais'); if(!el)return;
-    const S={proposta:0,negociacao:0,fechamento:0};
-    (window.CAPS||[]).filter(c=>c.ativo).forEach(c=>{
-      const st=uiStage(c.estagio); if(!(st in S))return;
-      const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
-      S[st]+=(+c.valor_contrato||+camp.valorUnit||0);});
-    const tot=S.proposta+S.negociacao+S.fechamento;
-    renderProdMetas();
-    el.innerHTML=
-      '<div class="sttile"><div class="k">Em proposta</div><div class="v">'+money(S.proposta)+'</div></div>'+
-      '<div class="sttile"><div class="k">Em negociação</div><div class="v">'+money(S.negociacao)+'</div></div>'+
-      '<div class="sttile"><div class="k">Em fechamento</div><div class="v">'+money(S.fechamento)+'</div></div>'+
-      '<div class="sttile tot"><div class="k">Total trabalhado</div><div class="v">'+money(tot)+'</div></div>';
-  }
+  function renderProdMetas(){ if(window.renderCampSections)renderCampSections(); }
+  function renderStageTotais(){ if(window.renderCampSections)renderCampSections(); }
   // recarrega capturas do banco e atualiza abas/contadores/totais na hora
   window.refreshCaps=async function(){
     try{
@@ -2490,24 +2443,58 @@
     const m=document.getElementById('camp-menu'); if(!m)return;
     m.innerHTML=CAMPAIGNS.map(c=>`<div class="cm-item${c.id===(curCamp()||{}).id?' on':''}" data-cid="${c.id}"><span class="cm-dot" style="background:${c.cor||'var(--accent)'}"></span><b>${c.nome.split(' · ')[0]}</b><span class="grow2" style="flex:1"></span><span class="ctmeta">${c.status||''}</span></div>`).join('')||'<div class="cm-item">Nenhuma campanha</div>';
   }
-  function selectCamp(id){window.CURCAMP=id; renderCampHeader(); if(window.renderProdMetas)renderProdMetas(); if(window.rebuildComm){rebuildComm();renderComm&&renderComm();} document.getElementById('camp-menu').hidden=true;}
+  function selectCamp(id){window.CURCAMP=id; const sec=document.querySelector('#camp-sections .camp[data-cid="'+id+'"]'); if(sec)sec.scrollIntoView({behavior:'smooth',block:'start'}); document.getElementById('camp-menu').hidden=true;}
   (function(){const pick=document.getElementById('camp-pick'),menu=document.getElementById('camp-menu');
     if(pick)pick.addEventListener('click',e=>{e.stopPropagation();renderCampMenu();menu.hidden=!menu.hidden;});
     if(menu)menu.addEventListener('click',e=>{const it=e.target.closest('.cm-item');if(it&&it.dataset.cid)selectCamp(it.dataset.cid);});
     document.addEventListener('click',e=>{if(menu&&!menu.hidden&&!e.target.closest('#camp-menu')&&!e.target.closest('#camp-pick'))menu.hidden=true;});
   })();
+  function stageTotaisHTML(cid){
+    const S={proposta:0,negociacao:0,fechamento:0};
+    (window.CAPS||[]).filter(c=>c.ativo&&c.campanha_id===cid).forEach(c=>{const st=uiStage(c.estagio);if(!(st in S))return;
+      const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};S[st]+=(+c.valor_contrato||+camp.valorUnit||0);});
+    const tot=S.proposta+S.negociacao+S.fechamento;
+    return '<div class="sttile"><div class="k">Em proposta</div><div class="v">'+money(S.proposta)+'</div></div>'+
+      '<div class="sttile"><div class="k">Em negociação</div><div class="v">'+money(S.negociacao)+'</div></div>'+
+      '<div class="sttile"><div class="k">Em fechamento</div><div class="v">'+money(S.fechamento)+'</div></div>'+
+      '<div class="sttile tot"><div class="k">Total trabalhado</div><div class="v">'+money(tot)+'</div></div>';}
+  function prodMetasHTML(c){
+    const itens=((c&&c.itens)||[]).filter(it=>it.meta_valor); if(!itens.length)return '';
+    const vend={};
+    (window.CAPS||[]).filter(x=>x.ativo&&['fechamento','pos_venda'].includes(x.estagio)&&x.item_id&&x.campanha_id===c.id).forEach(x=>{vend[x.item_id]=(vend[x.item_id]||0)+(+x.valor_contrato||0);});
+    return '<div class="prodmetas"><div class="pm-h">🎯 Metas por produto</div>'+itens.map(it=>{const v=vend[it.id]||0,pct=Math.min(100,Math.round(v/it.meta_valor*100));
+      return `<div class="pmrow"><span class="pmn">${it.nome}</span><div class="pmbar"><i style="width:${pct}%"></i></div><span class="pmv">${money(v)} / ${money(it.meta_valor)} · ${pct}%</span></div>`;}).join('')+'</div>';}
+  function campSectionHTML(c){
+    const col=isCampCol(c.id)?' collapsed':'', admin=window.IS_ADMIN;
+    const sub='<span>Período <b>'+fmtD(c.inicio)+' – '+fmtD(c.fim)+'</b></span><span>Meta <b class="num">'+(c.meta?money(c.meta):'—')+'</b></span><span>Escopo <b>'+(c.escopo||'—')+'</b></span><span>Comissão <b class="num">'+(c.pct||0)+'% · unit '+money(c.valorUnit||0)+'</b></span>'+(c.itens||[]).map(it=>'<span>🧩 '+it.nome+' <b>'+window.citemComm(it)+'</b></span>').join('');
+    const anexos=(c.anexos||[]).map(a=>'<span class="chip"><span class="ext '+(a.ext||'doc')+'">'+String(a.ext||'doc').toUpperCase()+'</span> '+a.nome+'</span>').join('')+(admin?'<button class="chip add" data-cid="'+c.id+'">＋ Anexar</button>':'');
+    const links=(c.links||[]).map(l=>'<a class="chip link" href="'+(l.url||'#')+'" target="_blank" rel="noopener">'+l.nome+' <span class="ar">↗</span></a>').join('')+(admin?'<button class="chip add" data-cid="'+c.id+'">＋ Vincular link</button>':'');
+    const encerr=c.status==='encerrada';
+    return `<section class="camp${col}" data-cid="${c.id}" style="${c.cor?('border-top:3px solid '+c.cor):''}">
+      <div class="camp-head">
+        <div class="l"><span class="pill ativa"${c.cor?` style="background:${c.cor}22;color:${c.cor}"`:''}>● ${encerr?'Encerrada':'Ativa'}</span>
+          <h1>${c.nome}</h1><div class="sub">${sub}</div></div>
+        <button class="btn-ghost campmini camp-toggle" data-cid="${c.id}" title="Recolher / expandir">${col?'▸ Expandir':'▾ Recolher'}</button>
+        ${admin?`<button class="editbtn camp-edit" data-cid="${c.id}">✎ Editar</button>`:''}
+      </div>
+      <div class="attach">
+        <div><div class="lbl eyebrow">📎 Anexos exibidos na campanha</div><div class="row">${anexos||'<span class="ctmeta">—</span>'}</div></div>
+        <div><div class="lbl eyebrow">🔗 Links vinculados</div><div class="row">${links||'<span class="ctmeta">—</span>'}</div></div>
+      </div>
+      <div class="stagetotais">${stageTotaisHTML(c.id)}</div>
+      ${prodMetasHTML(c)}
+    </section>`;}
+  function renderCampSections(){
+    const box=document.getElementById('camp-sections'); if(!box)return;
+    box.innerHTML=CAMPAIGNS.length?CAMPAIGNS.map(campSectionHTML).join(''):'<section class="camp"><div class="camp-head"><div class="l"><h1>Nenhuma campanha — crie em ＋ Nova campanha</h1></div></div></section>';
+  }
   function renderCampHeader(){
     const c=curCamp(); if(c&&!window.CURCAMP)window.CURCAMP=c.id;
-    if(!c){document.getElementById('campTitle').textContent='Nenhuma campanha — crie em ＋ Nova campanha';
-      document.getElementById('camp-pick-nome').textContent='—';return;}
-    document.getElementById('campTitle').textContent=c.nome;
-    document.getElementById('camp-pick-nome').textContent=c.nome.split(' · ')[0];
-    const dot=document.getElementById('camp-pick-dot'); if(dot&&c.cor)dot.style.background=c.cor;
-    const sec=document.getElementById('sec-camp'); if(sec)sec.style.borderTop=c.cor?('3px solid '+c.cor):'';
-    document.getElementById('camp-sub').innerHTML='<span>Período <b>'+fmtD(c.inicio)+' – '+fmtD(c.fim)+'</b></span><span>Meta <b class="num">'+(c.meta?money(c.meta):'—')+'</b></span><span>Escopo <b>'+c.escopo+'</b></span><span>Comissão <b class="num">'+c.pct+'% · unit '+money(c.valorUnit||0)+'</b></span>'+(c.itens||[]).map(function(it){return '<span>🧩 '+it.nome+' <b>'+window.citemComm(it)+'</b></span>';}).join('');
-    document.getElementById('hdr-anexos').innerHTML=(c.anexos||[]).map(a=>'<span class="chip"><span class="ext '+(a.ext||'doc')+'">'+String(a.ext||'doc').toUpperCase()+'</span> '+a.nome+'</span>').join('')+'<button class="chip add">＋ Anexar arquivo</button>';
-    document.getElementById('hdr-links').innerHTML=(c.links||[]).map(l=>'<a class="chip link" href="'+(l.url||'#')+'" target="_blank" rel="noopener">'+l.nome+' <span class="ar">↗</span></a>').join('')+'<button class="chip add">＋ Vincular link</button>';
+    const pn=document.getElementById('camp-pick-nome'); if(pn)pn.textContent=CAMPAIGNS.length>1?(CAMPAIGNS.length+' campanhas'):(c?c.nome.split(' · ')[0]:'—');
+    const dot=document.getElementById('camp-pick-dot'); if(dot&&c&&c.cor)dot.style.background=c.cor;
+    renderCampSections();
   }
+  window.renderCampSections=renderCampSections;
 
   // ---------- escrita no banco ----------
   const val=id=>document.getElementById(id).value.trim();
