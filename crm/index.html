@@ -918,6 +918,17 @@
         <option value="fechamento">Fechamento (ganha)</option><option value="posvenda">Pós-venda</option>
       </select></div>
     </div>
+    <div class="frow2" id="cap-item-row" hidden>
+      <div class="frow"><label>Produto / serviço</label><select id="cap-item"></select></div>
+      <div class="frow"><label>Plano</label><select id="cap-plano"></select></div>
+    </div>
+    <div class="frow2" id="cap-meses-row" hidden>
+      <div class="frow"><label>Meses de contrato</label><input type="number" id="cap-meses" min="1" value="12"></div>
+      <div class="frow"><label>&nbsp;</label><span class="capnote" id="cap-item-note"></span></div>
+    </div>
+    <div class="frow" id="cap-contrato-row" hidden><label>Contrato recorrente (admin)</label>
+      <label class="caplock" style="cursor:pointer"><input type="checkbox" id="cap-contrato-ativo" style="margin-right:8px"><b>contrato ativo</b> — gera a comissão mensal enquanto ligado</label>
+    </div>
     <div class="frow2">
       <div class="frow"><label>Modalidade</label><select id="cap-mod"><option value="presencial">Presencial</option><option value="online">Online</option></select></div>
       <div class="frow"><label>&nbsp;</label><span class="capnote" id="cap-lote-note"></span></div>
@@ -1484,12 +1495,60 @@
       box.innerHTML=`<div class="box"><span class="campchip">${camp?camp.nome.split(' · ')[0]:'Campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">Responsável: ${avmini(c.responsavel)} <b>${c.responsavel}</b></span><span style="flex:1"></span><button class="btn-ghost" id="sv-cap-open">${isGestor()?'Remanejar':'Ver / atualizar'}</button></div>`;}
     document.getElementById('sv-cap-open').onclick=()=>{closeSv();openCaptureSv(i);};
   }
+  // ===== produtos/planos na captura (1ª onda parte 2) =====
+  function itemById(id){return (window.ITEMBY||{})[id]||null;}
+  function planoById(id){return (window.PLANOBY||{})[id]||null;}
+  function itemMetric(it,pl){if(!it)return null;
+    const t=(pl&&pl.comissao_ovr_tipo)||it.comissao_tipo||'percentual';
+    const v=(pl&&pl.comissao_ovr_valor!=null?pl.comissao_ovr_valor:it.comissao_valor)||0; return{tipo:t,val:+v||0};}
+  function itemBase(it,pl,meses){const preco=+((pl&&pl.preco)||0);
+    if(!it)return preco;
+    if(it.comissao_modo==='recorrente_mensal')return preco;                 // base mensal
+    if((pl&&pl.unidade)==='mensal')return preco*(+meses||(pl&&pl.meses_padrao)||1);
+    return preco;}
+  function capComm(it,pl,meses){const m=itemMetric(it,pl); if(!m)return 0;
+    return m.tipo==='fixo'?m.val:Math.round(itemBase(it,pl,meses)*m.val/100);}
+  function capContratoValor(it,pl,meses){const preco=+((pl&&pl.preco)||0);
+    if(it&&(it.cobranca==='mensal')&&it.comissao_modo!=='recorrente_mensal')return preco*(+meses||(pl&&pl.meses_padrao)||1);
+    return preco;}                                                          // valor exibido no funil
+  function fillCapPlanos(it,selId){const sel=document.getElementById('cap-plano');
+    const ps=(it&&it.planos)||[]; sel.innerHTML=ps.map(p=>`<option value="${p.id}">${p.nome} · R$ ${(+p.preco||0).toLocaleString('pt-BR')}${p.unidade==='mensal'?'/mês':''}</option>`).join('')||'<option value="">—</option>';
+    if(selId&&ps.some(p=>p.id===selId))sel.value=selId; }
+  function populateCapItems(camp,c){
+    const row=document.getElementById('cap-item-row'), isel=document.getElementById('cap-item');
+    const itens=(camp&&camp.itens)||[];
+    if(!itens.length){row.hidden=true; document.getElementById('cap-meses-row').hidden=true; return false;}
+    row.hidden=false;
+    isel.innerHTML=itens.map(it=>`<option value="${it.id}">${it.nome} · ${it.nivel_venda==='orgao'?'órgão':'servidor'} · ${window.citemComm?window.citemComm(it):''}</option>`).join('');
+    isel.value=(c&&c.item_id&&itens.some(x=>x.id===c.item_id))?c.item_id:itens[0].id;
+    const it=itemById(isel.value); fillCapPlanos(it,c&&c.plano_id);
+    if(c&&c.meses_contrato)document.getElementById('cap-meses').value=c.meses_contrato;
+    return true;}
+  function capItemCalc(){
+    const it=itemById(document.getElementById('cap-item').value);
+    const pl=planoById(document.getElementById('cap-plano').value);
+    const mesesRow=document.getElementById('cap-meses-row');
+    const isMensal=it&&it.cobranca==='mensal'; mesesRow.hidden=!(isMensal&&it.comissao_modo!=='recorrente_mensal');
+    const meses=+document.getElementById('cap-meses').value||((pl&&pl.meses_padrao)||1);
+    const valor=capContratoValor(it,pl,meses), com=capComm(it,pl,meses), m=itemMetric(it,pl)||{tipo:'percentual',val:0};
+    const orgao=it&&it.nivel_venda==='orgao', recor=it&&it.comissao_modo==='recorrente_mensal';
+    window.CAPCALC={valor,mod:null,item_id:it&&it.id,plano_id:pl&&pl.id,meses:isMensal?meses:null,nivel:it&&it.nivel_venda,recor:!!recor};
+    const el=document.getElementById('cap-params'); el.title='Definido pelo produto/plano da campanha';
+    el.innerHTML=`<span>${orgao?'🏛 Venda por órgão':'👤 Venda por servidor'}</span>`+
+      (pl?`<span>Plano <b>${pl.nome}</b> · R$ ${(+pl.preco||0).toLocaleString('pt-BR')}${pl.unidade==='mensal'?'/mês':''}</span>`:'')+
+      (recor?`<span>Comissão <b>R$ ${com.toLocaleString('pt-BR')}/mês</b> (recorrente)</span>`
+            :`<span>Valor <b>R$ ${valor.toLocaleString('pt-BR')}</b></span><span>Comissão <b>R$ ${com.toLocaleString('pt-BR')}</b> (${m.tipo==='fixo'?'fixo':m.val+'%'})</span>`);
+    const note=document.getElementById('cap-item-note');
+    if(note)note.textContent=recor?'Recorrente: a comissão é apurada mês a mês enquanto o contrato estiver ativo.':(orgao?'Venda por órgão — o servidor da linha entra como contato.':'Valor calculado pelo plano.');
+  }
   function loteVigente(c){
     const ls=(c.lotes||[]).slice().sort((a,b)=>String(a.data||'9999').localeCompare(String(b.data||'9999')));
     const hoje=new Date().toISOString().slice(0,10);
     return ls.find(l=>String(l.data||'9999')>=hoje)||ls[ls.length-1]||null;
   }
   function renderCapParams(){
+    const irow=document.getElementById('cap-item-row');
+    if(irow&&!irow.hidden&&document.getElementById('cap-item').value){return capItemCalc();}
     const c=campById(document.getElementById('cap-camp').value); if(!c)return;
     const modSel=document.getElementById('cap-mod'), mod=modSel?modSel.value:'presencial';
     const lote=loteVigente(c);
@@ -1538,7 +1597,14 @@
     const resp=c?c.responsavel:CURRENT, lock=document.getElementById('cap-resp-lock'), rsel=document.getElementById('cap-resp-sel');
     if(isGestor()){lock.hidden=true; rsel.hidden=false; rsel.innerHTML=VEND.map(v=>`<option ${v[1]===resp?'selected':''}>${v[1]}</option>`).join('');}
     else{rsel.hidden=true; lock.hidden=false; document.getElementById('cap-resp-av').innerHTML=avmini(resp); document.getElementById('cap-resp-nome').textContent=resp;}
+    populateCapItems(campById(sel.value),c);
     renderCapParams(); checkConc(); initCapParts(c);
+    (function(){const row=document.getElementById('cap-contrato-row'),ck=document.getElementById('cap-contrato-ativo');
+      const dbc=c&&c.dbId&&(window.CAPS||[]).find(x=>x.id===c.dbId);
+      const recor=dbc&&dbc.item_id&&itemById(dbc.item_id)&&itemById(dbc.item_id).comissao_modo==='recorrente_mensal';
+      const won=dbc&&['fechamento','pos_venda'].includes(dbc.estagio);
+      if(row){row.hidden=!(window.IS_ADMIN&&recor&&won); if(!row.hidden){ck.checked=!!dbc.contrato_ativo; ck.dataset.capid=dbc.id;}}
+    })();
     (function(){
       const stSel=document.getElementById('cap-st'), UI=['prospeccao','qualificacao','proposta','negociacao','fechamento','posvenda'];
       const own=c&&c.responsavel===CURRENT;
@@ -1635,8 +1701,17 @@
     const k=capKey(CAPI); delete CAPTURES[k]; updateSvBadge(CAPI); closeCapture();
     warn('Captura excluída (admin).'); if(window.refreshCaps)window.refreshCaps();
   });
-  document.getElementById('cap-camp').addEventListener('change',renderCapParams);
+  document.getElementById('cap-camp').addEventListener('change',()=>{populateCapItems(campById(document.getElementById('cap-camp').value),null);renderCapParams();});
   document.getElementById('cap-mod').addEventListener('change',renderCapParams);
+  document.getElementById('cap-item').addEventListener('change',()=>{fillCapPlanos(itemById(document.getElementById('cap-item').value));capItemCalc();});
+  document.getElementById('cap-plano').addEventListener('change',capItemCalc);
+  document.getElementById('cap-meses').addEventListener('input',capItemCalc);
+  document.getElementById('cap-contrato-ativo').addEventListener('change',async e=>{
+    const id=e.target.dataset.capid; if(!id)return;
+    const{error}=await sbc.from('capturas').update({contrato_ativo:e.target.checked}).eq('id',id);
+    if(error){warn('⚠ Contrato não atualizado: '+error.message); e.target.checked=!e.target.checked; return;}
+    warn(e.target.checked?'Contrato ativado — comissão mensal ligada.':'Contrato inativado — comissão mensal encerrada (meses anteriores preservados).');
+    if(window.refreshCaps)window.refreshCaps();});
   document.getElementById('cap-save').addEventListener('click',()=>{
     if(document.getElementById('cap-save').disabled)return;
     const r=SVREG[CAPI]; if(!r)return;
@@ -2140,9 +2215,11 @@
     (window.CAPS||[]).filter(c=>c.ativo&&c.estagio!=='perdida').forEach(c=>{
       const e=entById[c.entidade_id]||{},s=srvById[c.servidor_id]||{},camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
       const respN=(funcById[c.responsavel_id]||{}).nome||'—';
-      CAPTURES[c.servidor_id]={campId:c.campanha_id,responsavel:respN,estagio:uiStage(c.estagio),obs:c.obs,dbId:c.id};
+      const it=(window.ITEMBY||{})[c.item_id];
+      if(c.servidor_id)CAPTURES[c.servidor_id]={campId:c.campanha_id,responsavel:respN,estagio:uiStage(c.estagio),obs:c.obs,dbId:c.id};
       const baseV=+c.valor_contrato||+camp.valorUnit||0;
-      LEADS.push({id:c.id,srv:s.nome||'—',cli:e.nome||'—',mun:e.municipio||'',org:(e.nome||'—')+((e.municipio)?' · '+e.municipio:''),area:e.area==='Legislativo'?'leg':'gp',
+      const srvNome=s.nome||(it?('🧩 '+it.nome):e.nome)||'—';
+      LEADS.push({id:c.id,srv:srvNome,cli:e.nome||'—',mun:e.municipio||'',org:(e.nome||'—')+((e.municipio)?' · '+e.municipio:''),area:e.area==='Legislativo'?'leg':'gp',
         obras:e.n_obras||'—',val:baseV?money(baseV):'—',vsub:'',st:uiStage(c.estagio),avs:[ini(respN)],
         ult:fmtD(c.atualizado_em),ultq:respN,next:'—',nextw:0,comm:money(Math.round(baseV*(+camp.pct||0)/100))});
       FMETA[c.id]={uf:e.uf||'',cid:e.municipio||'',esf:e.esfera||'',tema:e.tema||'',resp:respN};
@@ -2161,10 +2238,16 @@
         if(parts.length){const p=parts.find(x=>x.funcionario_id===t.id); if(!p)return; rat=+p.rateio_pct||100; papel=p.papel==='responsavel'?'Resp':'Parceiro';}
         else if(c.responsavel_id!==t.id)return;
         const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{},e=entById[c.entidade_id]||{};
+        const it=(window.ITEMBY||{})[c.item_id], pl=(window.PLANOBY||{})[c.plano_id];
         const baseV=+c.valor_contrato||+camp.valorUnit||0;
-        mem.push({cli:(e.nome||'—'),t:(e.tipo_cliente==='base'?'base':'novo'),v:baseV,rt:papel+' · '+rat+'%',
-          c:money(baseV)+' × '+(+camp.pct||0)+'%'+(rat!==100?' → '+rat+'%':''),
-          r:Math.round(baseV*(+camp.pct||0)/100*rat/100),s:'prevista',
+        let comBase, calcTxt;
+        if(it){const mm=itemMetric(it,pl)||{tipo:'percentual',val:0}, cbase=itemBase(it,pl,c.meses_contrato);
+          comBase=mm.tipo==='fixo'?mm.val:Math.round(cbase*mm.val/100);
+          calcTxt=(it.comissao_modo==='recorrente_mensal')?('R$ '+comBase.toLocaleString('pt-BR')+'/mês'):(mm.tipo==='fixo'?('R$ '+comBase.toLocaleString('pt-BR')+' fixo'):(money(cbase)+' × '+mm.val+'%'));
+        }else{comBase=Math.round(baseV*(+camp.pct||0)/100); calcTxt=money(baseV)+' × '+(+camp.pct||0)+'%';}
+        mem.push({cli:(it?it.nome+' · ':'')+(e.nome||'—'),t:(e.tipo_cliente==='base'?'base':'novo'),v:baseV,rt:papel+' · '+rat+'%',
+          c:calcTxt+(rat!==100?' → '+rat+'%':''),
+          r:Math.round(comBase*rat/100),s:'prevista',
           rv:'v'+(camp.regra||(RULEV.length?RULEV[RULEV.length-1].versao:1))});});
       APS.filter(a=>a.funcionario_id===t.id).forEach(a=>{
         const cap=(window.CAPS||[]).find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
@@ -2382,16 +2465,18 @@
     try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}
     const respId=(TEAM.find(t=>t.n===resp)||{}).id, k=capKey(i), cur=CAPTURES[k];
     try{
+      const cc=window.CAPCALC||{}, orgao=cc.nivel==='orgao';
+      const base={campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc.mod||null,
+        valor_contrato:cc.valor||null,item_id:cc.item_id||null,plano_id:cc.plano_id||null,meses_contrato:cc.meses||null};
       if(cur&&cur.dbId){
-        const cc=window.CAPCALC||{};
-        const{error}=await sbc.from('capturas').update({campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc.mod||null,valor_contrato:cc.valor||null}).eq('id',cur.dbId);
+        const{error}=await sbc.from('capturas').update(base).eq('id',cur.dbId);
         if(error)throw error;
         await sbc.from('atividades').insert({captura_id:cur.dbId,tipo:'mudanca_estagio',descricao:obs||null,estagio_para:dbStage(st)});
       }else{
-        const cc2=window.CAPCALC||{};
-        const{data,error}=await sbc.from('capturas').insert({servidor_id:r.sid,entidade_id:r.eid,campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc2.mod||null,valor_contrato:cc2.valor||null}).select('id').single();
+        const{data,error}=await sbc.from('capturas').insert(Object.assign({servidor_id:orgao?null:r.sid,entidade_id:r.eid},base)).select('id').single();
         if(error)throw error; CAPTURES[k].dbId=data.id;
         await sbc.from('atividades').insert({captura_id:data.id,tipo:'captura',descricao:obs||null,estagio_para:dbStage(st)});
+        if(orgao&&r.sid){await sbc.from('captura_contatos').upsert({captura_id:data.id,servidor_id:r.sid,papel:'contato'},{onConflict:'captura_id,servidor_id'});}
       }
       const capId=(cur&&cur.dbId)||CAPTURES[k].dbId;
       if(window.CAPPARTS_SAVE&&capId){
@@ -2586,6 +2671,8 @@
           planos:(pby[it.id]||[]).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(p=>({id:p.id,nome:p.nome,preco:+p.preco||0,unidade:p.unidade,
             meses_padrao:p.meses_padrao,modalidade:p.modalidade,vigencia_ate:p.vigencia_ate,comissao_ovr_tipo:p.comissao_ovr_tipo,comissao_ovr_valor:p.comissao_ovr_valor}))});});
       CAMPAIGNS.forEach(c=>{c.itens=iby[c.id]||[];});
+      window.ITEMBY={}; window.PLANOBY={};
+      Object.values(iby).flat().forEach(it=>{window.ITEMBY[it.id]=it;(it.planos||[]).forEach(p=>{window.PLANOBY[p.id]=p;});});
     }catch(e){}
   };
 
