@@ -243,6 +243,18 @@
   .rulepick{display:flex;gap:8px;flex-wrap:wrap}
   .rulepick label{display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:550;cursor:pointer;background:var(--surface-2)}
   .rulepick input{accent-color:var(--accent)}
+  .rulecfg{margin-top:9px;padding:11px 13px;border:1px dashed var(--border-2);border-radius:9px;background:var(--surface-2,rgba(0,0,0,.02))}
+  .rulecfg .eyebrow{margin-bottom:7px}
+  .progrow,.indrow{display:flex;gap:7px;align-items:center;margin-top:6px}
+  .progrow input,.indrow input{padding:6px 9px;font-size:12.5px}
+  .progrow .pg-n{flex:1} .progrow .pg-p,.indrow .in-p{max-width:80px} .indrow .in-m{max-width:130px}
+  .indrow .in-nm{flex:1;font-weight:600;font-size:12.5px}
+  .campmenu{position:absolute;top:44px;left:52px;z-index:60;background:var(--surface);border:1px solid var(--border-2);border-radius:11px;box-shadow:var(--sh);padding:6px;min-width:250px;max-height:340px;overflow:auto}
+  .campmenu .cm-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:13px}
+  .campmenu .cm-item:hover,.campmenu .cm-item.on{background:var(--surface-2,rgba(0,0,0,.04))}
+  .campmenu .cm-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;border:1px solid rgba(0,0,0,.15)}
+  .top{position:relative}
+  .camp-pick{cursor:pointer}
   .chipedit{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
   .chipedit .chip .rm{border:none;background:none;color:var(--faint);cursor:pointer;font-size:12px;padding:0 0 0 2px}
   .chipedit .chip .rm:hover{color:var(--crit)}
@@ -299,6 +311,16 @@
   .frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
   .svcapbtn{border:1px solid var(--border);background:var(--surface);color:var(--accent);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;padding:1px 7px;margin-left:6px}
   .svcapbtn:hover{background:var(--accent-wash)}
+  .orgcapbtn{border:1px solid color-mix(in srgb,var(--gold,#C9A227) 45%,transparent);background:transparent;color:var(--gold,#C9A227);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;padding:1px 8px;margin-left:8px}
+  .orgcapbtn:hover{background:color-mix(in srgb,var(--gold,#C9A227) 12%,transparent)}
+  .prodmetas{display:flex;flex-direction:column;gap:6px;padding:10px 20px;border-top:1px solid var(--border-2)}
+  .prodmetas .pm-h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .pmrow{display:flex;align-items:center;gap:10px;font-size:12px}
+  .pmrow .pmn{flex:0 0 34%;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pmrow .pmbar{flex:1;height:7px;border-radius:6px;background:var(--border-2);overflow:hidden}
+  .pmrow .pmbar>i{display:block;height:100%;background:var(--accent);border-radius:6px}
+  .pmrow .pmv{flex:0 0 auto;color:var(--muted);font-variant-numeric:tabular-nums}
+  #cap-contatos label:hover{background:var(--surface-2,rgba(0,0,0,.03))}
   .svcap{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:6px}
   .campchip{font-size:10px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--accent-wash);color:var(--accent);white-space:nowrap}
   .respmini{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted)}
@@ -570,9 +592,10 @@
   .sttile.tot .v{color:var(--accent)}
   .campmini{padding:5px 12px;font-size:11.5px;height:fit-content;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
   .campmini:hover{color:var(--ink)}
-  #sec-camp.collapsed .attach,#sec-camp.collapsed .sub,#sec-camp.collapsed .stagetotais{display:none}
-  #sec-camp.collapsed .camp-head{padding:12px 20px;border-bottom:none}
-  #sec-camp.collapsed h1{font-size:16px;margin:6px 0 0}
+  #camp-sections{display:flex;flex-direction:column;gap:14px}
+  .camp.collapsed .attach,.camp.collapsed .sub,.camp.collapsed .stagetotais,.camp.collapsed .prodmetas{display:none}
+  .camp.collapsed .camp-head{padding:12px 20px;border-bottom:none}
+  .camp.collapsed h1{font-size:16px;margin:6px 0 0}
 </style>
 
 <div id="login">
@@ -603,7 +626,8 @@
   <div class="main">
     <div class="top">
       <button class="iconbtn" id="hamb" title="Recolher / expandir menu" aria-label="Menu">☰</button>
-      <div class="camp-pick"><span class="dot"></span><b id="camp-pick-nome">—</b><span class="chev">▾</span></div>
+      <div class="camp-pick" id="camp-pick"><span class="dot" id="camp-pick-dot"></span><b id="camp-pick-nome">—</b><span class="chev">▾</span></div>
+      <div class="campmenu" id="camp-menu" hidden></div>
       <button class="newcampbtn" id="newCampBtn">＋ Nova campanha</button>
       <div class="segs"><button class="segbtn on">Todas</button><button class="segbtn">Gestão Pública</button><button class="segbtn">Legislativo</button></div>
       <div class="spacer"></div>
@@ -615,35 +639,7 @@
 
     <div class="content">
       <!-- CAMPAIGN HEADER -->
-      <section class="camp" id="sec-camp">
-        <div class="camp-head">
-          <div class="l">
-            <span class="pill ativa">● Ativa</span>
-            <h1 class="editable" id="campTitle">Campanha Obras 2026 · Gestão Pública — MG</h1>
-            <div class="sub" id="camp-sub"><span>Período <b>—</b></span><span>Meta <b class="num">R$ 1,2 mi</b></span><span>Regra <b>Progressiva por nível</b></span><span>Leads do <b>Painel Estratégico · Obras</b></span></div>
-          </div>
-          <button class="btn-ghost campmini" id="campToggle" title="Recolher / expandir a campanha">▾ Recolher</button>
-          <button class="editbtn" id="editCampBtn">✎ Editar campanha</button>
-        </div>
-        <div class="attach">
-          <div><div class="lbl eyebrow">📎 Anexos exibidos na campanha</div>
-            <div class="row" id="hdr-anexos">
-              <span class="chip editable"><span class="ext pdf">PDF</span> Apresentação Plenum 2026</span>
-              <span class="chip editable"><span class="ext xls">XLS</span> Tabela de serviços &amp; preços</span>
-              <span class="chip editable"><span class="ext doc">DOC</span> Proposta-modelo obras</span>
-              <button class="chip add">＋ Anexar</button>
-            </div>
-          </div>
-          <div><div class="lbl eyebrow">🔗 Links vinculados</div>
-            <div class="row" id="hdr-links">
-              <a class="chip link editable" href="#">Painel Estratégico — Obras <span class="ar">↗</span></a>
-              <a class="chip link editable" href="#">Consulta PNCP <span class="ar">↗</span></a>
-              <button class="chip add">＋ Vincular link</button>
-            </div>
-          </div>
-        </div>
-        <div class="stagetotais" id="stage-totais"></div>
-      </section>
+      <div id="camp-sections"></div>
 
       <!-- FILTROS -->
       <div class="filterbar" id="sec-filtros">
@@ -836,7 +832,10 @@
     </div>
     <div class="frow2">
       <div class="frow"><label>Meta (R$)</label><input type="text" id="c-meta" value="1.200.000"></div>
-      <div class="frow"><label>Segmento</label><select id="c-seg"><option>Gestão Pública</option><option>Legislativo</option><option>Ambos</option></select></div>
+      <div class="frow"><label>Segmento</label><select id="c-seg"><option>Todos</option><option>Gestão Pública</option><option>Legislativo</option></select></div>
+    </div>
+    <div class="frow" id="c-cor-row"><label>🎨 Cor do bloco da campanha (admin)</label>
+      <div style="display:flex;gap:9px;align-items:center"><input type="color" id="c-cor" value="#C9A227" style="width:54px;height:32px;padding:2px;border-radius:8px;border:1px solid var(--border-2);cursor:pointer"><span class="capnote">Identifica a campanha no cabeçalho e no seletor.</span></div>
     </div>
     <div class="frow"><label>🧩 Produtos e serviços da campanha</label>
       <div class="capnote" style="margin:-2px 0 4px">Cada produto/serviço tem seus planos (preços) e a própria comissão. Produto vende-se ao órgão; serviço/curso, ao servidor. Deixe vazio para usar o modelo simples (percentual único acima).</div>
@@ -845,10 +844,14 @@
     </div>
     <div class="frow"><label>Regra de comissão</label>
       <div class="rulepick">
-        <label><input type="radio" name="crule" checked>Progressiva por nível</label>
-        <label><input type="radio" name="crule">Pós-meta</label>
-        <label><input type="radio" name="crule">Individual fixa</label>
+        <label><input type="radio" name="crule" id="crule-prog" value="progressiva" checked>Progressiva por nível</label>
+        <label><input type="radio" name="crule" id="crule-pos" value="pos_meta">Pós-meta</label>
+        <label><input type="radio" name="crule" id="crule-ind" value="individual">Individual (meta por vendedor)</label>
       </div>
+      <div class="capnote" style="margin-top:6px;color:var(--warn,#B08718)">⚠ Estes parâmetros são <b>salvos</b>, mas ainda <b>não</b> entram no cálculo automático — falta definir como se combinam com a comissão por produto (evitar erro desproporcional).</div>
+      <div class="rulecfg" id="rule-prog"><div class="eyebrow">Percentual por nível — somado a todos os vendedores daquele nível</div><div id="rule-prog-rows"></div><button type="button" class="addbtn" id="rule-prog-add" style="margin-top:7px">＋ Nível</button></div>
+      <div class="rulecfg" id="rule-pos" hidden><div class="frow"><label>Percentual adicional após a meta GERAL da campanha (%)</label><input type="number" id="rule-pos-pct" min="0" max="100" placeholder="ex.: 1" style="max-width:120px"></div></div>
+      <div class="rulecfg" id="rule-ind" hidden><div class="eyebrow">Meta (R$) e % adicional após a meta — por vendedor</div><div id="rule-ind-rows"></div></div>
     </div>
     <div class="frow3">
       <div class="frow"><label>Escopo do rateio</label><select id="c-escopo"><option>Individual</option><option>Com parceiro</option><option>Por equipe</option><option>Só matriz</option><option>Só filial</option><option>Geral</option></select></div>
@@ -863,11 +866,12 @@
         <input type="date" id="c-lote-data" title="Data-limite do lote">
         <input type="text" id="c-lote-pres" placeholder="R$ presencial" style="max-width:120px">
         <input type="text" id="c-lote-onl" placeholder="R$ online" style="max-width:110px">
-        <button class="addbtn" id="c-lote-add">＋ Lote</button>
+        <button class="addbtn" id="c-lote-add">＋ Incluir lote</button>
       </div>
     </div>
     <div class="frow2">
       <div class="frow"><label>Desconto por servidor adicional da mesma organização (%)</label><input type="number" id="c-desc-org" value="10" min="0" max="100"></div>
+      <div class="frow"><label>Majoração para cliente novo (%) — oculto do vendedor</label><input type="number" id="c-cli-novo" min="0" max="100" placeholder="ex.: 4"><span class="capnote">Somada na comissão quando a entidade não é cliente de base. Não aparece na tela de captura.</span></div>
       <div class="frow"><label>&nbsp;</label><span class="capnote">1º servidor da organização paga o valor do lote; do 2º em diante o desconto acumula por captura já feita na mesma entidade.</span></div>
     </div>
     <div class="frow"><label>📎 Anexos exibidos na página</label>
@@ -917,6 +921,21 @@
         <option value="proposta">Proposta</option><option value="negociacao">Negociação</option>
         <option value="fechamento">Fechamento (ganha)</option><option value="posvenda">Pós-venda</option>
       </select></div>
+    </div>
+    <div class="frow2" id="cap-item-row" hidden>
+      <div class="frow"><label>Produto / serviço</label><select id="cap-item"></select></div>
+      <div class="frow"><label>Plano</label><select id="cap-plano"></select></div>
+    </div>
+    <div class="frow2" id="cap-meses-row" hidden>
+      <div class="frow"><label>Meses de contrato</label><input type="number" id="cap-meses" min="1" value="12"></div>
+      <div class="frow"><label>&nbsp;</label><span class="capnote" id="cap-item-note"></span></div>
+    </div>
+    <div class="frow" id="cap-contatos-row" hidden><label>Contatos do negócio (servidores do órgão)</label>
+      <input id="cap-contato-q" placeholder="buscar servidor do órgão…">
+      <div id="cap-contatos" style="max-height:150px;overflow:auto;margin-top:5px;border:1px solid var(--border-2);border-radius:8px;padding:6px 9px"></div>
+    </div>
+    <div class="frow" id="cap-contrato-row" hidden><label>Contrato recorrente (admin)</label>
+      <label class="caplock" style="cursor:pointer"><input type="checkbox" id="cap-contrato-ativo" style="margin-right:8px"><b>contrato ativo</b> — gera a comissão mensal enquanto ligado</label>
     </div>
     <div class="frow2">
       <div class="frow"><label>Modalidade</label><select id="cap-mod"><option value="presencial">Presencial</option><option value="online">Online</option></select></div>
@@ -979,12 +998,14 @@
 <script>
   document.getElementById('adm').addEventListener('click',()=>document.body.classList.toggle('admin'));
   document.getElementById('hamb').addEventListener('click',()=>document.body.classList.toggle('sidehide'));
-  document.getElementById('campToggle').addEventListener('click',()=>{
-    const c=document.getElementById('sec-camp').classList.toggle('collapsed');
-    document.getElementById('campToggle').textContent=c?'▸ Expandir':'▾ Recolher';
-    try{localStorage.setItem('crm-camp-col',c?'1':'0')}catch(e){}
+  // recolher/editar/anexar por seção — delegado no container de campanhas
+  function isCampCol(id){try{return (JSON.parse(localStorage.getItem('crm-camp-col')||'{}'))[id]===1;}catch(e){return false;}}
+  function setCampCol(id,v){try{const o=JSON.parse(localStorage.getItem('crm-camp-col')||'{}');o[id]=v?1:0;localStorage.setItem('crm-camp-col',JSON.stringify(o));}catch(e){}}
+  document.getElementById('camp-sections').addEventListener('click',e=>{
+    const tog=e.target.closest('.camp-toggle'); if(tog){const sec=tog.closest('.camp'),col=sec.classList.toggle('collapsed');tog.textContent=col?'▸ Expandir':'▾ Recolher';setCampCol(tog.dataset.cid,col);return;}
+    const ed=e.target.closest('.camp-edit'); if(ed){window.CURCAMP=ed.dataset.cid;openCampanha('editar');return;}
+    const add=e.target.closest('.chip.add'); if(add){if(add.dataset.cid)window.CURCAMP=add.dataset.cid;openCampanha('editar');return;}
   });
-  try{if(localStorage.getItem('crm-camp-col')==='1'){document.getElementById('sec-camp').classList.add('collapsed');document.getElementById('campToggle').textContent='▸ Expandir';}}catch(e){}
   document.getElementById('hcbtn').addEventListener('click',()=>{const l=document.body.classList.toggle('light');try{localStorage.setItem('crm-theme',l?'light':'dark')}catch(e){}});
   try{if(localStorage.getItem('crm-theme')==='light')document.body.classList.add('light')}catch(e){}
 
@@ -1231,7 +1252,7 @@
       ENTMAP[n.id]={nome:n.nome,area:n.area,st:n.st};
       return `<div class="tnode lv-ent" data-eid="${n.id}" data-ibge="${n.ibge||''}" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${rp}" style="--sc:${s[1]};--scw:${s[2]}">
         <div class="trow" style="${pad}"><span class="tchev">›</span>
-          <span class="ent-nm">${n.nome}</span> ${areaChip(n.area)}
+          <span class="ent-nm">${n.nome}</span> ${areaChip(n.area)}<button type="button" class="orgcapbtn" data-orgcap="${n.id}" data-nome="${(n.nome||'').replace(/"/g,'&quot;')}" title="Vender produto ao órgão">🧩 produto</button>
           <span class="grow"></span>${vend}
           <span class="stpill"><span class="d"></span>${s[0]}</span></div>
         <div class="edetail" data-lazy="${n.id}"></div></div>`;
@@ -1248,6 +1269,8 @@
   // expand/collapse; add-buttons e links não togglam
   document.getElementById('view-tree').addEventListener('click',e=>{
     if(e.target.closest('.svsel'))return;
+    const ocEl=e.target.closest('.orgcapbtn');
+    if(ocEl){e.stopPropagation();openCaptureOrg(ocEl.dataset.orgcap,ocEl.dataset.nome);return;}
     const capEl=e.target.closest('.svcapbtn');
     if(capEl){openCaptureSv(+capEl.dataset.svcapi);return;}
     const svEl=e.target.closest('[data-sv]');
@@ -1448,7 +1471,7 @@
   }
   function closeCampanha(){cModal.classList.remove('open');cScrim.classList.remove('open');}
   document.getElementById('newCampBtn').addEventListener('click',()=>openCampanha('nova'));
-  const ec=document.getElementById('editCampBtn'); if(ec) ec.addEventListener('click',()=>openCampanha('editar'));
+  // editar é por seção (delegado em #camp-sections)
   document.getElementById('c-anexos').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cAnexos.splice(+b.dataset.i,1);renderCAnexos();}});
   document.getElementById('c-links').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cLinks.splice(+b.dataset.i,1);renderCLinks();}});
   document.getElementById('c-anexo-add').addEventListener('click',()=>{const n=document.getElementById('c-anexo-nome');const v=n.value.trim();if(!v)return;cAnexos.push({nome:v,ext:extGuess(v)});n.value='';renderCAnexos();});
@@ -1484,12 +1507,75 @@
       box.innerHTML=`<div class="box"><span class="campchip">${camp?camp.nome.split(' · ')[0]:'Campanha'}</span><span class="stpill" style="--sc:${s[1]};--scw:${s[2]}"><span class="d"></span>${s[0]}</span><span class="respmini">Responsável: ${avmini(c.responsavel)} <b>${c.responsavel}</b></span><span style="flex:1"></span><button class="btn-ghost" id="sv-cap-open">${isGestor()?'Remanejar':'Ver / atualizar'}</button></div>`;}
     document.getElementById('sv-cap-open').onclick=()=>{closeSv();openCaptureSv(i);};
   }
+  // ===== produtos/planos na captura (1ª onda parte 2) =====
+  function itemById(id){return (window.ITEMBY||{})[id]||null;}
+  function planoById(id){return (window.PLANOBY||{})[id]||null;}
+  function itemMetric(it,pl){if(!it)return null;
+    const t=(pl&&pl.comissao_ovr_tipo)||it.comissao_tipo||'percentual';
+    const v=(pl&&pl.comissao_ovr_valor!=null?pl.comissao_ovr_valor:it.comissao_valor)||0; return{tipo:t,val:+v||0};}
+  function itemBase(it,pl,meses){const preco=+((pl&&pl.preco)||0);
+    if(!it)return preco;
+    if(it.comissao_modo==='recorrente_mensal')return preco;                 // base mensal
+    if((pl&&pl.unidade)==='mensal')return preco*(+meses||(pl&&pl.meses_padrao)||1);
+    return preco;}
+  function capComm(it,pl,meses){const m=itemMetric(it,pl); if(!m)return 0;
+    return m.tipo==='fixo'?m.val:Math.round(itemBase(it,pl,meses)*m.val/100);}
+  function capContratoValor(it,pl,meses){const preco=+((pl&&pl.preco)||0);
+    if(it&&it.cobranca==='mensal')return preco*(+meses||(pl&&pl.meses_padrao)||12);   // contrato inteiro (meta usa isto)
+    return preco;}
+  function fillCapPlanos(it,selId){const sel=document.getElementById('cap-plano');
+    const ps=(it&&it.planos)||[]; sel.innerHTML=ps.map(p=>`<option value="${p.id}">${p.nome} · R$ ${(+p.preco||0).toLocaleString('pt-BR')}${p.unidade==='mensal'?'/mês':''}</option>`).join('')||'<option value="">—</option>';
+    if(selId&&ps.some(p=>p.id===selId))sel.value=selId; }
+  function populateCapItems(camp,c,onlyNivel){
+    const row=document.getElementById('cap-item-row'), isel=document.getElementById('cap-item');
+    let itens=(camp&&camp.itens)||[];
+    if(onlyNivel)itens=itens.filter(it=>it.nivel_venda===onlyNivel);
+    if(!itens.length){row.hidden=true; document.getElementById('cap-meses-row').hidden=true; return false;}
+    row.hidden=false;
+    isel.innerHTML=itens.map(it=>`<option value="${it.id}">${it.nome} · ${it.nivel_venda==='orgao'?'órgão':'servidor'} · ${window.citemComm?window.citemComm(it):''}</option>`).join('');
+    isel.value=(c&&c.item_id&&itens.some(x=>x.id===c.item_id))?c.item_id:itens[0].id;
+    const it=itemById(isel.value); fillCapPlanos(it,c&&c.plano_id);
+    if(c&&c.meses_contrato)document.getElementById('cap-meses').value=c.meses_contrato;
+    return true;}
+  function capRegraTxt(camp){if(!camp)return '';
+    if(camp.regraTipo==='progressiva')return 'Progressiva por nível — somada por nível de cada vendedor na apuração';
+    if(camp.regraTipo==='pos_meta')return 'Pós-meta — +'+(((camp.regraCfg||{}).pos_meta_pct)||0)+'% após a meta geral da campanha';
+    if(camp.regraTipo==='individual')return 'Individual — +% após a meta de cada vendedor';
+    return '';}
+  function capItemCalc(){
+    const it=itemById(document.getElementById('cap-item').value);
+    const pl=planoById(document.getElementById('cap-plano').value);
+    const isMensal=it&&it.cobranca==='mensal'; document.getElementById('cap-meses-row').hidden=!isMensal;
+    const meses=isMensal?(+document.getElementById('cap-meses').value||((pl&&pl.meses_padrao)||12)):1;
+    const recor=it&&it.comissao_modo==='recorrente_mensal', orgao=it&&it.nivel_venda==='orgao', m=itemMetric(it,pl)||{tipo:'percentual',val:0};
+    const valor=capContratoValor(it,pl,meses);          // contrato inteiro (mensal) — usado na meta e no funil
+    const comItem=capComm(it,pl,meses);                 // recorrente = mês; total = contrato
+    const comTot=recor?comItem*meses:comItem;
+    window.CAPCALC={valor,mod:null,item_id:it&&it.id,plano_id:pl&&pl.id,meses:isMensal?meses:null,nivel:it&&it.nivel_venda,recor:!!recor};
+    if(document.getElementById('cap-rateio')&&!document.getElementById('cap-rateio').hidden&&window.readCapParts)window.readCapParts();
+    const parts=(window.CAPPARTS&&window.CAPPARTS.length)?window.CAPPARTS:[{funcionario_id:null,rateio_pct:100,papel:'responsavel'}];
+    const nmOf=fid=>{const t=(TEAM||[]).find(x=>String(x.id)===String(fid));return t?t.n:CURRENT;};
+    const perV=parts.map(p=>{const sh=Math.round(comItem*(+p.rateio_pct||100)/100);return nmOf(p.funcionario_id)+' · '+(+p.rateio_pct||100)+'% → R$ '+sh.toLocaleString('pt-BR')+(recor?'/mês':'');}).join(' · ');
+    const camp=curCamp(), regra=capRegraTxt(camp);
+    const el=document.getElementById('cap-params'); el.title='Comissão do item — a regra da campanha soma por cima na apuração';
+    el.innerHTML=`<span>${orgao?'🏛 Venda por órgão':'👤 Venda por servidor'}</span>`+
+      (pl?`<span>Plano <b>${pl.nome}</b> · R$ ${(+pl.preco||0).toLocaleString('pt-BR')}${pl.unidade==='mensal'?'/mês':''}</span>`:'')+
+      (isMensal?`<span>Contrato <b>R$ ${valor.toLocaleString('pt-BR')}</b> em ${meses} meses</span>`:`<span>Valor <b>R$ ${valor.toLocaleString('pt-BR')}</b></span>`)+
+      (recor?`<span>Comissão do item <b>R$ ${comItem.toLocaleString('pt-BR')}/mês</b> · <b>R$ ${comTot.toLocaleString('pt-BR')}</b> no contrato (${meses}m)</span>`
+            :`<span>Comissão do item <b>R$ ${comItem.toLocaleString('pt-BR')}</b> (${m.tipo==='fixo'?'fixo':m.val+'%'})</span>`)+
+      `<span>Por vendedor: <b>${perV}</b></span>`+
+      (regra?`<span>Regra da campanha: <b>${regra}</b></span>`:'');
+    const note=document.getElementById('cap-item-note');
+    if(note)note.textContent=recor?'Recorrente: comissão mês a mês enquanto o contrato estiver ativo; a meta conta o contrato inteiro.':(orgao?'Venda por órgão — o servidor da linha entra como contato.':'Valor calculado pelo plano.');
+  }
   function loteVigente(c){
     const ls=(c.lotes||[]).slice().sort((a,b)=>String(a.data||'9999').localeCompare(String(b.data||'9999')));
     const hoje=new Date().toISOString().slice(0,10);
     return ls.find(l=>String(l.data||'9999')>=hoje)||ls[ls.length-1]||null;
   }
   function renderCapParams(){
+    const irow=document.getElementById('cap-item-row');
+    if(irow&&!irow.hidden&&document.getElementById('cap-item').value){return capItemCalc();}
     const c=campById(document.getElementById('cap-camp').value); if(!c)return;
     const modSel=document.getElementById('cap-mod'), mod=modSel?modSel.value:'presencial';
     const lote=loteVigente(c);
@@ -1527,18 +1613,42 @@
       }
     } else {warnEl.hidden=true; save.disabled=false; save.textContent='Registrar captura';}
   }
+  function renderCapContatos(eid,q){
+    const box=document.getElementById('cap-contatos'); if(!box)return;
+    const qn=norm(q||'');
+    const list=Object.values(srvById).filter(s=>String(s.entidade_id)===String(eid)&&(!qn||norm(s.nome||'').includes(qn))).slice(0,80);
+    const checked=new Set((window.CAPCONTATOS||[]).map(String));
+    box.innerHTML=list.length?list.map(s=>`<label style="display:flex;gap:7px;align-items:center;padding:3px 4px;border-radius:5px;font-size:12.5px;cursor:pointer"><input type="checkbox" data-ct="${s.id}" ${checked.has(String(s.id))?'checked':''}>${s.nome}${s.cargo?` <span class="ctmeta">· ${s.cargo}</span>`:''}</label>`).join('')
+      :'<span class="ctmeta">Nenhum servidor materializado deste órgão. Capture pela linha do servidor para incluí-lo como contato, ou adicione servidores ao órgão primeiro.</span>';}
+  function openCaptureOrg(eid,nome){
+    if(!CAMPAIGNS.length){warn('Crie uma campanha primeiro (＋ Nova campanha — admin).');return;}
+    const camp=CAMPAIGNS[0];
+    if(!((camp&&camp.itens)||[]).some(it=>it.nivel_venda==='orgao')){warn('Esta campanha não tem produto de venda por órgão. Cadastre um produto (nível órgão) na campanha.');return;}
+    const r={eid:eid,sid:null,nome:nome||'Órgão',orgao:nome||'',cargo:'',isOrg:true};
+    SVREG.push(r); CAPI=SVREG.length-1; window.CAPCONTATOS=[]; window.CAPORG_EID=eid;
+    openCaptureSv(CAPI);
+  }
   function openCaptureSv(i){
     if(!CAMPAIGNS.length){warn('Crie uma campanha primeiro (＋ Nova campanha — admin).');return;}
     const r=SVREG[i]; if(!r)return; CAPI=i; const c=CAPTURES[capKey(i)];
-    document.getElementById('cap-title').textContent='Capturar — '+r.nome;
-    document.getElementById('cap-sub').textContent=[r.cargo,r.setor&&('· '+r.setor),r.unidade&&('· '+r.unidade),r.orgao&&('· '+r.orgao)].filter(Boolean).join(' ');
+    document.getElementById('cap-title').textContent=(r.isOrg?'Vender produto — ':'Capturar — ')+r.nome;
+    document.getElementById('cap-sub').textContent=r.isOrg?('Venda por órgão · '+r.nome):[r.cargo,r.setor&&('· '+r.setor),r.unidade&&('· '+r.unidade),r.orgao&&('· '+r.orgao)].filter(Boolean).join(' ');
+    const eyb=document.querySelector('#capmodal .eyebrow'); if(eyb)eyb.textContent=r.isOrg?'Vender produto ao órgão':'Capturar servidor';
     const sel=document.getElementById('cap-camp'); sel.innerHTML=CAMPAIGNS.map(x=>`<option value="${x.id}">${x.nome}</option>`).join(''); sel.value=c?c.campId:CAMPAIGNS[0].id;
     document.getElementById('cap-st').value=c?c.estagio:'prospeccao';
     document.getElementById('cap-obs').value=c?(c.obs||''):'';
     const resp=c?c.responsavel:CURRENT, lock=document.getElementById('cap-resp-lock'), rsel=document.getElementById('cap-resp-sel');
     if(isGestor()){lock.hidden=true; rsel.hidden=false; rsel.innerHTML=VEND.map(v=>`<option ${v[1]===resp?'selected':''}>${v[1]}</option>`).join('');}
     else{rsel.hidden=true; lock.hidden=false; document.getElementById('cap-resp-av').innerHTML=avmini(resp); document.getElementById('cap-resp-nome').textContent=resp;}
+    populateCapItems(campById(sel.value),c,r.isOrg?'orgao':null);
+    document.getElementById('cap-contatos-row').hidden=!r.isOrg; if(r.isOrg)renderCapContatos(r.eid,'');
     renderCapParams(); checkConc(); initCapParts(c);
+    (function(){const row=document.getElementById('cap-contrato-row'),ck=document.getElementById('cap-contrato-ativo');
+      const dbc=c&&c.dbId&&(window.CAPS||[]).find(x=>x.id===c.dbId);
+      const recor=dbc&&dbc.item_id&&itemById(dbc.item_id)&&itemById(dbc.item_id).comissao_modo==='recorrente_mensal';
+      const won=dbc&&['fechamento','pos_venda'].includes(dbc.estagio);
+      if(row){row.hidden=!(window.IS_ADMIN&&recor&&won); if(!row.hidden){ck.checked=!!dbc.contrato_ativo; ck.dataset.capid=dbc.id;}}
+    })();
     (function(){
       const stSel=document.getElementById('cap-st'), UI=['prospeccao','qualificacao','proposta','negociacao','fechamento','posvenda'];
       const own=c&&c.responsavel===CURRENT;
@@ -1584,7 +1694,7 @@
       <span class="rm" title="remover">✕</span></div>`).join('');
     partNote();
   }
-  function readCapParts(){
+  window.readCapParts=readCapParts; function readCapParts(){
     document.querySelectorAll('#cap-parts .cprow').forEach(row=>{
       const i=+row.dataset.i; if(!CAPPARTS[i])return;
       CAPPARTS[i].funcionario_id=row.querySelector('.cp-f').value;
@@ -1635,8 +1745,21 @@
     const k=capKey(CAPI); delete CAPTURES[k]; updateSvBadge(CAPI); closeCapture();
     warn('Captura excluída (admin).'); if(window.refreshCaps)window.refreshCaps();
   });
-  document.getElementById('cap-camp').addEventListener('change',renderCapParams);
+  document.getElementById('cap-camp').addEventListener('change',()=>{populateCapItems(campById(document.getElementById('cap-camp').value),null);renderCapParams();});
   document.getElementById('cap-mod').addEventListener('change',renderCapParams);
+  document.getElementById('cap-item').addEventListener('change',()=>{fillCapPlanos(itemById(document.getElementById('cap-item').value));capItemCalc();});
+  document.getElementById('cap-plano').addEventListener('change',capItemCalc);
+  document.getElementById('cap-contato-q').addEventListener('input',e=>renderCapContatos(window.CAPORG_EID,e.target.value));
+  document.getElementById('cap-parts').addEventListener('input',()=>{const ir=document.getElementById('cap-item-row');if(ir&&!ir.hidden&&document.getElementById('cap-item').value)capItemCalc();});
+  document.getElementById('cap-contatos').addEventListener('change',e=>{const cb=e.target.closest('input[data-ct]'); if(!cb)return;
+    const set=new Set((window.CAPCONTATOS||[]).map(String)); if(cb.checked)set.add(cb.dataset.ct); else set.delete(cb.dataset.ct); window.CAPCONTATOS=[...set];});
+  document.getElementById('cap-meses').addEventListener('input',capItemCalc);
+  document.getElementById('cap-contrato-ativo').addEventListener('change',async e=>{
+    const id=e.target.dataset.capid; if(!id)return;
+    const{error}=await sbc.from('capturas').update({contrato_ativo:e.target.checked}).eq('id',id);
+    if(error){warn('⚠ Contrato não atualizado: '+error.message); e.target.checked=!e.target.checked; return;}
+    warn(e.target.checked?'Contrato ativado — comissão mensal ligada.':'Contrato inativado — comissão mensal encerrada (meses anteriores preservados).');
+    if(window.refreshCaps)window.refreshCaps();});
   document.getElementById('cap-save').addEventListener('click',()=>{
     if(document.getElementById('cap-save').disabled)return;
     const r=SVREG[CAPI]; if(!r)return;
@@ -1656,6 +1779,7 @@
     const reciclou=st==='prospeccao'&&['fechamento','posvenda'].includes(stPrev);
     CAPTURES[_k]=Object.assign(CAPTURES[_k]||{},{campId,responsavel:resp,estagio:st,obs});
     updateSvBadge(CAPI);
+    window.CAPCONTATOS=[...document.querySelectorAll('#cap-contatos input[data-ct]:checked')].map(x=>x.dataset.ct);
     if(window.dbSaveCap)window.dbSaveCap(CAPI,campId,resp,st,obs);
     const camp=campById(campId), cc=window.CAPCALC||{};
     const baseV=cc.valor||camp.valorUnit||0, com=Math.round(baseV*(+camp.pct||0)/100);
@@ -1744,7 +1868,7 @@
       const seen={}; (window.APSX||[]).filter(a=>a.competencia===COMMPER).forEach(a=>{if(!(a.captura_id in seen))seen[a.captura_id]=+a.base_valor||0;});
       ganhas=Object.keys(seen).length; vendido=Object.values(seen).reduce((s,x)=>s+x,0);
     }
-    const metaC=(CAMPAIGNS[0]&&CAMPAIGNS[0].meta)||0, metaPct=metaC?Math.min(999,Math.round(vendido/metaC*100)):0;
+    const _cc=curCamp(); const metaC=(_cc&&_cc.meta)||0, metaPct=metaC?Math.min(999,Math.round(vendido/metaC*100)):0;
     document.getElementById('comm-kpis').innerHTML=
       `<div class="kpi"><div class="k">Comissão apurada</div><div class="v num" style="color:var(--good)">${money(ap)}</div></div>
        <div class="kpi accent"><div class="k">Comissão prevista</div><div class="v num">${money(pr)}</div></div>
@@ -1791,7 +1915,7 @@
   renderPeriod(); renderRules(); renderComm(); renderApur(); renderRulelog();
 
   // navegação sidebar: Campanhas ↔ Comissões ↔ Equipe/Organização
-  const SECS=['sec-filtros','sec-camp','sec-funil','sec-note'].map(id=>document.getElementById(id));
+  const SECS=['sec-filtros','camp-sections','sec-funil','sec-note'].map(id=>document.getElementById(id));
   function showView(v){
     SECS.forEach(el=>{if(el)el.hidden=v!=='main';});
     document.getElementById('view-comm').hidden=v!=='comm';
@@ -1810,7 +1934,7 @@
     const rc=document.getElementById('rulecards'); if(!rc)return;
     const cur=RULEV.find(r=>!r.fim), cfg=(cur&&cur.cfg)||{};
     const tier=(l,v,k)=>'<div class="tier"><span>'+l+'</span><b'+(k?' data-k="'+k+'"':'')+'>'+v+'</b></div>';
-    const base=cfg.base||{}, cli=cfg.cliente||{}, rg=cfg.rateio_geral||[], camp=CAMPAIGNS[0]||{};
+    const base=cfg.base||{}, cli=cfg.cliente||{}, rg=cfg.rateio_geral||[], camp=curCamp()||{};
     rc.innerHTML=
       '<div class="rulecard"><button class="editbtn adminonly">✎</button><h4>📈 Base por nível</h4><div class="sub">Percentual do vendedor por nível</div>'+
         (Object.keys(base).length?Object.keys(base).sort().map(nv=>tier('Vendedor '+nv,base[nv]+'%','base.'+nv)).join(''):tier('Sem níveis na regra','—'))+'</div>'+
@@ -2010,7 +2134,7 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAdd()});
   document.getElementById('org-cards').addEventListener('click',e=>{const b=e.target.closest('#org-add');if(b)openAdd(b);});
   // chips "+ Anexar / + Vincular" do cabeçalho abrem a edição da campanha
-  document.getElementById('sec-camp').addEventListener('click',e=>{const b=e.target.closest('.chip.add');if(b)openCampanha('editar');});
+
   // links "+ pessoa / + atividade" do 360 (conceito)
   document.querySelectorAll('.add360').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();warn('No conceito, participações e atividades entram pela captura do servidor (⊕ capturar).');}));
 
@@ -2060,7 +2184,7 @@
 
     say('Carregando campanhas e regras…');
     const cps=await q('campanhas','*');
-    CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+    CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
       if(window.attachItens)await window.attachItens();
     const rvs=await q('regras_versoes','*');
     RULEV.length=0; rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
@@ -2140,9 +2264,11 @@
     (window.CAPS||[]).filter(c=>c.ativo&&c.estagio!=='perdida').forEach(c=>{
       const e=entById[c.entidade_id]||{},s=srvById[c.servidor_id]||{},camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
       const respN=(funcById[c.responsavel_id]||{}).nome||'—';
-      CAPTURES[c.servidor_id]={campId:c.campanha_id,responsavel:respN,estagio:uiStage(c.estagio),obs:c.obs,dbId:c.id};
+      const it=(window.ITEMBY||{})[c.item_id];
+      if(c.servidor_id)CAPTURES[c.servidor_id]={campId:c.campanha_id,responsavel:respN,estagio:uiStage(c.estagio),obs:c.obs,dbId:c.id};
       const baseV=+c.valor_contrato||+camp.valorUnit||0;
-      LEADS.push({id:c.id,srv:s.nome||'—',cli:e.nome||'—',mun:e.municipio||'',org:(e.nome||'—')+((e.municipio)?' · '+e.municipio:''),area:e.area==='Legislativo'?'leg':'gp',
+      const srvNome=s.nome||(it?('🧩 '+it.nome):e.nome)||'—';
+      LEADS.push({id:c.id,srv:srvNome,cli:e.nome||'—',mun:e.municipio||'',org:(e.nome||'—')+((e.municipio)?' · '+e.municipio:''),area:e.area==='Legislativo'?'leg':'gp',
         obras:e.n_obras||'—',val:baseV?money(baseV):'—',vsub:'',st:uiStage(c.estagio),avs:[ini(respN)],
         ult:fmtD(c.atualizado_em),ultq:respN,next:'—',nextw:0,comm:money(Math.round(baseV*(+camp.pct||0)/100))});
       FMETA[c.id]={uf:e.uf||'',cid:e.municipio||'',esf:e.esfera||'',tema:e.tema||'',resp:respN};
@@ -2161,10 +2287,16 @@
         if(parts.length){const p=parts.find(x=>x.funcionario_id===t.id); if(!p)return; rat=+p.rateio_pct||100; papel=p.papel==='responsavel'?'Resp':'Parceiro';}
         else if(c.responsavel_id!==t.id)return;
         const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{},e=entById[c.entidade_id]||{};
+        const it=(window.ITEMBY||{})[c.item_id], pl=(window.PLANOBY||{})[c.plano_id];
         const baseV=+c.valor_contrato||+camp.valorUnit||0;
-        mem.push({cli:(e.nome||'—'),t:(e.tipo_cliente==='base'?'base':'novo'),v:baseV,rt:papel+' · '+rat+'%',
-          c:money(baseV)+' × '+(+camp.pct||0)+'%'+(rat!==100?' → '+rat+'%':''),
-          r:Math.round(baseV*(+camp.pct||0)/100*rat/100),s:'prevista',
+        let comBase, calcTxt;
+        if(it){const mm=itemMetric(it,pl)||{tipo:'percentual',val:0}, cbase=itemBase(it,pl,c.meses_contrato);
+          comBase=mm.tipo==='fixo'?mm.val:Math.round(cbase*mm.val/100);
+          calcTxt=(it.comissao_modo==='recorrente_mensal')?('R$ '+comBase.toLocaleString('pt-BR')+'/mês'):(mm.tipo==='fixo'?('R$ '+comBase.toLocaleString('pt-BR')+' fixo'):(money(cbase)+' × '+mm.val+'%'));
+        }else{comBase=Math.round(baseV*(+camp.pct||0)/100); calcTxt=money(baseV)+' × '+(+camp.pct||0)+'%';}
+        mem.push({cli:(it?it.nome+' · ':'')+(e.nome||'—'),t:(e.tipo_cliente==='base'?'base':'novo'),v:baseV,rt:papel+' · '+rat+'%',
+          c:calcTxt+(rat!==100?' → '+rat+'%':''),
+          r:Math.round(comBase*rat/100),s:'prevista',
           rv:'v'+(camp.regra||(RULEV.length?RULEV[RULEV.length-1].versao:1))});});
       APS.filter(a=>a.funcionario_id===t.id).forEach(a=>{
         const cap=(window.CAPS||[]).find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
@@ -2184,20 +2316,8 @@
     document.querySelectorAll('#tabs .tab').forEach(t=>{const c=t.querySelector('.cnt');if(c)c.textContent=by[t.dataset.tab]||0;});
   }
   // totais trabalhados por estágio — SEM percentual de comissão
-  function renderStageTotais(){
-    const el=document.getElementById('stage-totais'); if(!el)return;
-    const S={proposta:0,negociacao:0,fechamento:0};
-    (window.CAPS||[]).filter(c=>c.ativo).forEach(c=>{
-      const st=uiStage(c.estagio); if(!(st in S))return;
-      const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
-      S[st]+=(+c.valor_contrato||+camp.valorUnit||0);});
-    const tot=S.proposta+S.negociacao+S.fechamento;
-    el.innerHTML=
-      '<div class="sttile"><div class="k">Em proposta</div><div class="v">'+money(S.proposta)+'</div></div>'+
-      '<div class="sttile"><div class="k">Em negociação</div><div class="v">'+money(S.negociacao)+'</div></div>'+
-      '<div class="sttile"><div class="k">Em fechamento</div><div class="v">'+money(S.fechamento)+'</div></div>'+
-      '<div class="sttile tot"><div class="k">Total trabalhado</div><div class="v">'+money(tot)+'</div></div>';
-  }
+  function renderProdMetas(){ if(window.renderCampSections)renderCampSections(); }
+  function renderStageTotais(){ if(window.renderCampSections)renderCampSections(); }
   // recarrega capturas do banco e atualiza abas/contadores/totais na hora
   window.refreshCaps=async function(){
     try{
@@ -2217,7 +2337,7 @@
   window.refreshCampsRules=async function(){
     try{
       const cps=await q('campanhas','*');
-      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
       if(window.attachItens)await window.attachItens();
       const rvs=await q('regras_versoes','*');
       RULEV.length=0;rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
@@ -2317,22 +2437,97 @@
   }
 
   // header da campanha
-  function renderCampHeader(){
-    const c=CAMPAIGNS[0];
-    if(!c){document.getElementById('campTitle').textContent='Nenhuma campanha — crie em ＋ Nova campanha';
-      document.getElementById('camp-pick-nome').textContent='—';return;}
-    document.getElementById('campTitle').textContent=c.nome;
-    document.getElementById('camp-pick-nome').textContent=c.nome.split(' · ')[0];
-    document.getElementById('camp-sub').innerHTML='<span>Período <b>'+fmtD(c.inicio)+' – '+fmtD(c.fim)+'</b></span><span>Meta <b class="num">'+(c.meta?money(c.meta):'—')+'</b></span><span>Escopo <b>'+c.escopo+'</b></span><span>Comissão <b class="num">'+c.pct+'% · unit '+money(c.valorUnit||0)+'</b></span>'+(c.itens||[]).map(function(it){return '<span>🧩 '+it.nome+' <b>'+window.citemComm(it)+'</b></span>';}).join('');
-    document.getElementById('hdr-anexos').innerHTML=(c.anexos||[]).map(a=>'<span class="chip"><span class="ext '+(a.ext||'doc')+'">'+String(a.ext||'doc').toUpperCase()+'</span> '+a.nome+'</span>').join('')+'<button class="chip add">＋ Anexar arquivo</button>';
-    document.getElementById('hdr-links').innerHTML=(c.links||[]).map(l=>'<a class="chip link" href="'+(l.url||'#')+'" target="_blank" rel="noopener">'+l.nome+' <span class="ar">↗</span></a>').join('')+'<button class="chip add">＋ Vincular link</button>';
+  window.CURCAMP=null;
+  function curCamp(){return CAMPAIGNS.find(c=>c.id===window.CURCAMP)||CAMPAIGNS[0]||null;}
+  function renderCampMenu(){
+    const m=document.getElementById('camp-menu'); if(!m)return;
+    m.innerHTML=CAMPAIGNS.map(c=>`<div class="cm-item${c.id===(curCamp()||{}).id?' on':''}" data-cid="${c.id}"><span class="cm-dot" style="background:${c.cor||'var(--accent)'}"></span><b>${c.nome.split(' · ')[0]}</b><span class="grow2" style="flex:1"></span><span class="ctmeta">${c.status||''}</span></div>`).join('')||'<div class="cm-item">Nenhuma campanha</div>';
   }
+  function selectCamp(id){window.CURCAMP=id; const sec=document.querySelector('#camp-sections .camp[data-cid="'+id+'"]'); if(sec)sec.scrollIntoView({behavior:'smooth',block:'start'}); document.getElementById('camp-menu').hidden=true;}
+  (function(){const pick=document.getElementById('camp-pick'),menu=document.getElementById('camp-menu');
+    if(pick)pick.addEventListener('click',e=>{e.stopPropagation();renderCampMenu();menu.hidden=!menu.hidden;});
+    if(menu)menu.addEventListener('click',e=>{const it=e.target.closest('.cm-item');if(it&&it.dataset.cid)selectCamp(it.dataset.cid);});
+    document.addEventListener('click',e=>{if(menu&&!menu.hidden&&!e.target.closest('#camp-menu')&&!e.target.closest('#camp-pick'))menu.hidden=true;});
+  })();
+  function stageTotaisHTML(cid){
+    const S={proposta:0,negociacao:0,fechamento:0};
+    (window.CAPS||[]).filter(c=>c.ativo&&c.campanha_id===cid).forEach(c=>{const st=uiStage(c.estagio);if(!(st in S))return;
+      const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};S[st]+=(+c.valor_contrato||+camp.valorUnit||0);});
+    const tot=S.proposta+S.negociacao+S.fechamento;
+    return '<div class="sttile"><div class="k">Em proposta</div><div class="v">'+money(S.proposta)+'</div></div>'+
+      '<div class="sttile"><div class="k">Em negociação</div><div class="v">'+money(S.negociacao)+'</div></div>'+
+      '<div class="sttile"><div class="k">Em fechamento</div><div class="v">'+money(S.fechamento)+'</div></div>'+
+      '<div class="sttile tot"><div class="k">Total trabalhado</div><div class="v">'+money(tot)+'</div></div>';}
+  function prodMetasHTML(c){
+    const itens=((c&&c.itens)||[]).filter(it=>it.meta_valor); if(!itens.length)return '';
+    const vend={};
+    (window.CAPS||[]).filter(x=>x.ativo&&['fechamento','pos_venda'].includes(x.estagio)&&x.item_id&&x.campanha_id===c.id).forEach(x=>{vend[x.item_id]=(vend[x.item_id]||0)+(+x.valor_contrato||0);});
+    return '<div class="prodmetas"><div class="pm-h">🎯 Metas por produto</div>'+itens.map(it=>{const v=vend[it.id]||0,pct=Math.min(100,Math.round(v/it.meta_valor*100));
+      return `<div class="pmrow"><span class="pmn">${it.nome}</span><div class="pmbar"><i style="width:${pct}%"></i></div><span class="pmv">${money(v)} / ${money(it.meta_valor)} · ${pct}%</span></div>`;}).join('')+'</div>';}
+  function campSectionHTML(c){
+    const col=isCampCol(c.id)?' collapsed':'', admin=window.IS_ADMIN;
+    const sub='<span>Período <b>'+fmtD(c.inicio)+' – '+fmtD(c.fim)+'</b></span><span>Meta <b class="num">'+(c.meta?money(c.meta):'—')+'</b></span><span>Escopo <b>'+(c.escopo||'—')+'</b></span><span>Comissão <b class="num">'+(c.pct||0)+'% · unit '+money(c.valorUnit||0)+'</b></span>'+(c.itens||[]).map(it=>'<span>🧩 '+it.nome+' <b>'+window.citemComm(it)+'</b></span>').join('');
+    const anexos=(c.anexos||[]).map(a=>'<span class="chip"><span class="ext '+(a.ext||'doc')+'">'+String(a.ext||'doc').toUpperCase()+'</span> '+a.nome+'</span>').join('')+(admin?'<button class="chip add" data-cid="'+c.id+'">＋ Anexar</button>':'');
+    const links=(c.links||[]).map(l=>'<a class="chip link" href="'+(l.url||'#')+'" target="_blank" rel="noopener">'+l.nome+' <span class="ar">↗</span></a>').join('')+(admin?'<button class="chip add" data-cid="'+c.id+'">＋ Vincular link</button>':'');
+    const encerr=c.status==='encerrada';
+    return `<section class="camp${col}" data-cid="${c.id}" style="${c.cor?('border-top:3px solid '+c.cor):''}">
+      <div class="camp-head">
+        <div class="l"><span class="pill ativa"${c.cor?` style="background:${c.cor}22;color:${c.cor}"`:''}>● ${encerr?'Encerrada':'Ativa'}</span>
+          <h1>${c.nome}</h1><div class="sub">${sub}</div></div>
+        <button class="btn-ghost campmini camp-toggle" data-cid="${c.id}" title="Recolher / expandir">${col?'▸ Expandir':'▾ Recolher'}</button>
+        ${admin?`<button class="editbtn camp-edit" data-cid="${c.id}">✎ Editar</button>`:''}
+      </div>
+      <div class="attach">
+        <div><div class="lbl eyebrow">📎 Anexos exibidos na campanha</div><div class="row">${anexos||'<span class="ctmeta">—</span>'}</div></div>
+        <div><div class="lbl eyebrow">🔗 Links vinculados</div><div class="row">${links||'<span class="ctmeta">—</span>'}</div></div>
+      </div>
+      <div class="stagetotais">${stageTotaisHTML(c.id)}</div>
+      ${prodMetasHTML(c)}
+    </section>`;}
+  function renderCampSections(){
+    const box=document.getElementById('camp-sections'); if(!box)return;
+    box.innerHTML=CAMPAIGNS.length?CAMPAIGNS.map(campSectionHTML).join(''):'<section class="camp"><div class="camp-head"><div class="l"><h1>Nenhuma campanha — crie em ＋ Nova campanha</h1></div></div></section>';
+  }
+  function renderCampHeader(){
+    const c=curCamp(); if(c&&!window.CURCAMP)window.CURCAMP=c.id;
+    const pn=document.getElementById('camp-pick-nome'); if(pn)pn.textContent=CAMPAIGNS.length>1?(CAMPAIGNS.length+' campanhas'):(c?c.nome.split(' · ')[0]:'—');
+    const dot=document.getElementById('camp-pick-dot'); if(dot&&c&&c.cor)dot.style.background=c.cor;
+    renderCampSections();
+  }
+  window.renderCampSections=renderCampSections;
 
   // ---------- escrita no banco ----------
   const val=id=>document.getElementById(id).value.trim();
   const numval=id=>parseInt(val(id).replace(/\D/g,''))||0;
+  function brlFmt(el){if(!el)return;const raw=(el.value||'').replace(/\D/g,'');el.value=raw?(+raw).toLocaleString('pt-BR'):'';}
+  ['c-meta','c-valor-unit','c-lote-pres','c-lote-onl'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',()=>brlFmt(el));});
+  document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList.contains('cp-preco')||t.dataset.k==='meta_valor'||t.dataset.k==='comissao_valor')return;});
+  document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList&&t.classList.contains('cp-preco'))brlFmt(t);});
+  // ---------- editores de regra de comissão ----------
+  let cProg=[];
+  function renderProgRows(){document.getElementById('rule-prog-rows').innerHTML=cProg.map((r,i)=>`<div class="progrow" data-i="${i}"><input class="pg-n" value="${(r.nivel||'').replace(/"/g,'&quot;')}" placeholder="Nível (ex.: IV)"><input class="pg-p" type="number" min="0" max="100" value="${r.pct==null?'':r.pct}" placeholder="%"><span>%</span><button type="button" class="rm" data-i="${i}" aria-label="Remover">✕</button></div>`).join('');}
+  function readProg(){cProg=[...document.querySelectorAll('#rule-prog-rows .progrow')].map(r=>({nivel:r.querySelector('.pg-n').value.trim(),pct:+r.querySelector('.pg-p').value||0}));}
+  document.getElementById('rule-prog-add').addEventListener('click',()=>{readProg();cProg.push({nivel:'',pct:0});renderProgRows();});
+  document.getElementById('rule-prog-rows').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){readProg();cProg.splice(+b.dataset.i,1);renderProgRows();}});
+  function renderIndRows(cfgInd){const by={};(cfgInd||[]).forEach(x=>by[x.funcionario_id]=x);
+    document.getElementById('rule-ind-rows').innerHTML=TEAM.filter(t=>t.fn==='Vendedor').map(t=>{const x=by[t.id]||{};
+      return `<div class="indrow" data-fid="${t.id}"><span class="in-nm">${t.n}</span><input class="in-m" value="${x.meta?(+x.meta).toLocaleString('pt-BR'):''}" placeholder="meta R$"><input class="in-p" type="number" min="0" max="100" value="${x.pct==null?'':x.pct}" placeholder="% pós"><span>%</span></div>`;}).join('')||'<span class="ctmeta">Cadastre vendedores na Equipe.</span>';
+    document.querySelectorAll('#rule-ind-rows .in-m').forEach(el=>el.addEventListener('input',()=>brlFmt(el)));}
+  function showRuleCfg(tipo){document.getElementById('rule-prog').hidden=tipo!=='progressiva';
+    document.getElementById('rule-pos').hidden=tipo!=='pos_meta'; document.getElementById('rule-ind').hidden=tipo!=='individual';}
+  document.querySelectorAll('input[name="crule"]').forEach(r=>r.addEventListener('change',()=>showRuleCfg(r.value)));
+  function fillRuleCfg(c){const cfg=(c&&c.regraCfg)||{}, tipo=(c&&c.regraTipo)||'progressiva';
+    const rb=document.getElementById(tipo==='pos_meta'?'crule-pos':tipo==='individual'?'crule-ind':'crule-prog'); if(rb)rb.checked=true;
+    cProg=(cfg.niveis&&cfg.niveis.length)?cfg.niveis.slice():[{nivel:'IV',pct:5},{nivel:'V',pct:5}]; renderProgRows();
+    document.getElementById('rule-pos-pct').value=cfg.pos_meta_pct!=null?cfg.pos_meta_pct:'';
+    renderIndRows(cfg.individual); showRuleCfg(tipo);}
+  function readRuleCfg(){const sel=document.querySelector('input[name="crule"]:checked'), tipo=sel?sel.value:'progressiva', cfg={};
+    if(tipo==='progressiva'){readProg();cfg.niveis=cProg.filter(x=>x.nivel);}
+    else if(tipo==='pos_meta'){cfg.pos_meta_pct=+document.getElementById('rule-pos-pct').value||0;}
+    else if(tipo==='individual'){cfg.individual=[...document.querySelectorAll('#rule-ind-rows .indrow')].map(r=>({funcionario_id:r.dataset.fid,meta:(+((r.querySelector('.in-m').value||'').replace(/\D/g,''))||0),pct:+r.querySelector('.in-p').value||0})).filter(x=>x.meta||x.pct);}
+    return{tipo,cfg};}
   window.fillCampModal=function(modo){
-    const c=modo==='nova'?null:CAMPAIGNS[0];
+    const c=modo==='nova'?null:curCamp();
     CAMP_EDIT_ID=c?c.id:null;
     document.getElementById('c-nome').value=c?c.nome:'';
     document.getElementById('c-ini').value=c&&c.inicio?String(c.inicio).slice(0,10):'';
@@ -2346,6 +2541,9 @@
     cLotes=c?(c.lotes||[]).slice():[]; renderCLotes();
     cItens=c&&c.itens?JSON.parse(JSON.stringify(c.itens)):[]; cItensDel=[]; cPlanoDel=[]; renderCItens();
     document.getElementById('c-desc-org').value=c?(c.descOrg||0):10;
+    document.getElementById('c-cor').value=(c&&c.cor)||'#C9A227';
+    document.getElementById('c-cli-novo').value=(c&&c.cliNovo!=null)?c.cliNovo:'';
+    fillRuleCfg(c);
   };
   window.dbSaveCamp=async function(){
     try{
@@ -2357,11 +2555,15 @@
         pct_comissao:+val('c-pct')||5,valor_unitario:numval('c-valor-unit'),
         anexos:cAnexos,links:cLinks,criterios:crit,status:'ativa',regra_versao:vigente?vigente.versao:null,
         lotes:cLotes,desconto_org_pct:+val('c-desc-org')||0};
+      const _rc=readRuleCfg(); payload.regra_tipo=_rc.tipo; payload.regra_config=_rc.cfg;
+      payload.cor=document.getElementById('c-cor').value||null;
+      payload.cliente_novo_pct=+document.getElementById('c-cli-novo').value||null;
       if(CAMP_EDIT_ID){const{error}=await sbc.from('campanhas').update(payload).eq('id',CAMP_EDIT_ID);if(error)throw error;}
       else{const{data,error}=await sbc.from('campanhas').insert(payload).select('id').single();if(error)throw error;CAMP_EDIT_ID=data.id;}
+      window.CURCAMP=CAMP_EDIT_ID;
       if(window.dbSaveItens)await window.dbSaveItens(CAMP_EDIT_ID);
       const cps=await q('campanhas','*');
-      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
       if(window.attachItens)await window.attachItens();
       renderCampHeader(); warn('Campanha gravada no banco ✓');
     }catch(e){warn('⚠ Campanha não gravada: '+(e.message||e));}
@@ -2379,19 +2581,23 @@
   }
   window.dbSaveCap=async function(i,campId,resp,st,obs){
     const r=SVREG[i]; if(!r)return;
-    try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}
+    if(!r.isOrg){try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}}
     const respId=(TEAM.find(t=>t.n===resp)||{}).id, k=capKey(i), cur=CAPTURES[k];
     try{
+      const cc=window.CAPCALC||{}, orgao=cc.nivel==='orgao';
+      const base={campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc.mod||null,
+        valor_contrato:cc.valor||null,item_id:cc.item_id||null,plano_id:cc.plano_id||null,meses_contrato:cc.meses||null};
       if(cur&&cur.dbId){
-        const cc=window.CAPCALC||{};
-        const{error}=await sbc.from('capturas').update({campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc.mod||null,valor_contrato:cc.valor||null}).eq('id',cur.dbId);
+        const{error}=await sbc.from('capturas').update(base).eq('id',cur.dbId);
         if(error)throw error;
         await sbc.from('atividades').insert({captura_id:cur.dbId,tipo:'mudanca_estagio',descricao:obs||null,estagio_para:dbStage(st)});
       }else{
-        const cc2=window.CAPCALC||{};
-        const{data,error}=await sbc.from('capturas').insert({servidor_id:r.sid,entidade_id:r.eid,campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc2.mod||null,valor_contrato:cc2.valor||null}).select('id').single();
+        const{data,error}=await sbc.from('capturas').insert(Object.assign({servidor_id:orgao?null:r.sid,entidade_id:r.eid},base)).select('id').single();
         if(error)throw error; CAPTURES[k].dbId=data.id;
         await sbc.from('atividades').insert({captura_id:data.id,tipo:'captura',descricao:obs||null,estagio_para:dbStage(st)});
+        const cts=(window.CAPCONTATOS||[]).map(String); if(orgao&&r.sid&&!cts.includes(String(r.sid)))cts.push(String(r.sid));
+        if(orgao&&cts.length){const{error:ce}=await sbc.from('captura_contatos').upsert(cts.map(sid=>({captura_id:data.id,servidor_id:sid,papel:'contato'})),{onConflict:'captura_id,servidor_id'}); if(ce)warn('⚠ Contatos não gravados: '+ce.message);}
+        window.CAPCONTATOS=[];
       }
       const capId=(cur&&cur.dbId)||CAPTURES[k].dbId;
       if(window.CAPPARTS_SAVE&&capId){
@@ -2586,6 +2792,8 @@
           planos:(pby[it.id]||[]).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(p=>({id:p.id,nome:p.nome,preco:+p.preco||0,unidade:p.unidade,
             meses_padrao:p.meses_padrao,modalidade:p.modalidade,vigencia_ate:p.vigencia_ate,comissao_ovr_tipo:p.comissao_ovr_tipo,comissao_ovr_valor:p.comissao_ovr_valor}))});});
       CAMPAIGNS.forEach(c=>{c.itens=iby[c.id]||[];});
+      window.ITEMBY={}; window.PLANOBY={};
+      Object.values(iby).flat().forEach(it=>{window.ITEMBY[it.id]=it;(it.planos||[]).forEach(p=>{window.PLANOBY[p.id]=p;});});
     }catch(e){}
   };
 

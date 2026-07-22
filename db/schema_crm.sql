@@ -995,3 +995,24 @@ revoke execute on function trg_capturas_apura() from public, anon, authenticated
 -- ---- v10c: rotina mensal automática (pg_cron) ----
 create extension if not exists pg_cron;
 select cron.schedule('crm-recorrentes-mensal','0 6 1 * *',$$select crm_apurar_recorrentes()$$);
+
+-- ============================================================================
+-- CRM v11 — cor do bloco da campanha + configuração da regra de comissão  [APLICADA 22/07/2026]
+-- regra_tipo/regra_config guardam os parâmetros das regras (progressiva níveis+%,
+-- pós-meta %, individual meta+% por vendedor). NÃO entram na apuração ainda — a
+-- forma de combinar com a comissão por item precisa ser definida.
+-- ============================================================================
+alter table campanhas add column if not exists cor text;
+alter table campanhas add column if not exists regra_tipo text
+  check (regra_tipo in ('progressiva','pos_meta','individual') or regra_tipo is null);
+alter table campanhas add column if not exists regra_config jsonb default '{}'::jsonb;
+
+-- ============================================================================
+-- CRM v12 — REGRA DE COMISSÃO "SOMA POR CIMA" + majoração cliente novo  [APLICADA 22/07/2026]
+-- comissão por vendedor = comissão do item + base×(% da regra) + base×(% cliente novo)
+--   progressiva → % do NÍVEL do vendedor; pós-meta → % se vendido da campanha ≥ meta;
+--   individual → % se vendido do vendedor ≥ meta dele; cliente novo → % se entidade não-'base'.
+-- Recorrente: base = mensalidade. Ver crm_regra_bonus_pct + crm_grava_apur (migração aplicada).
+-- ============================================================================
+alter table campanhas add column if not exists cliente_novo_pct numeric;
+-- crm_regra_bonus_pct(capturas,uuid) e crm_grava_apur reescritos para somar o bônus por participante.
