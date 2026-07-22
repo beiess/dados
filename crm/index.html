@@ -247,6 +247,20 @@
   .chipedit .chip .rm{border:none;background:none;color:var(--faint);cursor:pointer;font-size:12px;padding:0 0 0 2px}
   .chipedit .chip .rm:hover{color:var(--crit)}
   .addline{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .citem{border:1px solid var(--border-2);border-radius:11px;padding:11px 12px;margin-top:9px;background:var(--surface-2,rgba(0,0,0,.02))}
+  .citem-h{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .citem-h .ci-nome{flex:1;font-weight:600}
+  .ci-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+  @media(min-width:620px){.ci-grid{grid-template-columns:repeat(4,1fr)}}
+  .ci-grid label{font-size:10px;color:var(--muted);display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+  .ci-grid .fld{display:flex;flex-direction:column}
+  .ci-planos{margin-top:9px;padding-top:8px;border-top:1px dashed var(--border-2)}
+  .cplano{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .cplano input,.cplano select{padding:5px 7px;font-size:12px}
+  .cplano .cp-nome{flex:1;min-width:110px} .cplano .cp-preco{max-width:96px} .cplano .cp-mes{max-width:64px} .cplano .cp-ovr{max-width:74px}
+  .citem .rm{cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:6px;padding:2px 7px}
+  .citem .rm:hover{color:var(--crit,#c33);border-color:var(--crit,#c33)}
+  .ci-planos .addbtn{margin-top:7px;font-size:11px}
   .addline input{flex:1;min-width:120px;font-family:var(--sans);font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:8px 9px}
   .leadpick{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--surface-2)}
   .leadpick label{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 6px;border-radius:6px;cursor:pointer}
@@ -823,6 +837,11 @@
     <div class="frow2">
       <div class="frow"><label>Meta (R$)</label><input type="text" id="c-meta" value="1.200.000"></div>
       <div class="frow"><label>Segmento</label><select id="c-seg"><option>Gestão Pública</option><option>Legislativo</option><option>Ambos</option></select></div>
+    </div>
+    <div class="frow"><label>🧩 Produtos e serviços da campanha</label>
+      <div class="capnote" style="margin:-2px 0 4px">Cada produto/serviço tem seus planos (preços) e a própria comissão. Produto vende-se ao órgão; serviço/curso, ao servidor. Deixe vazio para usar o modelo simples (percentual único acima).</div>
+      <div id="c-itens"></div>
+      <button class="addbtn" id="c-item-add" type="button">＋ Produto / serviço</button>
     </div>
     <div class="frow"><label>Regra de comissão</label>
       <div class="rulepick">
@@ -2042,6 +2061,7 @@
     say('Carregando campanhas e regras…');
     const cps=await q('campanhas','*');
     CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+      if(window.attachItens)await window.attachItens();
     const rvs=await q('regras_versoes','*');
     RULEV.length=0; rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
 
@@ -2198,6 +2218,7 @@
     try{
       const cps=await q('campanhas','*');
       CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+      if(window.attachItens)await window.attachItens();
       const rvs=await q('regras_versoes','*');
       RULEV.length=0;rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
       renderCampHeader(); renderRules(); renderRulelog(); renderPeriod();
@@ -2302,7 +2323,7 @@
       document.getElementById('camp-pick-nome').textContent='—';return;}
     document.getElementById('campTitle').textContent=c.nome;
     document.getElementById('camp-pick-nome').textContent=c.nome.split(' · ')[0];
-    document.getElementById('camp-sub').innerHTML='<span>Período <b>'+fmtD(c.inicio)+' – '+fmtD(c.fim)+'</b></span><span>Meta <b class="num">'+(c.meta?money(c.meta):'—')+'</b></span><span>Escopo <b>'+c.escopo+'</b></span><span>Comissão <b class="num">'+c.pct+'% · unit '+money(c.valorUnit||0)+'</b></span>';
+    document.getElementById('camp-sub').innerHTML='<span>Período <b>'+fmtD(c.inicio)+' – '+fmtD(c.fim)+'</b></span><span>Meta <b class="num">'+(c.meta?money(c.meta):'—')+'</b></span><span>Escopo <b>'+c.escopo+'</b></span><span>Comissão <b class="num">'+c.pct+'% · unit '+money(c.valorUnit||0)+'</b></span>'+(c.itens||[]).map(function(it){return '<span>🧩 '+it.nome+' <b>'+window.citemComm(it)+'</b></span>';}).join('');
     document.getElementById('hdr-anexos').innerHTML=(c.anexos||[]).map(a=>'<span class="chip"><span class="ext '+(a.ext||'doc')+'">'+String(a.ext||'doc').toUpperCase()+'</span> '+a.nome+'</span>').join('')+'<button class="chip add">＋ Anexar arquivo</button>';
     document.getElementById('hdr-links').innerHTML=(c.links||[]).map(l=>'<a class="chip link" href="'+(l.url||'#')+'" target="_blank" rel="noopener">'+l.nome+' <span class="ar">↗</span></a>').join('')+'<button class="chip add">＋ Vincular link</button>';
   }
@@ -2323,6 +2344,7 @@
     document.getElementById('c-valor-unit').value=c&&c.valorUnit?c.valorUnit.toLocaleString('pt-BR'):'';
     cAnexos=c?(c.anexos||[]).slice():[]; cLinks=c?(c.links||[]).slice():[];
     cLotes=c?(c.lotes||[]).slice():[]; renderCLotes();
+    cItens=c&&c.itens?JSON.parse(JSON.stringify(c.itens)):[]; cItensDel=[]; cPlanoDel=[]; renderCItens();
     document.getElementById('c-desc-org').value=c?(c.descOrg||0):10;
   };
   window.dbSaveCamp=async function(){
@@ -2337,8 +2359,10 @@
         lotes:cLotes,desconto_org_pct:+val('c-desc-org')||0};
       if(CAMP_EDIT_ID){const{error}=await sbc.from('campanhas').update(payload).eq('id',CAMP_EDIT_ID);if(error)throw error;}
       else{const{data,error}=await sbc.from('campanhas').insert(payload).select('id').single();if(error)throw error;CAMP_EDIT_ID=data.id;}
+      if(window.dbSaveItens)await window.dbSaveItens(CAMP_EDIT_ID);
       const cps=await q('campanhas','*');
       CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+      if(window.attachItens)await window.attachItens();
       renderCampHeader(); warn('Campanha gravada no banco ✓');
     }catch(e){warn('⚠ Campanha não gravada: '+(e.message||e));}
   };
@@ -2466,6 +2490,105 @@
   });
   document.getElementById('c-lotes').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cLotes.splice(+b.dataset.i,1);renderCLotes();}});
 
+  // ---------- produtos/planos da campanha (1ª onda) ----------
+  let cItens=[], cItensDel=[], cPlanoDel=[];
+  const OPTC={categoria:[['produto','Produto'],['servico','Serviço'],['curso','Curso']],
+    nivel_venda:[['orgao','Venda por órgão'],['servidor','Venda por servidor']],
+    cobranca:[['unica','Cobrança única'],['mensal','Cobrança mensal']],
+    comissao_modo:[['total','Comissão total (1×)'],['recorrente_mensal','Recorrente mensal']],
+    comissao_tipo:[['percentual','% percentual'],['fixo','R$ fixo']],
+    unidade:[['unica','única'],['mensal','mensal']],
+    modalidade:[['','—'],['presencial','presencial'],['online','online']],
+    ovr_tipo:[['','herda do produto'],['percentual','%'],['fixo','R$ fixo']]};
+  const n2=v=>{v=String(v==null?'':v).replace(/\s/g,'');if(/,/.test(v)&&/\./.test(v))v=v.replace(/\./g,'').replace(',','.');else v=v.replace(',','.');return parseFloat(v.replace(/[^\d.]/g,''))||0;};
+  const selOpts=(k,cur)=>OPTC[k].map(o=>`<option value="${o[0]}"${String(o[0])===String(cur==null?'':cur)?' selected':''}>${o[1]}</option>`).join('');
+  const defItem=()=>({nome:'',categoria:'produto',nivel_venda:'orgao',cobranca:'unica',comissao_modo:'total',comissao_tipo:'percentual',comissao_valor:5,meta_valor:null,planos:[]});
+  const defPlano=it=>({nome:'',preco:0,unidade:it.cobranca==='mensal'?'mensal':'unica',meses_padrao:it.cobranca==='mensal'?12:null,modalidade:'',vigencia_ate:'',comissao_ovr_tipo:'',comissao_ovr_valor:null});
+  window.citemComm=it=>(it.comissao_tipo==='fixo'?'R$ '+(+it.comissao_valor||0).toLocaleString('pt-BR')+' fixo':(+it.comissao_valor||0)+'%')+(it.comissao_modo==='recorrente_mensal'?'/mês':'');
+  function planoRow(p,ii,pi){return `<div class="cplano" data-pid="${p.id||''}">
+    <input class="cp-nome" data-k="nome" value="${(p.nome||'').replace(/"/g,'&quot;')}" placeholder="Plano / Lote">
+    <input class="cp-preco" data-k="preco" value="${p.preco||''}" placeholder="R$ preço">
+    <select data-k="unidade">${selOpts('unidade',p.unidade)}</select>
+    <input class="cp-mes" data-k="meses_padrao" value="${p.meses_padrao||''}" placeholder="meses" title="meses do contrato (recorrente)">
+    <select data-k="modalidade" title="modalidade (curso)">${selOpts('modalidade',p.modalidade)}</select>
+    <input class="cp-mes" data-k="vigencia_ate" type="date" value="${p.vigencia_ate||''}" title="validade do lote">
+    <select data-k="comissao_ovr_tipo" title="override de comissão do plano">${selOpts('ovr_tipo',p.comissao_ovr_tipo)}</select>
+    <input class="cp-ovr" data-k="comissao_ovr_valor" value="${p.comissao_ovr_valor==null?'':p.comissao_ovr_valor}" placeholder="ovr">
+    <button type="button" class="rm cp-del" data-ii="${ii}" data-pi="${pi}" aria-label="Remover plano">✕</button></div>`;}
+  function itemCard(it,i){const f=(k,lbl)=>`<div class="fld"><label>${lbl}</label><select class="ci-f" data-k="${k}">${selOpts(k,it[k])}</select></div>`;
+    return `<div class="citem" data-id="${it.id||''}" data-ii="${i}">
+      <div class="citem-h"><input class="ci-nome" value="${(it.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome do produto ou serviço">
+        <button type="button" class="rm ci-del" data-ii="${i}" aria-label="Remover produto">✕</button></div>
+      <div class="ci-grid">
+        ${f('categoria','Categoria')}${f('nivel_venda','Nível de venda')}${f('cobranca','Cobrança')}${f('comissao_modo','Comissão')}
+        ${f('comissao_tipo','Métrica')}
+        <div class="fld"><label>Valor da comissão</label><input class="ci-f" data-k="comissao_valor" value="${it.comissao_valor==null?'':it.comissao_valor}" placeholder="8 ou 2000"></div>
+        <div class="fld"><label>Meta do produto (R$)</label><input class="ci-f" data-k="meta_valor" value="${it.meta_valor==null?'':it.meta_valor}" placeholder="opcional"></div>
+      </div>
+      <div class="ci-planos">${(it.planos||[]).map((p,pi)=>planoRow(p,i,pi)).join('')||'<span class="ctmeta">Sem planos — adicione ao menos um preço.</span>'}
+        <button type="button" class="addbtn ci-plano-add" data-ii="${i}">＋ plano / preço</button></div>
+    </div>`;}
+  function renderCItens(){const el=document.getElementById('c-itens'); if(!el)return;
+    el.innerHTML=cItens.map(itemCard).join('')||'<span class="ctmeta">Nenhum produto — use ＋ para adicionar, ou deixe vazio para o modelo simples.</span>';}
+  function readCItens(){const out=[];
+    document.querySelectorAll('#c-itens .citem').forEach(card=>{
+      const it={id:card.dataset.id||undefined, nome:card.querySelector('.ci-nome').value.trim()};
+      card.querySelectorAll('.ci-grid .ci-f').forEach(f=>{it[f.dataset.k]=f.value;});
+      it.comissao_valor=n2(it.comissao_valor); it.meta_valor=(it.meta_valor===''||it.meta_valor==null)?null:n2(it.meta_valor);
+      it.planos=[];
+      card.querySelectorAll('.cplano').forEach(pr=>{const p={id:pr.dataset.pid||undefined};
+        pr.querySelectorAll('[data-k]').forEach(f=>{p[f.dataset.k]=f.value;});
+        p.preco=n2(p.preco); p.meses_padrao=p.meses_padrao?(parseInt(p.meses_padrao)||null):null;
+        p.comissao_ovr_valor=(p.comissao_ovr_valor==null||p.comissao_ovr_valor==='')?null:n2(p.comissao_ovr_valor);
+        p.comissao_ovr_tipo=p.comissao_ovr_tipo||null; p.modalidade=p.modalidade||null; p.vigencia_ate=p.vigencia_ate||null;
+        it.planos.push(p);});
+      out.push(it);});
+    cItens=out;}
+  const _ci=document.getElementById('c-item-add');
+  if(_ci)_ci.addEventListener('click',()=>{readCItens(); cItens.push(defItem()); renderCItens();});
+  const _cil=document.getElementById('c-itens');
+  if(_cil){
+    _cil.addEventListener('click',e=>{
+      const del=e.target.closest('.ci-del'); if(del){readCItens(); const i=+del.dataset.ii; if(cItens[i].id)cItensDel.push(cItens[i].id); (cItens[i].planos||[]).forEach(p=>p.id&&cPlanoDel.push(p.id)); cItens.splice(i,1); renderCItens(); return;}
+      const pa=e.target.closest('.ci-plano-add'); if(pa){readCItens(); const i=+pa.dataset.ii; cItens[i].planos.push(defPlano(cItens[i])); renderCItens(); return;}
+      const pd=e.target.closest('.cp-del'); if(pd){readCItens(); const i=+pd.dataset.ii,j=+pd.dataset.pi; const p=cItens[i].planos[j]; if(p&&p.id)cPlanoDel.push(p.id); cItens[i].planos.splice(j,1); renderCItens(); return;}
+    });
+  }
+  window.dbSaveItens=async function(campId){
+    readCItens();
+    for(const id of cItensDel){try{await sbc.from('campanha_itens').delete().eq('id',id);}catch(e){}}
+    for(const id of cPlanoDel){try{await sbc.from('item_planos').delete().eq('id',id);}catch(e){}}
+    cItensDel=[]; cPlanoDel=[];
+    for(let i=0;i<cItens.length;i++){const it=cItens[i];
+      const ip={campanha_id:campId,nome:it.nome||'Produto',categoria:it.categoria,nivel_venda:it.nivel_venda,cobranca:it.cobranca,
+        comissao_modo:it.comissao_modo,comissao_tipo:it.comissao_tipo,comissao_valor:+it.comissao_valor||0,meta_valor:it.meta_valor,ordem:i};
+      let iid=it.id;
+      if(iid){const{error}=await sbc.from('campanha_itens').update(ip).eq('id',iid); if(error)throw error;}
+      else{const{data,error}=await sbc.from('campanha_itens').insert(ip).select('id').single(); if(error)throw error; iid=data.id; it.id=iid;}
+      for(let j=0;j<it.planos.length;j++){const p=it.planos[j];
+        const pp={item_id:iid,nome:p.nome||('Plano '+(j+1)),preco:+p.preco||0,unidade:p.unidade||'unica',
+          meses_padrao:p.meses_padrao||null,modalidade:p.modalidade||null,vigencia_ate:p.vigencia_ate||null,
+          comissao_ovr_tipo:p.comissao_ovr_tipo||null,comissao_ovr_valor:p.comissao_ovr_valor,ordem:j};
+        if(p.id){const{error}=await sbc.from('item_planos').update(pp).eq('id',p.id); if(error)throw error;}
+        else{const{error}=await sbc.from('item_planos').insert(pp); if(error)throw error;}
+      }
+    }
+  };
+  // carrega itens/planos e anexa a cada campanha (CAMPAIGNS[].itens)
+  window.attachItens=async function(){
+    try{
+      const cis=await q('campanha_itens','*'), ipl=await q('item_planos','*');
+      const pby={}; ipl.forEach(p=>{(pby[p.item_id]=pby[p.item_id]||[]).push(p);});
+      const iby={};
+      cis.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).forEach(it=>{
+        (iby[it.campanha_id]=iby[it.campanha_id]||[]).push({id:it.id,nome:it.nome,categoria:it.categoria,nivel_venda:it.nivel_venda,
+          cobranca:it.cobranca,comissao_modo:it.comissao_modo,comissao_tipo:it.comissao_tipo,comissao_valor:+it.comissao_valor||0,meta_valor:it.meta_valor,
+          planos:(pby[it.id]||[]).slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(p=>({id:p.id,nome:p.nome,preco:+p.preco||0,unidade:p.unidade,
+            meses_padrao:p.meses_padrao,modalidade:p.modalidade,vigencia_ate:p.vigencia_ate,comissao_ovr_tipo:p.comissao_ovr_tipo,comissao_ovr_valor:p.comissao_ovr_valor}))});});
+      CAMPAIGNS.forEach(c=>{c.itens=iby[c.id]||[];});
+    }catch(e){}
+  };
+
   // ---------- LOGIN ----------
   const LGD=document.getElementById('login'), APPW=document.getElementById('appwrap');
   async function doLogin(){
@@ -2493,6 +2616,8 @@
       .on('postgres_changes',{event:'*',schema:'public',table:'apuracoes'},bump)
       .on('postgres_changes',{event:'*',schema:'public',table:'campanhas'},bumpCR)
       .on('postgres_changes',{event:'*',schema:'public',table:'regras_versoes'},bumpCR)
+      .on('postgres_changes',{event:'*',schema:'public',table:'campanha_itens'},bumpCR)
+      .on('postgres_changes',{event:'*',schema:'public',table:'item_planos'},bumpCR)
       .subscribe(st=>{const dot=document.getElementById('rt-dot');
         if(dot){const on=st==='SUBSCRIBED';dot.classList.toggle('on',on);dot.title=on?'Ao vivo — o painel atualiza sozinho':'Reconectando…';}});
   }
