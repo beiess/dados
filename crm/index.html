@@ -243,6 +243,18 @@
   .rulepick{display:flex;gap:8px;flex-wrap:wrap}
   .rulepick label{display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:550;cursor:pointer;background:var(--surface-2)}
   .rulepick input{accent-color:var(--accent)}
+  .rulecfg{margin-top:9px;padding:11px 13px;border:1px dashed var(--border-2);border-radius:9px;background:var(--surface-2,rgba(0,0,0,.02))}
+  .rulecfg .eyebrow{margin-bottom:7px}
+  .progrow,.indrow{display:flex;gap:7px;align-items:center;margin-top:6px}
+  .progrow input,.indrow input{padding:6px 9px;font-size:12.5px}
+  .progrow .pg-n{flex:1} .progrow .pg-p,.indrow .in-p{max-width:80px} .indrow .in-m{max-width:130px}
+  .indrow .in-nm{flex:1;font-weight:600;font-size:12.5px}
+  .campmenu{position:absolute;top:44px;left:52px;z-index:60;background:var(--surface);border:1px solid var(--border-2);border-radius:11px;box-shadow:var(--sh);padding:6px;min-width:250px;max-height:340px;overflow:auto}
+  .campmenu .cm-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:13px}
+  .campmenu .cm-item:hover,.campmenu .cm-item.on{background:var(--surface-2,rgba(0,0,0,.04))}
+  .campmenu .cm-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;border:1px solid rgba(0,0,0,.15)}
+  .top{position:relative}
+  .camp-pick{cursor:pointer}
   .chipedit{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
   .chipedit .chip .rm{border:none;background:none;color:var(--faint);cursor:pointer;font-size:12px;padding:0 0 0 2px}
   .chipedit .chip .rm:hover{color:var(--crit)}
@@ -613,7 +625,8 @@
   <div class="main">
     <div class="top">
       <button class="iconbtn" id="hamb" title="Recolher / expandir menu" aria-label="Menu">☰</button>
-      <div class="camp-pick"><span class="dot"></span><b id="camp-pick-nome">—</b><span class="chev">▾</span></div>
+      <div class="camp-pick" id="camp-pick"><span class="dot" id="camp-pick-dot"></span><b id="camp-pick-nome">—</b><span class="chev">▾</span></div>
+      <div class="campmenu" id="camp-menu" hidden></div>
       <button class="newcampbtn" id="newCampBtn">＋ Nova campanha</button>
       <div class="segs"><button class="segbtn on">Todas</button><button class="segbtn">Gestão Pública</button><button class="segbtn">Legislativo</button></div>
       <div class="spacer"></div>
@@ -847,7 +860,10 @@
     </div>
     <div class="frow2">
       <div class="frow"><label>Meta (R$)</label><input type="text" id="c-meta" value="1.200.000"></div>
-      <div class="frow"><label>Segmento</label><select id="c-seg"><option>Gestão Pública</option><option>Legislativo</option><option>Ambos</option></select></div>
+      <div class="frow"><label>Segmento</label><select id="c-seg"><option>Todos</option><option>Gestão Pública</option><option>Legislativo</option></select></div>
+    </div>
+    <div class="frow" id="c-cor-row"><label>🎨 Cor do bloco da campanha (admin)</label>
+      <div style="display:flex;gap:9px;align-items:center"><input type="color" id="c-cor" value="#C9A227" style="width:54px;height:32px;padding:2px;border-radius:8px;border:1px solid var(--border-2);cursor:pointer"><span class="capnote">Identifica a campanha no cabeçalho e no seletor.</span></div>
     </div>
     <div class="frow"><label>🧩 Produtos e serviços da campanha</label>
       <div class="capnote" style="margin:-2px 0 4px">Cada produto/serviço tem seus planos (preços) e a própria comissão. Produto vende-se ao órgão; serviço/curso, ao servidor. Deixe vazio para usar o modelo simples (percentual único acima).</div>
@@ -856,10 +872,14 @@
     </div>
     <div class="frow"><label>Regra de comissão</label>
       <div class="rulepick">
-        <label><input type="radio" name="crule" checked>Progressiva por nível</label>
-        <label><input type="radio" name="crule">Pós-meta</label>
-        <label><input type="radio" name="crule">Individual fixa</label>
+        <label><input type="radio" name="crule" id="crule-prog" value="progressiva" checked>Progressiva por nível</label>
+        <label><input type="radio" name="crule" id="crule-pos" value="pos_meta">Pós-meta</label>
+        <label><input type="radio" name="crule" id="crule-ind" value="individual">Individual (meta por vendedor)</label>
       </div>
+      <div class="capnote" style="margin-top:6px;color:var(--warn,#B08718)">⚠ Estes parâmetros são <b>salvos</b>, mas ainda <b>não</b> entram no cálculo automático — falta definir como se combinam com a comissão por produto (evitar erro desproporcional).</div>
+      <div class="rulecfg" id="rule-prog"><div class="eyebrow">Percentual por nível — somado a todos os vendedores daquele nível</div><div id="rule-prog-rows"></div><button type="button" class="addbtn" id="rule-prog-add" style="margin-top:7px">＋ Nível</button></div>
+      <div class="rulecfg" id="rule-pos" hidden><div class="frow"><label>Percentual adicional após a meta GERAL da campanha (%)</label><input type="number" id="rule-pos-pct" min="0" max="100" placeholder="ex.: 1" style="max-width:120px"></div></div>
+      <div class="rulecfg" id="rule-ind" hidden><div class="eyebrow">Meta (R$) e % adicional após a meta — por vendedor</div><div id="rule-ind-rows"></div></div>
     </div>
     <div class="frow3">
       <div class="frow"><label>Escopo do rateio</label><select id="c-escopo"><option>Individual</option><option>Com parceiro</option><option>Por equipe</option><option>Só matriz</option><option>Só filial</option><option>Geral</option></select></div>
@@ -874,7 +894,7 @@
         <input type="date" id="c-lote-data" title="Data-limite do lote">
         <input type="text" id="c-lote-pres" placeholder="R$ presencial" style="max-width:120px">
         <input type="text" id="c-lote-onl" placeholder="R$ online" style="max-width:110px">
-        <button class="addbtn" id="c-lote-add">＋ Lote</button>
+        <button class="addbtn" id="c-lote-add">＋ Incluir lote</button>
       </div>
     </div>
     <div class="frow2">
@@ -1858,7 +1878,7 @@
       const seen={}; (window.APSX||[]).filter(a=>a.competencia===COMMPER).forEach(a=>{if(!(a.captura_id in seen))seen[a.captura_id]=+a.base_valor||0;});
       ganhas=Object.keys(seen).length; vendido=Object.values(seen).reduce((s,x)=>s+x,0);
     }
-    const metaC=(CAMPAIGNS[0]&&CAMPAIGNS[0].meta)||0, metaPct=metaC?Math.min(999,Math.round(vendido/metaC*100)):0;
+    const _cc=curCamp(); const metaC=(_cc&&_cc.meta)||0, metaPct=metaC?Math.min(999,Math.round(vendido/metaC*100)):0;
     document.getElementById('comm-kpis').innerHTML=
       `<div class="kpi"><div class="k">Comissão apurada</div><div class="v num" style="color:var(--good)">${money(ap)}</div></div>
        <div class="kpi accent"><div class="k">Comissão prevista</div><div class="v num">${money(pr)}</div></div>
@@ -1924,7 +1944,7 @@
     const rc=document.getElementById('rulecards'); if(!rc)return;
     const cur=RULEV.find(r=>!r.fim), cfg=(cur&&cur.cfg)||{};
     const tier=(l,v,k)=>'<div class="tier"><span>'+l+'</span><b'+(k?' data-k="'+k+'"':'')+'>'+v+'</b></div>';
-    const base=cfg.base||{}, cli=cfg.cliente||{}, rg=cfg.rateio_geral||[], camp=CAMPAIGNS[0]||{};
+    const base=cfg.base||{}, cli=cfg.cliente||{}, rg=cfg.rateio_geral||[], camp=curCamp()||{};
     rc.innerHTML=
       '<div class="rulecard"><button class="editbtn adminonly">✎</button><h4>📈 Base por nível</h4><div class="sub">Percentual do vendedor por nível</div>'+
         (Object.keys(base).length?Object.keys(base).sort().map(nv=>tier('Vendedor '+nv,base[nv]+'%','base.'+nv)).join(''):tier('Sem níveis na regra','—'))+'</div>'+
@@ -2174,7 +2194,7 @@
 
     say('Carregando campanhas e regras…');
     const cps=await q('campanhas','*');
-    CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+    CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{}}));
       if(window.attachItens)await window.attachItens();
     const rvs=await q('regras_versoes','*');
     RULEV.length=0; rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
@@ -2308,7 +2328,7 @@
   // totais trabalhados por estágio — SEM percentual de comissão
   function renderProdMetas(){
     const el=document.getElementById('prod-metas'); if(!el)return;
-    const c=CAMPAIGNS[0], itens=((c&&c.itens)||[]).filter(it=>it.meta_valor);
+    const c=curCamp(), itens=((c&&c.itens)||[]).filter(it=>it.meta_valor);
     if(!itens.length){el.innerHTML=''; return;}
     const vend={};
     (window.CAPS||[]).filter(x=>x.ativo&&['fechamento','pos_venda'].includes(x.estagio)&&x.item_id).forEach(x=>{vend[x.item_id]=(vend[x.item_id]||0)+(+x.valor_contrato||0);});
@@ -2348,7 +2368,7 @@
   window.refreshCampsRules=async function(){
     try{
       const cps=await q('campanhas','*');
-      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{}}));
       if(window.attachItens)await window.attachItens();
       const rvs=await q('regras_versoes','*');
       RULEV.length=0;rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
@@ -2448,12 +2468,26 @@
   }
 
   // header da campanha
+  window.CURCAMP=null;
+  function curCamp(){return CAMPAIGNS.find(c=>c.id===window.CURCAMP)||CAMPAIGNS[0]||null;}
+  function renderCampMenu(){
+    const m=document.getElementById('camp-menu'); if(!m)return;
+    m.innerHTML=CAMPAIGNS.map(c=>`<div class="cm-item${c.id===(curCamp()||{}).id?' on':''}" data-cid="${c.id}"><span class="cm-dot" style="background:${c.cor||'var(--accent)'}"></span><b>${c.nome.split(' · ')[0]}</b><span class="grow2" style="flex:1"></span><span class="ctmeta">${c.status||''}</span></div>`).join('')||'<div class="cm-item">Nenhuma campanha</div>';
+  }
+  function selectCamp(id){window.CURCAMP=id; renderCampHeader(); if(window.renderProdMetas)renderProdMetas(); if(window.rebuildComm){rebuildComm();renderComm&&renderComm();} document.getElementById('camp-menu').hidden=true;}
+  (function(){const pick=document.getElementById('camp-pick'),menu=document.getElementById('camp-menu');
+    if(pick)pick.addEventListener('click',e=>{e.stopPropagation();renderCampMenu();menu.hidden=!menu.hidden;});
+    if(menu)menu.addEventListener('click',e=>{const it=e.target.closest('.cm-item');if(it&&it.dataset.cid)selectCamp(it.dataset.cid);});
+    document.addEventListener('click',e=>{if(menu&&!menu.hidden&&!e.target.closest('#camp-menu')&&!e.target.closest('#camp-pick'))menu.hidden=true;});
+  })();
   function renderCampHeader(){
-    const c=CAMPAIGNS[0];
+    const c=curCamp(); if(c&&!window.CURCAMP)window.CURCAMP=c.id;
     if(!c){document.getElementById('campTitle').textContent='Nenhuma campanha — crie em ＋ Nova campanha';
       document.getElementById('camp-pick-nome').textContent='—';return;}
     document.getElementById('campTitle').textContent=c.nome;
     document.getElementById('camp-pick-nome').textContent=c.nome.split(' · ')[0];
+    const dot=document.getElementById('camp-pick-dot'); if(dot&&c.cor)dot.style.background=c.cor;
+    const sec=document.getElementById('sec-camp'); if(sec)sec.style.borderTop=c.cor?('3px solid '+c.cor):'';
     document.getElementById('camp-sub').innerHTML='<span>Período <b>'+fmtD(c.inicio)+' – '+fmtD(c.fim)+'</b></span><span>Meta <b class="num">'+(c.meta?money(c.meta):'—')+'</b></span><span>Escopo <b>'+c.escopo+'</b></span><span>Comissão <b class="num">'+c.pct+'% · unit '+money(c.valorUnit||0)+'</b></span>'+(c.itens||[]).map(function(it){return '<span>🧩 '+it.nome+' <b>'+window.citemComm(it)+'</b></span>';}).join('');
     document.getElementById('hdr-anexos').innerHTML=(c.anexos||[]).map(a=>'<span class="chip"><span class="ext '+(a.ext||'doc')+'">'+String(a.ext||'doc').toUpperCase()+'</span> '+a.nome+'</span>').join('')+'<button class="chip add">＋ Anexar arquivo</button>';
     document.getElementById('hdr-links').innerHTML=(c.links||[]).map(l=>'<a class="chip link" href="'+(l.url||'#')+'" target="_blank" rel="noopener">'+l.nome+' <span class="ar">↗</span></a>').join('')+'<button class="chip add">＋ Vincular link</button>';
@@ -2462,8 +2496,35 @@
   // ---------- escrita no banco ----------
   const val=id=>document.getElementById(id).value.trim();
   const numval=id=>parseInt(val(id).replace(/\D/g,''))||0;
+  function brlFmt(el){if(!el)return;const raw=(el.value||'').replace(/\D/g,'');el.value=raw?(+raw).toLocaleString('pt-BR'):'';}
+  ['c-meta','c-valor-unit','c-lote-pres','c-lote-onl'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',()=>brlFmt(el));});
+  document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList.contains('cp-preco')||t.dataset.k==='meta_valor'||t.dataset.k==='comissao_valor')return;});
+  document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList&&t.classList.contains('cp-preco'))brlFmt(t);});
+  // ---------- editores de regra de comissão ----------
+  let cProg=[];
+  function renderProgRows(){document.getElementById('rule-prog-rows').innerHTML=cProg.map((r,i)=>`<div class="progrow" data-i="${i}"><input class="pg-n" value="${(r.nivel||'').replace(/"/g,'&quot;')}" placeholder="Nível (ex.: IV)"><input class="pg-p" type="number" min="0" max="100" value="${r.pct==null?'':r.pct}" placeholder="%"><span>%</span><button type="button" class="rm" data-i="${i}" aria-label="Remover">✕</button></div>`).join('');}
+  function readProg(){cProg=[...document.querySelectorAll('#rule-prog-rows .progrow')].map(r=>({nivel:r.querySelector('.pg-n').value.trim(),pct:+r.querySelector('.pg-p').value||0}));}
+  document.getElementById('rule-prog-add').addEventListener('click',()=>{readProg();cProg.push({nivel:'',pct:0});renderProgRows();});
+  document.getElementById('rule-prog-rows').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){readProg();cProg.splice(+b.dataset.i,1);renderProgRows();}});
+  function renderIndRows(cfgInd){const by={};(cfgInd||[]).forEach(x=>by[x.funcionario_id]=x);
+    document.getElementById('rule-ind-rows').innerHTML=TEAM.filter(t=>t.fn==='Vendedor').map(t=>{const x=by[t.id]||{};
+      return `<div class="indrow" data-fid="${t.id}"><span class="in-nm">${t.n}</span><input class="in-m" value="${x.meta?(+x.meta).toLocaleString('pt-BR'):''}" placeholder="meta R$"><input class="in-p" type="number" min="0" max="100" value="${x.pct==null?'':x.pct}" placeholder="% pós"><span>%</span></div>`;}).join('')||'<span class="ctmeta">Cadastre vendedores na Equipe.</span>';
+    document.querySelectorAll('#rule-ind-rows .in-m').forEach(el=>el.addEventListener('input',()=>brlFmt(el)));}
+  function showRuleCfg(tipo){document.getElementById('rule-prog').hidden=tipo!=='progressiva';
+    document.getElementById('rule-pos').hidden=tipo!=='pos_meta'; document.getElementById('rule-ind').hidden=tipo!=='individual';}
+  document.querySelectorAll('input[name="crule"]').forEach(r=>r.addEventListener('change',()=>showRuleCfg(r.value)));
+  function fillRuleCfg(c){const cfg=(c&&c.regraCfg)||{}, tipo=(c&&c.regraTipo)||'progressiva';
+    const rb=document.getElementById(tipo==='pos_meta'?'crule-pos':tipo==='individual'?'crule-ind':'crule-prog'); if(rb)rb.checked=true;
+    cProg=(cfg.niveis&&cfg.niveis.length)?cfg.niveis.slice():[{nivel:'IV',pct:5},{nivel:'V',pct:5}]; renderProgRows();
+    document.getElementById('rule-pos-pct').value=cfg.pos_meta_pct!=null?cfg.pos_meta_pct:'';
+    renderIndRows(cfg.individual); showRuleCfg(tipo);}
+  function readRuleCfg(){const sel=document.querySelector('input[name="crule"]:checked'), tipo=sel?sel.value:'progressiva', cfg={};
+    if(tipo==='progressiva'){readProg();cfg.niveis=cProg.filter(x=>x.nivel);}
+    else if(tipo==='pos_meta'){cfg.pos_meta_pct=+document.getElementById('rule-pos-pct').value||0;}
+    else if(tipo==='individual'){cfg.individual=[...document.querySelectorAll('#rule-ind-rows .indrow')].map(r=>({funcionario_id:r.dataset.fid,meta:(+((r.querySelector('.in-m').value||'').replace(/\D/g,''))||0),pct:+r.querySelector('.in-p').value||0})).filter(x=>x.meta||x.pct);}
+    return{tipo,cfg};}
   window.fillCampModal=function(modo){
-    const c=modo==='nova'?null:CAMPAIGNS[0];
+    const c=modo==='nova'?null:curCamp();
     CAMP_EDIT_ID=c?c.id:null;
     document.getElementById('c-nome').value=c?c.nome:'';
     document.getElementById('c-ini').value=c&&c.inicio?String(c.inicio).slice(0,10):'';
@@ -2477,6 +2538,8 @@
     cLotes=c?(c.lotes||[]).slice():[]; renderCLotes();
     cItens=c&&c.itens?JSON.parse(JSON.stringify(c.itens)):[]; cItensDel=[]; cPlanoDel=[]; renderCItens();
     document.getElementById('c-desc-org').value=c?(c.descOrg||0):10;
+    document.getElementById('c-cor').value=(c&&c.cor)||'#C9A227';
+    fillRuleCfg(c);
   };
   window.dbSaveCamp=async function(){
     try{
@@ -2488,11 +2551,14 @@
         pct_comissao:+val('c-pct')||5,valor_unitario:numval('c-valor-unit'),
         anexos:cAnexos,links:cLinks,criterios:crit,status:'ativa',regra_versao:vigente?vigente.versao:null,
         lotes:cLotes,desconto_org_pct:+val('c-desc-org')||0};
+      const _rc=readRuleCfg(); payload.regra_tipo=_rc.tipo; payload.regra_config=_rc.cfg;
+      payload.cor=document.getElementById('c-cor').value||null;
       if(CAMP_EDIT_ID){const{error}=await sbc.from('campanhas').update(payload).eq('id',CAMP_EDIT_ID);if(error)throw error;}
       else{const{data,error}=await sbc.from('campanhas').insert(payload).select('id').single();if(error)throw error;CAMP_EDIT_ID=data.id;}
+      window.CURCAMP=CAMP_EDIT_ID;
       if(window.dbSaveItens)await window.dbSaveItens(CAMP_EDIT_ID);
       const cps=await q('campanhas','*');
-      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0}));
+      CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{}}));
       if(window.attachItens)await window.attachItens();
       renderCampHeader(); warn('Campanha gravada no banco ✓');
     }catch(e){warn('⚠ Campanha não gravada: '+(e.message||e));}
