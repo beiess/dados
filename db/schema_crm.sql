@@ -1025,3 +1025,43 @@ alter table campanhas add column if not exists cliente_novo_pct numeric;
 -- ============================================================================
 alter table campanhas add column if not exists arquivada_em timestamptz;
 create index if not exists ix_camp_arquivada on campanhas(arquivada_em) where arquivada_em is null;
+
+-- ============================================================================
+-- CRM v15 (2ª ONDA) — ENGINE DE BÔNUS SURPRESA  [APLICADA 22/07/2026]
+-- campanha_bonus (config oculta) + bonus_conquistas (revelação imutável).
+-- Regras: % sobre o VENDIDO do vendedor; top N por vendido (desempate: qtd de
+-- contratos; 3º critério 'habilitantes por cidade' PENDENTE de definição);
+-- revela quando a meta cai com vendas em status VENDIDO (fechamento/pós-venda);
+-- meta_equipe revela p/ todos (nomeando os ganhadores); prêmio físico = só
+-- conquista (sem R$), com marcação de entregue. RLS: só gestor/admin lê a config
+-- (protege a surpresa); vendedor vê a SUA conquista + selo via crm_tem_bonus.
+-- Ver funções crm_avaliar_bonus/crm_conceder_bonus/crm_vendido_vendedor/crm_tem_bonus
+-- e o gatilho trg_capturas_apura (reavalia no fechamento). Migração aplicada.
+-- ============================================================================
+create table if not exists campanha_bonus (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null default app_org(),
+  campanha_id uuid not null references campanhas(id) on delete cascade,
+  descricao text,
+  gatilho text not null default 'meta_equipe' check (gatilho in ('meta_equipe','meta_vendedor','top_vendedores')),
+  meta_valor numeric, top_n int default 2,
+  tipo text not null default 'fixo' check (tipo in ('percentual','fixo','premio')),
+  valor numeric, premio_desc text,
+  escopo text not null default 'todos' check (escopo in ('todos','individual')),
+  funcionario_id uuid references funcionarios(id),
+  ativo boolean default true,
+  criado_por uuid references funcionarios(id) default app_me_id(), criado_em timestamptz default now()
+);
+create table if not exists bonus_conquistas (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null default app_org(),
+  bonus_id uuid not null references campanha_bonus(id) on delete cascade,
+  campanha_id uuid not null references campanhas(id) on delete cascade,
+  funcionario_id uuid not null references funcionarios(id),
+  competencia text, tipo text, valor numeric default 0, base_valor numeric, premio_desc text,
+  revelado_em timestamptz default now(), entregue boolean default false, entregue_em timestamptz,
+  unique (bonus_id, funcionario_id)
+);
+-- funções crm_vendido_vendedor / crm_conceder_bonus / crm_avaliar_bonus / crm_tem_bonus
+-- + trg_capturas_apura estendido + RLS (cbonus_sel gestor, cbonus_wr admin, bconq_sel own/gestor,
+--   bconq_upd gestor) + realtime nas 2 tabelas — ver migração aplicada (crm_v15_engine_bonus).
