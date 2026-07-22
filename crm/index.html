@@ -299,6 +299,16 @@
   .frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
   .svcapbtn{border:1px solid var(--border);background:var(--surface);color:var(--accent);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;padding:1px 7px;margin-left:6px}
   .svcapbtn:hover{background:var(--accent-wash)}
+  .orgcapbtn{border:1px solid color-mix(in srgb,var(--gold,#C9A227) 45%,transparent);background:transparent;color:var(--gold,#C9A227);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;padding:1px 8px;margin-left:8px}
+  .orgcapbtn:hover{background:color-mix(in srgb,var(--gold,#C9A227) 12%,transparent)}
+  .prodmetas{display:flex;flex-direction:column;gap:6px;padding:10px 20px;border-top:1px solid var(--border-2)}
+  .prodmetas .pm-h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .pmrow{display:flex;align-items:center;gap:10px;font-size:12px}
+  .pmrow .pmn{flex:0 0 34%;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pmrow .pmbar{flex:1;height:7px;border-radius:6px;background:var(--border-2);overflow:hidden}
+  .pmrow .pmbar>i{display:block;height:100%;background:var(--accent);border-radius:6px}
+  .pmrow .pmv{flex:0 0 auto;color:var(--muted);font-variant-numeric:tabular-nums}
+  #cap-contatos label:hover{background:var(--surface-2,rgba(0,0,0,.03))}
   .svcap{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:6px}
   .campchip{font-size:10px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--accent-wash);color:var(--accent);white-space:nowrap}
   .respmini{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted)}
@@ -643,6 +653,7 @@
           </div>
         </div>
         <div class="stagetotais" id="stage-totais"></div>
+        <div class="prodmetas" id="prod-metas"></div>
       </section>
 
       <!-- FILTROS -->
@@ -925,6 +936,10 @@
     <div class="frow2" id="cap-meses-row" hidden>
       <div class="frow"><label>Meses de contrato</label><input type="number" id="cap-meses" min="1" value="12"></div>
       <div class="frow"><label>&nbsp;</label><span class="capnote" id="cap-item-note"></span></div>
+    </div>
+    <div class="frow" id="cap-contatos-row" hidden><label>Contatos do negócio (servidores do órgão)</label>
+      <input id="cap-contato-q" placeholder="buscar servidor do órgão…">
+      <div id="cap-contatos" style="max-height:150px;overflow:auto;margin-top:5px;border:1px solid var(--border-2);border-radius:8px;padding:6px 9px"></div>
     </div>
     <div class="frow" id="cap-contrato-row" hidden><label>Contrato recorrente (admin)</label>
       <label class="caplock" style="cursor:pointer"><input type="checkbox" id="cap-contrato-ativo" style="margin-right:8px"><b>contrato ativo</b> — gera a comissão mensal enquanto ligado</label>
@@ -1242,7 +1257,7 @@
       ENTMAP[n.id]={nome:n.nome,area:n.area,st:n.st};
       return `<div class="tnode lv-ent" data-eid="${n.id}" data-ibge="${n.ibge||''}" data-uf="${m.uf||''}" data-cid="${m.cid||''}" data-esf="${m.esf||''}" data-tema="${m.tema||''}" data-resp="${rp}" style="--sc:${s[1]};--scw:${s[2]}">
         <div class="trow" style="${pad}"><span class="tchev">›</span>
-          <span class="ent-nm">${n.nome}</span> ${areaChip(n.area)}
+          <span class="ent-nm">${n.nome}</span> ${areaChip(n.area)}<button type="button" class="orgcapbtn" data-orgcap="${n.id}" data-nome="${(n.nome||'').replace(/"/g,'&quot;')}" title="Vender produto ao órgão">🧩 produto</button>
           <span class="grow"></span>${vend}
           <span class="stpill"><span class="d"></span>${s[0]}</span></div>
         <div class="edetail" data-lazy="${n.id}"></div></div>`;
@@ -1259,6 +1274,8 @@
   // expand/collapse; add-buttons e links não togglam
   document.getElementById('view-tree').addEventListener('click',e=>{
     if(e.target.closest('.svsel'))return;
+    const ocEl=e.target.closest('.orgcapbtn');
+    if(ocEl){e.stopPropagation();openCaptureOrg(ocEl.dataset.orgcap,ocEl.dataset.nome);return;}
     const capEl=e.target.closest('.svcapbtn');
     if(capEl){openCaptureSv(+capEl.dataset.svcapi);return;}
     const svEl=e.target.closest('[data-sv]');
@@ -1514,9 +1531,10 @@
   function fillCapPlanos(it,selId){const sel=document.getElementById('cap-plano');
     const ps=(it&&it.planos)||[]; sel.innerHTML=ps.map(p=>`<option value="${p.id}">${p.nome} · R$ ${(+p.preco||0).toLocaleString('pt-BR')}${p.unidade==='mensal'?'/mês':''}</option>`).join('')||'<option value="">—</option>';
     if(selId&&ps.some(p=>p.id===selId))sel.value=selId; }
-  function populateCapItems(camp,c){
+  function populateCapItems(camp,c,onlyNivel){
     const row=document.getElementById('cap-item-row'), isel=document.getElementById('cap-item');
-    const itens=(camp&&camp.itens)||[];
+    let itens=(camp&&camp.itens)||[];
+    if(onlyNivel)itens=itens.filter(it=>it.nivel_venda===onlyNivel);
     if(!itens.length){row.hidden=true; document.getElementById('cap-meses-row').hidden=true; return false;}
     row.hidden=false;
     isel.innerHTML=itens.map(it=>`<option value="${it.id}">${it.nome} · ${it.nivel_venda==='orgao'?'órgão':'servidor'} · ${window.citemComm?window.citemComm(it):''}</option>`).join('');
@@ -1586,18 +1604,35 @@
       }
     } else {warnEl.hidden=true; save.disabled=false; save.textContent='Registrar captura';}
   }
+  function renderCapContatos(eid,q){
+    const box=document.getElementById('cap-contatos'); if(!box)return;
+    const qn=norm(q||'');
+    const list=Object.values(srvById).filter(s=>String(s.entidade_id)===String(eid)&&(!qn||norm(s.nome||'').includes(qn))).slice(0,80);
+    const checked=new Set((window.CAPCONTATOS||[]).map(String));
+    box.innerHTML=list.length?list.map(s=>`<label style="display:flex;gap:7px;align-items:center;padding:3px 4px;border-radius:5px;font-size:12.5px;cursor:pointer"><input type="checkbox" data-ct="${s.id}" ${checked.has(String(s.id))?'checked':''}>${s.nome}${s.cargo?` <span class="ctmeta">· ${s.cargo}</span>`:''}</label>`).join('')
+      :'<span class="ctmeta">Nenhum servidor materializado deste órgão. Capture pela linha do servidor para incluí-lo como contato, ou adicione servidores ao órgão primeiro.</span>';}
+  function openCaptureOrg(eid,nome){
+    if(!CAMPAIGNS.length){warn('Crie uma campanha primeiro (＋ Nova campanha — admin).');return;}
+    const camp=CAMPAIGNS[0];
+    if(!((camp&&camp.itens)||[]).some(it=>it.nivel_venda==='orgao')){warn('Esta campanha não tem produto de venda por órgão. Cadastre um produto (nível órgão) na campanha.');return;}
+    const r={eid:eid,sid:null,nome:nome||'Órgão',orgao:nome||'',cargo:'',isOrg:true};
+    SVREG.push(r); CAPI=SVREG.length-1; window.CAPCONTATOS=[]; window.CAPORG_EID=eid;
+    openCaptureSv(CAPI);
+  }
   function openCaptureSv(i){
     if(!CAMPAIGNS.length){warn('Crie uma campanha primeiro (＋ Nova campanha — admin).');return;}
     const r=SVREG[i]; if(!r)return; CAPI=i; const c=CAPTURES[capKey(i)];
-    document.getElementById('cap-title').textContent='Capturar — '+r.nome;
-    document.getElementById('cap-sub').textContent=[r.cargo,r.setor&&('· '+r.setor),r.unidade&&('· '+r.unidade),r.orgao&&('· '+r.orgao)].filter(Boolean).join(' ');
+    document.getElementById('cap-title').textContent=(r.isOrg?'Vender produto — ':'Capturar — ')+r.nome;
+    document.getElementById('cap-sub').textContent=r.isOrg?('Venda por órgão · '+r.nome):[r.cargo,r.setor&&('· '+r.setor),r.unidade&&('· '+r.unidade),r.orgao&&('· '+r.orgao)].filter(Boolean).join(' ');
+    const eyb=document.querySelector('#capmodal .eyebrow'); if(eyb)eyb.textContent=r.isOrg?'Vender produto ao órgão':'Capturar servidor';
     const sel=document.getElementById('cap-camp'); sel.innerHTML=CAMPAIGNS.map(x=>`<option value="${x.id}">${x.nome}</option>`).join(''); sel.value=c?c.campId:CAMPAIGNS[0].id;
     document.getElementById('cap-st').value=c?c.estagio:'prospeccao';
     document.getElementById('cap-obs').value=c?(c.obs||''):'';
     const resp=c?c.responsavel:CURRENT, lock=document.getElementById('cap-resp-lock'), rsel=document.getElementById('cap-resp-sel');
     if(isGestor()){lock.hidden=true; rsel.hidden=false; rsel.innerHTML=VEND.map(v=>`<option ${v[1]===resp?'selected':''}>${v[1]}</option>`).join('');}
     else{rsel.hidden=true; lock.hidden=false; document.getElementById('cap-resp-av').innerHTML=avmini(resp); document.getElementById('cap-resp-nome').textContent=resp;}
-    populateCapItems(campById(sel.value),c);
+    populateCapItems(campById(sel.value),c,r.isOrg?'orgao':null);
+    document.getElementById('cap-contatos-row').hidden=!r.isOrg; if(r.isOrg)renderCapContatos(r.eid,'');
     renderCapParams(); checkConc(); initCapParts(c);
     (function(){const row=document.getElementById('cap-contrato-row'),ck=document.getElementById('cap-contrato-ativo');
       const dbc=c&&c.dbId&&(window.CAPS||[]).find(x=>x.id===c.dbId);
@@ -1705,6 +1740,9 @@
   document.getElementById('cap-mod').addEventListener('change',renderCapParams);
   document.getElementById('cap-item').addEventListener('change',()=>{fillCapPlanos(itemById(document.getElementById('cap-item').value));capItemCalc();});
   document.getElementById('cap-plano').addEventListener('change',capItemCalc);
+  document.getElementById('cap-contato-q').addEventListener('input',e=>renderCapContatos(window.CAPORG_EID,e.target.value));
+  document.getElementById('cap-contatos').addEventListener('change',e=>{const cb=e.target.closest('input[data-ct]'); if(!cb)return;
+    const set=new Set((window.CAPCONTATOS||[]).map(String)); if(cb.checked)set.add(cb.dataset.ct); else set.delete(cb.dataset.ct); window.CAPCONTATOS=[...set];});
   document.getElementById('cap-meses').addEventListener('input',capItemCalc);
   document.getElementById('cap-contrato-ativo').addEventListener('change',async e=>{
     const id=e.target.dataset.capid; if(!id)return;
@@ -1731,6 +1769,7 @@
     const reciclou=st==='prospeccao'&&['fechamento','posvenda'].includes(stPrev);
     CAPTURES[_k]=Object.assign(CAPTURES[_k]||{},{campId,responsavel:resp,estagio:st,obs});
     updateSvBadge(CAPI);
+    window.CAPCONTATOS=[...document.querySelectorAll('#cap-contatos input[data-ct]:checked')].map(x=>x.dataset.ct);
     if(window.dbSaveCap)window.dbSaveCap(CAPI,campId,resp,st,obs);
     const camp=campById(campId), cc=window.CAPCALC||{};
     const baseV=cc.valor||camp.valorUnit||0, com=Math.round(baseV*(+camp.pct||0)/100);
@@ -2267,6 +2306,14 @@
     document.querySelectorAll('#tabs .tab').forEach(t=>{const c=t.querySelector('.cnt');if(c)c.textContent=by[t.dataset.tab]||0;});
   }
   // totais trabalhados por estágio — SEM percentual de comissão
+  function renderProdMetas(){
+    const el=document.getElementById('prod-metas'); if(!el)return;
+    const c=CAMPAIGNS[0], itens=((c&&c.itens)||[]).filter(it=>it.meta_valor);
+    if(!itens.length){el.innerHTML=''; return;}
+    const vend={};
+    (window.CAPS||[]).filter(x=>x.ativo&&['fechamento','pos_venda'].includes(x.estagio)&&x.item_id).forEach(x=>{vend[x.item_id]=(vend[x.item_id]||0)+(+x.valor_contrato||0);});
+    el.innerHTML='<div class="pm-h">🎯 Metas por produto</div>'+itens.map(it=>{const v=vend[it.id]||0,pct=Math.min(100,Math.round(v/it.meta_valor*100));
+      return `<div class="pmrow"><span class="pmn">${it.nome}</span><div class="pmbar"><i style="width:${pct}%"></i></div><span class="pmv">${money(v)} / ${money(it.meta_valor)} · ${pct}%</span></div>`;}).join('');}
   function renderStageTotais(){
     const el=document.getElementById('stage-totais'); if(!el)return;
     const S={proposta:0,negociacao:0,fechamento:0};
@@ -2275,6 +2322,7 @@
       const camp=CAMPAIGNS.find(x=>x.id===c.campanha_id)||{};
       S[st]+=(+c.valor_contrato||+camp.valorUnit||0);});
     const tot=S.proposta+S.negociacao+S.fechamento;
+    renderProdMetas();
     el.innerHTML=
       '<div class="sttile"><div class="k">Em proposta</div><div class="v">'+money(S.proposta)+'</div></div>'+
       '<div class="sttile"><div class="k">Em negociação</div><div class="v">'+money(S.negociacao)+'</div></div>'+
@@ -2462,7 +2510,7 @@
   }
   window.dbSaveCap=async function(i,campId,resp,st,obs){
     const r=SVREG[i]; if(!r)return;
-    try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}
+    if(!r.isOrg){try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}}
     const respId=(TEAM.find(t=>t.n===resp)||{}).id, k=capKey(i), cur=CAPTURES[k];
     try{
       const cc=window.CAPCALC||{}, orgao=cc.nivel==='orgao';
@@ -2476,7 +2524,9 @@
         const{data,error}=await sbc.from('capturas').insert(Object.assign({servidor_id:orgao?null:r.sid,entidade_id:r.eid},base)).select('id').single();
         if(error)throw error; CAPTURES[k].dbId=data.id;
         await sbc.from('atividades').insert({captura_id:data.id,tipo:'captura',descricao:obs||null,estagio_para:dbStage(st)});
-        if(orgao&&r.sid){await sbc.from('captura_contatos').upsert({captura_id:data.id,servidor_id:r.sid,papel:'contato'},{onConflict:'captura_id,servidor_id'});}
+        const cts=(window.CAPCONTATOS||[]).map(String); if(orgao&&r.sid&&!cts.includes(String(r.sid)))cts.push(String(r.sid));
+        if(orgao&&cts.length){const{error:ce}=await sbc.from('captura_contatos').upsert(cts.map(sid=>({captura_id:data.id,servidor_id:sid,papel:'contato'})),{onConflict:'captura_id,servidor_id'}); if(ce)warn('⚠ Contatos não gravados: '+ce.message);}
+        window.CAPCONTATOS=[];
       }
       const capId=(cur&&cur.dbId)||CAPTURES[k].dbId;
       if(window.CAPPARTS_SAVE&&capId){
