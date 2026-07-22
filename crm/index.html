@@ -955,6 +955,18 @@
   <div class="mfoot"><button class="btn-ghost" id="cap-free" hidden style="margin-right:8px">↩ Liberar (voltar p/ Todos)</button><button class="btn-ghost" id="cap-del" hidden style="margin-right:auto;color:#D96A55;border-color:#D96A55">🗑 Excluir</button><button class="btn-ghost" id="cap-cancel">Cancelar</button><button class="btn-primary" id="cap-save">Registrar captura</button></div>
 </div>
 
+<!-- MODAL ARQUIVAR CAMPANHA (confirmação por senha) -->
+<div class="scrim2" id="delscrim"></div>
+<div class="modal" id="delmodal" role="dialog" aria-label="Arquivar campanha">
+  <div class="mh"><button class="x" id="delx" aria-label="Fechar">✕</button><div class="eyebrow">Confirmação</div><h3>Arquivar campanha</h3><div class="sv-sub" id="del-sub"></div></div>
+  <div class="mb">
+    <div class="capnote">A campanha será <b>arquivada</b> — sai das listagens, mas os dados e as comissões são <b>preservados</b> (não é exclusão definitiva). Confirme com a sua senha.</div>
+    <div class="frow"><label>Sua senha</label><input type="password" id="del-pw" autocomplete="current-password" placeholder="senha do seu login"></div>
+    <div class="capwarn" id="del-err" hidden></div>
+  </div>
+  <div class="mfoot"><button class="btn-ghost" id="del-cancel">Cancelar</button><button class="btn-primary" id="del-confirm" style="background:#D96A55;border-color:#D96A55">Arquivar campanha</button></div>
+</div>
+
 <!-- MODAL ADICIONAR (contato / tipo / servidor / unidade / secretaria / empresa) -->
 <div class="scrim2" id="adscrim"></div>
 <div class="modal" id="admodal" role="dialog" aria-label="Adicionar informação">
@@ -1004,6 +1016,7 @@
   document.getElementById('camp-sections').addEventListener('click',e=>{
     const tog=e.target.closest('.camp-toggle'); if(tog){const sec=tog.closest('.camp'),col=sec.classList.toggle('collapsed');tog.textContent=col?'▸ Expandir':'▾ Recolher';setCampCol(tog.dataset.cid,col);return;}
     const ed=e.target.closest('.camp-edit'); if(ed){window.CURCAMP=ed.dataset.cid;openCampanha('editar');return;}
+    const dl=e.target.closest('.camp-del'); if(dl){openDelCamp(dl.dataset.cid);return;}
     const add=e.target.closest('.chip.add'); if(add){if(add.dataset.cid)window.CURCAMP=add.dataset.cid;openCampanha('editar');return;}
   });
   document.getElementById('hcbtn').addEventListener('click',()=>{const l=document.body.classList.toggle('light');try{localStorage.setItem('crm-theme',l?'light':'dark')}catch(e){}});
@@ -1487,6 +1500,35 @@
 
   // ===== CAPTURAR SERVIDOR PARA CAMPANHA =====
   const capModal=document.getElementById('capmodal'), capScrim=document.getElementById('capscrim');
+  // ===== arquivar campanha (confirmação por senha) =====
+  const delModal=document.getElementById('delmodal'), delScrim=document.getElementById('delscrim');
+  let DELCID=null;
+  function openDelCamp(cid){DELCID=cid; const c=CAMPAIGNS.find(x=>x.id===cid);
+    document.getElementById('del-sub').textContent=c?c.nome:''; document.getElementById('del-pw').value='';
+    document.getElementById('del-err').hidden=true; delModal.classList.add('open'); delScrim.classList.add('open');
+    setTimeout(()=>document.getElementById('del-pw').focus(),50);}
+  function closeDelCamp(){delModal.classList.remove('open'); delScrim.classList.remove('open');}
+  document.getElementById('delx').addEventListener('click',closeDelCamp);
+  document.getElementById('del-cancel').addEventListener('click',closeDelCamp);
+  delScrim.addEventListener('click',closeDelCamp);
+  document.getElementById('del-pw').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('del-confirm').click();});
+  document.getElementById('del-confirm').addEventListener('click',async ()=>{
+    const pw=document.getElementById('del-pw').value, err=document.getElementById('del-err');
+    if(!pw){err.textContent='Informe sua senha para confirmar.'; err.hidden=false; return;}
+    if(!DELCID)return;
+    const btn=document.getElementById('del-confirm'); btn.disabled=true; btn.textContent='Verificando…';
+    try{
+      const{data:{user}}=await sbc.auth.getUser();
+      const{error:ae}=await sbc.auth.signInWithPassword({email:user.email,password:pw});
+      if(ae){err.textContent='Senha incorreta.'; err.hidden=false; btn.disabled=false; btn.textContent='Arquivar campanha'; return;}
+      const{error}=await sbc.from('campanhas').update({arquivada_em:new Date().toISOString()}).eq('id',DELCID);
+      if(error){err.textContent='Não foi possível arquivar: '+error.message; err.hidden=false; btn.disabled=false; btn.textContent='Arquivar campanha'; return;}
+      if(window.CURCAMP===DELCID)window.CURCAMP=null;
+      closeDelCamp(); btn.disabled=false; btn.textContent='Arquivar campanha';
+      warn('Campanha arquivada — preservada no histórico.');
+      if(window.refreshCampsRules)await window.refreshCampsRules();
+    }catch(e){err.textContent='Erro: '+(e.message||e); err.hidden=false; btn.disabled=false; btn.textContent='Arquivar campanha';}
+  });
   const VEND=[];
   const iniOf=nome=>{const f=VEND.find(v=>v[1]===nome);return f?f[0]:(nome||'?')[0];};
   const avmini=nome=>`<span class="av" style="background:${AV[iniOf(nome)]||'#5B7A98'}">${iniOf(nome)}</span>`;
@@ -2183,7 +2225,7 @@
     }
 
     say('Carregando campanhas e regras…');
-    const cps=await q('campanhas','*');
+    const cps=(await q('campanhas','*')).filter(c=>!c.arquivada_em);
     CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
       if(window.attachItens)await window.attachItens();
     const rvs=await q('regras_versoes','*');
@@ -2336,7 +2378,7 @@
   // recarrega CAMPANHAS + REGRAS do banco e re-renderiza (nova campanha/regra ao vivo)
   window.refreshCampsRules=async function(){
     try{
-      const cps=await q('campanhas','*');
+      const cps=(await q('campanhas','*')).filter(c=>!c.arquivada_em);
       CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
       if(window.attachItens)await window.attachItens();
       const rvs=await q('regras_versoes','*');
@@ -2476,6 +2518,7 @@
           <h1>${c.nome}</h1><div class="sub">${sub}</div></div>
         <button class="btn-ghost campmini camp-toggle" data-cid="${c.id}" title="Recolher / expandir">${col?'▸ Expandir':'▾ Recolher'}</button>
         ${admin?`<button class="editbtn camp-edit" data-cid="${c.id}">✎ Editar</button>`:''}
+        ${admin?`<button class="editbtn camp-del" data-cid="${c.id}" title="Arquivar campanha" style="color:#D96A55;border-color:#D96A55">🗑</button>`:''}
       </div>
       <div class="attach">
         <div><div class="lbl eyebrow">📎 Anexos exibidos na campanha</div><div class="row">${anexos||'<span class="ctmeta">—</span>'}</div></div>
@@ -2562,7 +2605,7 @@
       else{const{data,error}=await sbc.from('campanhas').insert(payload).select('id').single();if(error)throw error;CAMP_EDIT_ID=data.id;}
       window.CURCAMP=CAMP_EDIT_ID;
       if(window.dbSaveItens)await window.dbSaveItens(CAMP_EDIT_ID);
-      const cps=await q('campanhas','*');
+      const cps=(await q('campanhas','*')).filter(c=>!c.arquivada_em);
       CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
       if(window.attachItens)await window.attachItens();
       renderCampHeader(); warn('Campanha gravada no banco ✓');

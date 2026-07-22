@@ -1016,3 +1016,12 @@ alter table campanhas add column if not exists regra_config jsonb default '{}'::
 -- ============================================================================
 alter table campanhas add column if not exists cliente_novo_pct numeric;
 -- crm_regra_bonus_pct(capturas,uuid) e crm_grava_apur reescritos para somar o bônus por participante.
+
+-- ============================================================================
+-- CRM v14 — arquivamento de campanha (soft delete)  [APLICADA 22/07/2026]
+-- Excluir campanha = arquivar: sai das listagens (arquivada_em is null filtra),
+-- mas dados/capturas/comissões são preservados. App confirma com a senha do admin
+-- (re-login) antes de arquivar; RLS cmp_wr (gestor) é a trava real.
+-- ============================================================================
+alter table campanhas add column if not exists arquivada_em timestamptz;
+create index if not exists ix_camp_arquivada on campanhas(arquivada_em) where arquivada_em is null;
