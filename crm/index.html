@@ -720,6 +720,11 @@
           <div id="conq-list"></div>
         </section>
 
+        <section class="panel adminonly" id="acessos-panel" style="margin-bottom:16px" hidden>
+          <div class="commhead"><div><div class="eyebrow">🕵 Log de acessos · auditoria</div><h2 style="font-size:16px">Quem abriu o quê e quando</h2></div><span class="spacer"></span><span class="ctmeta">últimos 60</span></div>
+          <div id="acessos-list"></div>
+        </section>
+
         <section class="panel" style="margin-bottom:16px">
           <div class="tblwrap">
             <table class="commtab">
@@ -1358,7 +1363,7 @@
   const OPPS={}; let CUR=null; // atuações capturadas sobrepõem o lead base
   window.o_nome=document.getElementById('o-nome');window.o_val=document.getElementById('o-val');
   function render360(l){
-    CUR=l; const s=ST[l.st]||['—','var(--st-pros)','var(--stw-pros)'];
+    CUR=l; if(window.logAccess)logAccess('abriu_lead',(l.srv||l.cli||'')); const s=ST[l.st]||['—','var(--st-pros)','var(--stw-pros)'];
     o_nome.textContent=l.srv||l.cli;
     const a=document.getElementById('o-area'); a.className=l.area==='gp'?'tag gp':l.area==='leg'?'tag leg':'tag'; a.textContent=l.area==='gp'?'Gestão Pública':l.area==='leg'?'Legislativo':(l.areaLabel||'—');
     o_val.textContent=l.val; document.getElementById('o-vsub').textContent=[l.srv?l.org:'',l.vsub].filter(Boolean).join(' · ');
@@ -1425,10 +1430,12 @@
   // ===== SIGILO: anti-cópia / seleção / print (demonstração; enforcement real no back-end) =====
   document.body.classList.add('protect');
   let USER='—';
-  const hoje=new Date().toLocaleDateString('pt-BR');
+  const nowStamp=()=>new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
   function renderWM(){document.getElementById('wm').innerHTML=Array.from({length:160},
-    ()=>`<span>PLENUM · CONFIDENCIAL · ${USER} · ${hoje}</span>`).join('');}
-  renderWM();
+    ()=>`<span>PLENUM · CONFIDENCIAL · ${USER} · ${nowStamp()}</span>`).join('');}
+  renderWM(); setInterval(renderWM,60000);
+  // (a) log de acesso — registra quem abriu o quê e quando (auditoria de sigilo)
+  window.logAccess=function(evento,alvo){try{if(typeof sbc!=='undefined')sbc.from('crm_acessos').insert({evento:evento,alvo:(alvo||'').toString().slice(0,200)});}catch(e){}};
   // toast
   let tmr; const toast=document.getElementById('toast'), tmsg=document.getElementById('toast-msg');
   function warn(msg){tmsg.textContent=msg;toast.classList.add('on');clearTimeout(tmr);tmr=setTimeout(()=>toast.classList.remove('on'),2200);}
@@ -1997,6 +2004,8 @@
   // navegação sidebar: Campanhas ↔ Comissões ↔ Equipe/Organização
   const SECS=['sec-filtros','camp-sections','sec-funil','sec-note'].map(id=>document.getElementById(id));
   function showView(v){
+    if(v==='comm'&&window.logAccess)logAccess('abriu_comissoes','');
+    if(v==='comm'&&window.loadAcessos)loadAcessos();
     SECS.forEach(el=>{if(el)el.hidden=v!=='main';});
     document.getElementById('view-comm').hidden=v!=='comm';
     document.getElementById('view-team').hidden=v!=='team';
@@ -2580,10 +2589,13 @@
   // ---------- escrita no banco ----------
   const val=id=>document.getElementById(id).value.trim();
   const numval=id=>parseInt(val(id).replace(/\D/g,''))||0;
-  function brlFmt(el){if(!el)return;const raw=(el.value||'').replace(/\D/g,'');el.value=raw?(+raw).toLocaleString('pt-BR'):'';}
+  function brlParse(s){s=String(s==null?'':s).replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,'');return parseFloat(s)||0;}
+  function brlFmt(el){if(!el)return; var v=(el.value||'').replace(/[^\d,]/g,''); var i=v.indexOf(',');
+    var intp=(i<0?v:v.slice(0,i)).replace(/^0+(?=\d)/,''); var dec=i<0?'':v.slice(i+1).replace(/,/g,'').slice(0,2);
+    var g=intp?(+intp).toLocaleString('pt-BR'):(i>=0?'0':''); el.value=(i<0)?g:(g+','+dec);}
   ['c-meta','c-valor-unit','c-lote-pres','c-lote-onl'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',()=>brlFmt(el));});
   document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList.contains('cp-preco')||t.dataset.k==='meta_valor'||t.dataset.k==='comissao_valor')return;});
-  document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList&&t.classList.contains('cp-preco'))brlFmt(t);});
+  document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList&&(t.classList.contains('cp-preco')||t.dataset.k==='meta_valor'))brlFmt(t);});
   // ---------- editores de regra de comissão ----------
   let cProg=[];
   function renderProgRows(){document.getElementById('rule-prog-rows').innerHTML=cProg.map((r,i)=>`<div class="progrow" data-i="${i}"><input class="pg-n" value="${(r.nivel||'').replace(/"/g,'&quot;')}" placeholder="Nível (ex.: IV)"><input class="pg-p" type="number" min="0" max="100" value="${r.pct==null?'':r.pct}" placeholder="%"><span>%</span><button type="button" class="rm" data-i="${i}" aria-label="Remover">✕</button></div>`).join('');}
@@ -2605,7 +2617,7 @@
   function readRuleCfg(){const sel=document.querySelector('input[name="crule"]:checked'), tipo=sel?sel.value:'progressiva', cfg={};
     if(tipo==='progressiva'){readProg();cfg.niveis=cProg.filter(x=>x.nivel);}
     else if(tipo==='pos_meta'){cfg.pos_meta_pct=+document.getElementById('rule-pos-pct').value||0;}
-    else if(tipo==='individual'){cfg.individual=[...document.querySelectorAll('#rule-ind-rows .indrow')].map(r=>({funcionario_id:r.dataset.fid,meta:(+((r.querySelector('.in-m').value||'').replace(/\D/g,''))||0),pct:+r.querySelector('.in-p').value||0})).filter(x=>x.meta||x.pct);}
+    else if(tipo==='individual'){cfg.individual=[...document.querySelectorAll('#rule-ind-rows .indrow')].map(r=>({funcionario_id:r.dataset.fid,meta:brlParse(r.querySelector('.in-m').value),pct:+r.querySelector('.in-p').value||0})).filter(x=>x.meta||x.pct);}
     return{tipo,cfg};}
   window.fillCampModal=function(modo){
     const c=modo==='nova'?null:curCamp();
@@ -2613,11 +2625,11 @@
     document.getElementById('c-nome').value=c?c.nome:'';
     document.getElementById('c-ini').value=c&&c.inicio?String(c.inicio).slice(0,10):'';
     document.getElementById('c-fim').value=c&&c.fim?String(c.fim).slice(0,10):'';
-    document.getElementById('c-meta').value=c&&c.meta?c.meta.toLocaleString('pt-BR'):'';
+    document.getElementById('c-meta').value=c&&c.meta?c.meta.toLocaleString('pt-BR',{maximumFractionDigits:2}):'';
     document.getElementById('c-seg').value=c&&c.segmento?c.segmento:'Gestão Pública';
     document.getElementById('c-escopo').value=c?c.escopo:'Individual';
     document.getElementById('c-pct').value=c?c.pct:5;
-    document.getElementById('c-valor-unit').value=c&&c.valorUnit?c.valorUnit.toLocaleString('pt-BR'):'';
+    document.getElementById('c-valor-unit').value=c&&c.valorUnit?c.valorUnit.toLocaleString('pt-BR',{maximumFractionDigits:2}):'';
     cAnexos=c?(c.anexos||[]).slice():[]; cLinks=c?(c.links||[]).slice():[];
     cLotes=c?(c.lotes||[]).slice():[]; renderCLotes();
     cItens=c&&c.itens?JSON.parse(JSON.stringify(c.itens)):[]; cItensDel=[]; cPlanoDel=[]; renderCItens();
@@ -2633,8 +2645,8 @@
                   setor:val('crit-setor'),cargo:val('crit-cargo'),kw:val('crit-kw'),cnae:val('crit-cnae')};
       const vigente=RULEV.find(r=>!r.fim);
       const payload={nome:val('c-nome')||'Campanha',inicio:val('c-ini')||null,fim:val('c-fim')||null,
-        meta_valor:numval('c-meta')||null,segmento:val('c-seg'),escopo_rateio:val('c-escopo'),
-        pct_comissao:+val('c-pct')||5,valor_unitario:numval('c-valor-unit'),
+        meta_valor:brlParse(val('c-meta'))||null,segmento:val('c-seg'),escopo_rateio:val('c-escopo'),
+        pct_comissao:+val('c-pct')||5,valor_unitario:brlParse(val('c-valor-unit')),
         anexos:cAnexos,links:cLinks,criterios:crit,status:'ativa',regra_versao:vigente?vigente.versao:null,
         lotes:cLotes,desconto_org_pct:+val('c-desc-org')||0};
       const _rc=readRuleCfg(); payload.regra_tipo=_rc.tipo; payload.regra_config=_rc.cfg;
@@ -2773,7 +2785,7 @@
   }
   document.getElementById('c-lote-add').addEventListener('click',()=>{
     const nome=val('c-lote-nome')||('Lote '+(cLotes.length+1));
-    cLotes.push({nome,data:val('c-lote-data')||null,pres:numval('c-lote-pres'),online:numval('c-lote-onl')});
+    cLotes.push({nome,data:val('c-lote-data')||null,pres:brlParse(val('c-lote-pres')),online:brlParse(val('c-lote-onl'))});
     ['c-lote-nome','c-lote-pres','c-lote-onl'].forEach(id=>document.getElementById(id).value='');
     renderCLotes();
   });
@@ -2796,7 +2808,7 @@
   window.citemComm=it=>(it.comissao_tipo==='fixo'?'R$ '+(+it.comissao_valor||0).toLocaleString('pt-BR')+' fixo':(+it.comissao_valor||0)+'%')+(it.comissao_modo==='recorrente_mensal'?'/mês':'');
   function planoRow(p,ii,pi){return `<div class="cplano" data-pid="${p.id||''}">
     <input class="cp-nome" data-k="nome" value="${(p.nome||'').replace(/"/g,'&quot;')}" placeholder="Plano / Lote">
-    <input class="cp-preco" data-k="preco" value="${p.preco||''}" placeholder="R$ preço">
+    <input class="cp-preco" data-k="preco" value="${p.preco?(+p.preco).toLocaleString('pt-BR',{maximumFractionDigits:2}):''}" placeholder="R$ preço">
     <select data-k="unidade">${selOpts('unidade',p.unidade)}</select>
     <input class="cp-mes" data-k="meses_padrao" value="${p.meses_padrao||''}" placeholder="meses" title="meses do contrato (recorrente)">
     <select data-k="modalidade" title="modalidade (curso)">${selOpts('modalidade',p.modalidade)}</select>
@@ -2812,7 +2824,7 @@
         ${f('categoria','Categoria')}${f('nivel_venda','Nível de venda')}${f('cobranca','Cobrança')}${f('comissao_modo','Comissão')}
         ${f('comissao_tipo','Métrica')}
         <div class="fld"><label>Valor da comissão</label><input class="ci-f" data-k="comissao_valor" value="${it.comissao_valor==null?'':it.comissao_valor}" placeholder="8 ou 2000"></div>
-        <div class="fld"><label>Meta do produto (R$)</label><input class="ci-f" data-k="meta_valor" value="${it.meta_valor==null?'':it.meta_valor}" placeholder="opcional"></div>
+        <div class="fld"><label>Meta do produto (R$)</label><input class="ci-f" data-k="meta_valor" value="${it.meta_valor==null?'':(+it.meta_valor).toLocaleString('pt-BR',{maximumFractionDigits:2})}" placeholder="opcional"></div>
       </div>
       <div class="ci-planos">${(it.planos||[]).map((p,pi)=>planoRow(p,i,pi)).join('')||'<span class="ctmeta">Sem planos — adicione ao menos um preço.</span>'}
         <button type="button" class="addbtn ci-plano-add" data-ii="${i}">＋ plano / preço</button></div>
@@ -2903,7 +2915,7 @@
   function readBonus(){const out=[];
     document.querySelectorAll('#c-bonus .bncard').forEach(card=>{const b={id:card.dataset.id||undefined,descricao:card.querySelector('.bn-desc').value.trim()};
       card.querySelectorAll('.bn-f').forEach(f=>{b[f.dataset.k]=f.value;});
-      b.meta_valor=(b.meta_valor==null||b.meta_valor==='')?null:(+String(b.meta_valor).replace(/\D/g,'')||null);
+      b.meta_valor=(b.meta_valor==null||b.meta_valor==='')?null:(brlParse(b.meta_valor)||null);
       b.top_n=b.top_n?parseInt(b.top_n)||2:2;
       b.valor=(b.valor==null||b.valor==='')?null:(parseFloat(String(b.valor).replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))||0);
       b.premio_desc=b.premio_desc||null; b.funcionario_id=b.funcionario_id||null; out.push(b);});
@@ -2936,6 +2948,14 @@
   document.getElementById('conq-list').addEventListener('click',async e=>{const b=e.target.closest('.conq-deliver'); if(!b)return;
     const{error}=await sbc.from('bonus_conquistas').update({entregue:true,entregue_em:new Date().toISOString()}).eq('id',b.dataset.id);
     if(error){warn('⚠ '+error.message);return;} if(window.reloadConq)await window.reloadConq();});
+  window.loadAcessos=async function(){ if(!window.IS_ADMIN&&!(window.GESTOR))return;
+    try{const{data}=await sbc.from('crm_acessos').select('*').order('em',{ascending:false}).limit(60);
+      const el=document.getElementById('acessos-list'),panel=document.getElementById('acessos-panel'); if(!el)return;
+      const EV={login:'entrou',abriu_lead:'abriu lead',abriu_comissoes:'abriu comissões'};
+      el.innerHTML=(data||[]).map(a=>`<div class="conqrow"><span class="cn">${(funcById[a.funcionario_id]||{}).nome||'—'}</span><span class="cv">${EV[a.evento]||a.evento}${a.alvo?' · '+a.alvo:''}</span><span class="cm">${fmtDT(a.em)}</span></div>`).join('')||'<span class="ctmeta">Sem registros ainda.</span>';
+      if(panel)panel.hidden=false;
+    }catch(e){}};
+  const fmtDT=d=>d?new Date(d).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
   window.reloadConq=async function(newrow){try{window.CONQ=await q('bonus_conquistas','*'); window.renderConq();
     if(newrow&&window.ME&&String(newrow.funcionario_id)===String(window.ME.id))warn('🎉 Bônus revelado para você!');}catch(e){}};
 
@@ -2980,7 +3000,7 @@
     try{await hydrate(st);}
     catch(e){st.style.color='var(--crit)';st.textContent='Erro ao carregar: '+(e.message||e);document.getElementById('lg-btn').textContent='Entrar';return;}
     LGD.classList.add('hidden'); APPW.classList.remove('hidden');
-    startRealtime();
+    startRealtime(); if(window.logAccess)logAccess('login',CURRENT);
   }
   boot();
 
