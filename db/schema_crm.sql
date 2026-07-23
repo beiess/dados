@@ -1077,3 +1077,34 @@ create policy "crm_anexos_read"   on storage.objects for select using (bucket_id
 create policy "crm_anexos_insert" on storage.objects for insert to authenticated with check (bucket_id='crm-anexos' and app_is_admin());
 create policy "crm_anexos_update" on storage.objects for update to authenticated using (bucket_id='crm-anexos' and app_is_admin());
 create policy "crm_anexos_delete" on storage.objects for delete to authenticated using (bucket_id='crm-anexos' and app_is_admin());
+
+-- ============================================================================
+-- CRM v20 — LOG DE ACESSO (auditoria de sigilo)  [APLICADA 22/07/2026]
+-- Registra quem abriu o quê e quando (login, abrir lead/360, abrir comissões).
+-- Insert liberado ao autenticado, mas um trigger FORÇA funcionario_id/org_id
+-- (impede forjar identidade); leitura só gestor/admin. Obs.: INSERT ... RETURNING
+-- dispara a policy de SELECT — por isso o app faz insert simples (sem select).
+-- ============================================================================
+create table if not exists crm_acessos (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null default app_org(),
+  funcionario_id uuid default app_me_id(),
+  evento text, alvo text, em timestamptz default now()
+);
+create index if not exists ix_acessos_em on crm_acessos(em desc);
+alter table crm_acessos enable row level security;
+create or replace function trg_acessos_stamp() returns trigger
+language plpgsql security definer set search_path=public as $$
+begin
+  new.funcionario_id := app_me_id();
+  new.org_id := coalesce(app_org(), new.org_id);
+  new.em := coalesce(new.em, now());
+  return new;
+end $$;
+revoke execute on function trg_acessos_stamp() from public, anon, authenticated;
+drop trigger if exists t_acessos_stamp on crm_acessos;
+create trigger t_acessos_stamp before insert on crm_acessos for each row execute function trg_acessos_stamp();
+drop policy if exists acessos_ins on crm_acessos;
+drop policy if exists acessos_sel on crm_acessos;
+create policy acessos_ins on crm_acessos for insert to authenticated with check (true);
+create policy acessos_sel on crm_acessos for select to authenticated using (org_id = app_org() and app_is_gestor());
