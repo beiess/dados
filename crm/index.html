@@ -3017,7 +3017,7 @@
     if(!HL.length)return;
     let p1set=null;
     if(!NAMESEL.length&&qs.length>=4&&typeof sbc!=='undefined'){
-      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_limit:1000});
+      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_limit:100});
         p1set=new Set((data||[]).map(x=>String(x.entidade_id)));}catch(e){}
     }
     let shown=0;

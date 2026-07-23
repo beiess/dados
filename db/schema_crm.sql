@@ -1108,3 +1108,14 @@ drop policy if exists acessos_ins on crm_acessos;
 drop policy if exists acessos_sel on crm_acessos;
 create policy acessos_ins on crm_acessos for insert to authenticated with check (true);
 create policy acessos_sel on crm_acessos for select to authenticated using (org_id = app_org() and app_is_gestor());
+
+-- ============================================================================
+-- CRM v22 — busca de servidores rápida  [APLICADA 23/07/2026]
+-- crm_buscar_servidores fazia 'order by p.nome' sobre ilike '%termo%'; para
+-- termo comum (ex.: 'maria' = 720k matches num painel1 de 5,8M) isso ordenava
+-- tudo antes do LIMIT (~49s) → timeout no PostgREST → busca voltava vazia no app.
+-- Trocado por 'order by p.id' (o planner para cedo no LIMIT: typeahead ~0,2s).
+-- App: applyAll usa p_limit:200 (era 1000) e degrada com timeout de forma graciosa.
+-- ============================================================================
+-- (ver definição completa de crm_buscar_servidores na migração crm_v22_busca_rapida:
+--  idêntica à anterior, apenas 'order by p.id' no lugar de 'order by p.nome')
