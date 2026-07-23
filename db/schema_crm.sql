@@ -1065,3 +1065,15 @@ create table if not exists bonus_conquistas (
 -- funções crm_vendido_vendedor / crm_conceder_bonus / crm_avaliar_bonus / crm_tem_bonus
 -- + trg_capturas_apura estendido + RLS (cbonus_sel gestor, cbonus_wr admin, bconq_sel own/gestor,
 --   bconq_upd gestor) + realtime nas 2 tabelas — ver migração aplicada (crm_v15_engine_bonus).
+
+-- ============================================================================
+-- CRM v17 — anexar arquivo funcional (Supabase Storage)  [APLICADA 22/07/2026]
+-- Bucket público 'crm-anexos' (leitura pública via URL; escrita só admin).
+-- O botão "＋ Anexar" faz upload real e o chip do anexo vira link clicável.
+-- ============================================================================
+insert into storage.buckets (id, name, public) values ('crm-anexos','crm-anexos', true)
+  on conflict (id) do update set public=excluded.public;
+create policy "crm_anexos_read"   on storage.objects for select using (bucket_id='crm-anexos');
+create policy "crm_anexos_insert" on storage.objects for insert to authenticated with check (bucket_id='crm-anexos' and app_is_admin());
+create policy "crm_anexos_update" on storage.objects for update to authenticated using (bucket_id='crm-anexos' and app_is_admin());
+create policy "crm_anexos_delete" on storage.objects for delete to authenticated using (bucket_id='crm-anexos' and app_is_admin());

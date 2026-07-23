@@ -895,7 +895,7 @@
     </div>
     <div class="frow"><label>📎 Anexos exibidos na página</label>
       <div class="chipedit" id="c-anexos"></div>
-      <div class="addline"><input type="text" id="c-anexo-nome" placeholder="Nome do arquivo (ex.: Proposta.pdf)"><button class="addbtn" id="c-anexo-add">＋ Anexar</button></div>
+      <div class="addline"><input type="file" id="c-anexo-file"><input type="text" id="c-anexo-nome" placeholder="ou só um nome/rótulo" style="max-width:170px"><button class="addbtn" id="c-anexo-add">＋ Anexar</button></div>
     </div>
     <div class="frow"><label>🔗 Links vinculados</label>
       <div class="chipedit" id="c-links"></div>
@@ -1446,7 +1446,7 @@
   let cAnexos=[{nome:'Apresentação Plenum 2026',ext:'pdf'},{nome:'Tabela de serviços & preços',ext:'xls'},{nome:'Proposta-modelo obras',ext:'doc'}];
   let cLinks=[{nome:'Painel Estratégico — Obras',url:'#'},{nome:'Consulta PNCP',url:'#'}];
   const extGuess=n=>{const e=(n.split('.').pop()||'').toLowerCase();return e==='pdf'?'pdf':['xls','xlsx','csv'].includes(e)?'xls':['png','jpg','jpeg','gif'].includes(e)?'img':'doc';};
-  const renderCAnexos=()=>{document.getElementById('c-anexos').innerHTML=cAnexos.map((a,i)=>`<span class="chip"><span class="ext ${a.ext}">${a.ext.toUpperCase()}</span> ${a.nome}<button class="rm" data-i="${i}" aria-label="Remover">✕</button></span>`).join('')||'<span class="ctmeta">Nenhum anexo.</span>';};
+  const renderCAnexos=()=>{document.getElementById('c-anexos').innerHTML=cAnexos.map((a,i)=>`<span class="chip"><span class="ext ${a.ext}">${a.ext.toUpperCase()}</span> ${a.url?`<a href="${a.url}" target="_blank" rel="noopener">${a.nome} ↗</a>`:a.nome}<button class="rm" data-i="${i}" aria-label="Remover">✕</button></span>`).join('')||'<span class="ctmeta">Nenhum anexo.</span>';};
   const renderCLinks=()=>{document.getElementById('c-links').innerHTML=cLinks.map((l,i)=>`<span class="chip link">${l.nome} <span class="ar">↗</span><button class="rm" data-i="${i}" aria-label="Remover">✕</button></span>`).join('')||'<span class="ctmeta">Nenhum link.</span>';};
   // ---- seleção de leads por critério (tema, responsabilidade, setor, cargo, função, palavra-chave, CNAE) ----
   const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -1506,7 +1506,26 @@
   // editar é por seção (delegado em #camp-sections)
   document.getElementById('c-anexos').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cAnexos.splice(+b.dataset.i,1);renderCAnexos();}});
   document.getElementById('c-links').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){cLinks.splice(+b.dataset.i,1);renderCLinks();}});
-  document.getElementById('c-anexo-add').addEventListener('click',()=>{const n=document.getElementById('c-anexo-nome');const v=n.value.trim();if(!v)return;cAnexos.push({nome:v,ext:extGuess(v)});n.value='';renderCAnexos();});
+  document.getElementById('c-anexo-add').addEventListener('click',async ()=>{
+    const fileEl=document.getElementById('c-anexo-file'), nameEl=document.getElementById('c-anexo-nome');
+    const file=fileEl&&fileEl.files&&fileEl.files[0], btn=document.getElementById('c-anexo-add');
+    if(file){
+      btn.disabled=true; btn.textContent='Enviando…';
+      try{
+        const safe=file.name.replace(/[^\w.\-]+/g,'_'), path='anexos/'+Date.now()+'_'+safe;
+        const{error}=await sbc.storage.from('crm-anexos').upload(path,file,{upsert:false,contentType:file.type||undefined});
+        if(error)throw error;
+        const{data}=sbc.storage.from('crm-anexos').getPublicUrl(path);
+        cAnexos.push({nome:(nameEl.value.trim()||file.name),ext:extGuess(file.name),url:data.publicUrl});
+        fileEl.value=''; nameEl.value=''; renderCAnexos();
+        warn('Arquivo anexado ✓ — salve a campanha para publicar.');
+      }catch(e){warn('⚠ Upload falhou: '+(e.message||e));}
+      btn.disabled=false; btn.textContent='＋ Anexar';
+    } else {
+      const v=(nameEl.value||'').trim(); if(!v)return;
+      cAnexos.push({nome:v,ext:extGuess(v)}); nameEl.value=''; renderCAnexos();
+    }
+  });
   document.getElementById('c-link-add').addEventListener('click',()=>{const n=document.getElementById('c-link-nome'),u=document.getElementById('c-link-url');const v=n.value.trim();if(!v)return;cLinks.push({nome:v,url:u.value.trim()||'#'});n.value='';u.value='';renderCLinks();});
   document.getElementById('c-save').addEventListener('click',()=>{
     if(window.dbSaveCamp)window.dbSaveCamp();
@@ -2528,7 +2547,7 @@
   function campSectionHTML(c){
     const col=isCampCol(c.id)?' collapsed':'', admin=window.IS_ADMIN;
     const sub='<span>Período <b>'+fmtD(c.inicio)+' – '+fmtD(c.fim)+'</b></span><span>Meta <b class="num">'+(c.meta?money(c.meta):'—')+'</b></span><span>Escopo <b>'+(c.escopo||'—')+'</b></span><span>Comissão <b class="num">'+(c.pct||0)+'% · unit '+money(c.valorUnit||0)+'</b></span>'+(c.itens||[]).map(it=>'<span>🧩 '+it.nome+' <b>'+window.citemComm(it)+'</b></span>').join('');
-    const anexos=(c.anexos||[]).map(a=>'<span class="chip"><span class="ext '+(a.ext||'doc')+'">'+String(a.ext||'doc').toUpperCase()+'</span> '+a.nome+'</span>').join('')+(admin?'<button class="chip add" data-cid="'+c.id+'">＋ Anexar</button>':'');
+    const anexos=(c.anexos||[]).map(a=>'<span class="chip"><span class="ext '+(a.ext||'doc')+'">'+String(a.ext||'doc').toUpperCase()+'</span> '+(a.url?'<a href="'+a.url+'" target="_blank" rel="noopener">'+a.nome+' ↗</a>':a.nome)+'</span>').join('')+(admin?'<button class="chip add" data-cid="'+c.id+'">＋ Anexar</button>':'');
     const links=(c.links||[]).map(l=>'<a class="chip link" href="'+(l.url||'#')+'" target="_blank" rel="noopener">'+l.nome+' <span class="ar">↗</span></a>').join('')+(admin?'<button class="chip add" data-cid="'+c.id+'">＋ Vincular link</button>':'');
     const encerr=c.status==='encerrada';
     return `<section class="camp${col}" data-cid="${c.id}" style="${c.cor?('border-top:3px solid '+c.cor):''}">
