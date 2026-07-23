@@ -195,16 +195,28 @@ function showErr(msg){tw().innerHTML='<div class="msg err">⚠ '+esc(msg)+'</div
 async function token(){const {data}=await sb.auth.getSession();return data&&data.session?data.session.access_token:null;}
 let _lastTotal=0,_lastCapped=0,capOverride=0;
 async function fetchRange(tbl,qs,t,from,to,withCount){
-  const c=new AbortController(), timer=setTimeout(()=>c.abort(),TIMEOUT);
-  const h={apikey:SB_ANON,Authorization:'Bearer '+t,'Range-Unit':'items','Range':from+'-'+to};
-  if(withCount)h['Prefer']='count=exact';
-  let r;
-  try{r=await fetch(SB_URL+'/rest/v1/'+tbl+'?'+qs,{headers:h,signal:c.signal});}
-  catch(e){clearTimeout(timer);throw new Error(e.name==='AbortError'?('tempo esgotado (>'+(TIMEOUT/1000)+'s) em '+tbl):('falha de rede em '+tbl+': '+e.message));}
-  clearTimeout(timer);
-  if(!r.ok&&r.status!==206){throw new Error('HTTP '+r.status+' em '+tbl+': '+(await r.text()).slice(0,180));}
-  const cr=r.headers.get('content-range')||'', total=withCount?parseInt((cr.split('/')[1]||'-1'),10):-1;
-  return {data:await r.json(),total};
+  // até 3 tentativas: 5xx/queda de rede numa página não aborta mais a carga inteira
+  let last;
+  for(let tent=0;tent<3;tent++){
+    if(tent)await new Promise(rs=>setTimeout(rs,1200*tent));
+    const c=new AbortController(), timer=setTimeout(()=>c.abort(),TIMEOUT);
+    const h={apikey:SB_ANON,Authorization:'Bearer '+t,'Range-Unit':'items','Range':from+'-'+to};
+    if(withCount)h['Prefer']='count=exact';
+    let r;
+    try{r=await fetch(SB_URL+'/rest/v1/'+tbl+'?'+qs,{headers:h,signal:c.signal});}
+    catch(e){clearTimeout(timer);
+      last=new Error(e.name==='AbortError'?('tempo esgotado (>'+(TIMEOUT/1000)+'s) em '+tbl):('falha de rede em '+tbl+': '+e.message));continue;}
+    clearTimeout(timer);
+    if(!r.ok&&r.status!==206){
+      const txt=(await r.text()).slice(0,180);
+      last=new Error('HTTP '+r.status+' em '+tbl+': '+txt);
+      if(r.status>=500||r.status===429)continue;
+      throw last;
+    }
+    const cr=r.headers.get('content-range')||'', total=withCount?parseInt((cr.split('/')[1]||'-1'),10):-1;
+    return {data:await r.json(),total};
+  }
+  throw last;
 }
 // busca paginada: 1ª página traz a contagem total (Prefer:count=exact); o resto vem em PARALELO (pool)
 async function sbfetch(tbl,qs,onprog){
@@ -1149,6 +1161,6 @@ function buildDossiePDF(d,pncp){
   doc.text(foot,M,y);
   doc.save('Dossie_Habilitacao_'+cj+'.pdf');
 }
-document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel'))closePop();});
+document.addEventListener('click',e=>{if(!e.target.closest('.pop')&&!e.target.closest('.flt')&&!e.target.closest('#msel,#usel,#esel,#tsel'))closePop();});
 sb.auth.getSession().then(({data:{session}})=>{if(session)start();});
 </script></body></html>
