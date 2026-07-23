@@ -1372,7 +1372,7 @@
     document.getElementById('o-atores').innerHTML=l.atores.map(t=>`<div class="actor">${av(t[0])}<div class="info"><b>${t[1]}</b><span>${t[2]}</span><div class="rateiobar"><i style="width:${t[4]}%"></i></div></div><span class="role ${t[5]?'resp':''}">${t[3]}</span></div>`).join('');
     document.getElementById('o-tl').innerHTML=l.tl.map(e=>`<div class="ev ${e[3]?'mut':''}"><span class="d"></span><div class="c"><b>${e[0]}</b><p>${e[1]}</p><time>${e[2]}</time></div></div>`).join('');
     const tot=l.comm.reduce((s,c)=>s+(parseInt(c[1].replace(/\D/g,''))||0),0);
-    document.getElementById('o-comm').innerHTML=l.comm.map(c=>`<div class="commrow"><span class="who">${c[0]}</span><span class="amt">${c[1]}</span></div>`).join('')+`<div class="commtot"><span>Total previsto</span><span class="amt">${tot?('R$ '+tot.toLocaleString('pt-BR')):'a definir'}</span></div>`;
+    document.getElementById('o-comm').innerHTML=l.comm.map(c=>`<div class="commrow"><span class="who">${c[0]}</span><span class="amt">${c[1]}</span></div>`).join('')+`<div class="commtot"><span>Total previsto</span><span class="amt">${tot?('R$ '+tot.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})):'a definir'}</span></div>`;
     document.getElementById('o-rule').innerHTML='Regra <b>'+l.rule+'</b>';
     const upd=document.getElementById('drawerUpd');
     if(upd)upd.style.display=((window.CAPS||[]).some(x=>x.id===l.id))?'':'none';
@@ -1611,7 +1611,7 @@
     if(it&&it.cobranca==='mensal')return preco*(+meses||(pl&&pl.meses_padrao)||12);   // contrato inteiro (meta usa isto)
     return preco;}
   function fillCapPlanos(it,selId){const sel=document.getElementById('cap-plano');
-    const ps=(it&&it.planos)||[]; sel.innerHTML=ps.map(p=>`<option value="${p.id}">${p.nome} · R$ ${(+p.preco||0).toLocaleString('pt-BR')}${p.unidade==='mensal'?'/mês':''}</option>`).join('')||'<option value="">—</option>';
+    const ps=(it&&it.planos)||[]; sel.innerHTML=ps.map(p=>`<option value="${p.id}">${p.nome} · R$ ${(+p.preco||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}${p.unidade==='mensal'?'/mês':''}</option>`).join('')||'<option value="">—</option>';
     if(selId&&ps.some(p=>p.id===selId))sel.value=selId; }
   function populateCapItems(camp,c,onlyNivel){
     const row=document.getElementById('cap-item-row'), isel=document.getElementById('cap-item');
@@ -1642,14 +1642,14 @@
     if(document.getElementById('cap-rateio')&&!document.getElementById('cap-rateio').hidden&&window.readCapParts)window.readCapParts();
     const parts=(window.CAPPARTS&&window.CAPPARTS.length)?window.CAPPARTS:[{funcionario_id:null,rateio_pct:100,papel:'responsavel'}];
     const nmOf=fid=>{const t=(TEAM||[]).find(x=>String(x.id)===String(fid));return t?t.n:CURRENT;};
-    const perV=parts.map(p=>{const sh=Math.round(comItem*(+p.rateio_pct||100)/100);return nmOf(p.funcionario_id)+' · '+(+p.rateio_pct||100)+'% → R$ '+sh.toLocaleString('pt-BR')+(recor?'/mês':'');}).join(' · ');
+    const perV=parts.map(p=>{const sh=Math.round(comItem*(+p.rateio_pct||100)/100);return nmOf(p.funcionario_id)+' · '+(+p.rateio_pct||100)+'% → R$ '+sh.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+(recor?'/mês':'');}).join(' · ');
     const camp=curCamp(), regra=capRegraTxt(camp);
     const el=document.getElementById('cap-params'); el.title='Comissão do item — a regra da campanha soma por cima na apuração';
     el.innerHTML=`<span>${orgao?'🏛 Venda por órgão':'👤 Venda por servidor'}</span>`+
-      (pl?`<span>Plano <b>${pl.nome}</b> · R$ ${(+pl.preco||0).toLocaleString('pt-BR')}${pl.unidade==='mensal'?'/mês':''}</span>`:'')+
-      (isMensal?`<span>Contrato <b>R$ ${valor.toLocaleString('pt-BR')}</b> em ${meses} meses</span>`:`<span>Valor <b>R$ ${valor.toLocaleString('pt-BR')}</b></span>`)+
-      (recor?`<span>Comissão do item <b>R$ ${comItem.toLocaleString('pt-BR')}/mês</b> · <b>R$ ${comTot.toLocaleString('pt-BR')}</b> no contrato (${meses}m)</span>`
-            :`<span>Comissão do item <b>R$ ${comItem.toLocaleString('pt-BR')}</b> (${m.tipo==='fixo'?'fixo':m.val+'%'})</span>`)+
+      (pl?`<span>Plano <b>${pl.nome}</b> · R$ ${(+pl.preco||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}${pl.unidade==='mensal'?'/mês':''}</span>`:'')+
+      (isMensal?`<span>Contrato <b>R$ ${valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</b> em ${meses} meses</span>`:`<span>Valor <b>R$ ${valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</b></span>`)+
+      (recor?`<span>Comissão do item <b>R$ ${comItem.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}/mês</b> · <b>R$ ${comTot.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</b> no contrato (${meses}m)</span>`
+            :`<span>Comissão do item <b>R$ ${comItem.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</b> (${m.tipo==='fixo'?'fixo':m.val+'%'})</span>`)+
       `<span>Por vendedor: <b>${perV}</b></span>`+
       (regra?`<span>Regra da campanha: <b>${regra}</b></span>`:'');
     const note=document.getElementById('cap-item-note');
@@ -1675,9 +1675,9 @@
     window.CAPCALC={valor,mod,lote:lote?(lote.nome||'lote'):null,desc,ja};
     const el=document.getElementById('cap-params'); el.title='Definidos pelo admin no cadastro da campanha';
     el.innerHTML=(lote?`<span>Lote <b>${lote.nome||'—'}</b> até <b>${lote.data?String(lote.data).split('-').reverse().join('/'):'—'}</b></span>`:'')+
-      `<span>${mod==='online'?'💻 Online':'🏛 Presencial'} <b>R$ ${base.toLocaleString('pt-BR')}</b></span>`+
+      `<span>${mod==='online'?'💻 Online':'🏛 Presencial'} <b>R$ ${base.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</b></span>`+
       (desc?`<span>Desconto org. <b>−${desc}%</b> (${ja} já capturado${ja>1?'s':''})</span>`:'')+
-      `<span>Valor <b>R$ ${valor.toLocaleString('pt-BR')}</b></span><span>Escopo <b>${c.escopo}</b></span><span>Comissão ${c.pct}% <b>R$ ${com.toLocaleString('pt-BR')}</b></span>`;
+      `<span>Valor <b>R$ ${valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</b></span><span>Escopo <b>${c.escopo}</b></span><span>Comissão ${c.pct}% <b>R$ ${com.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</b></span>`;
     const note=document.getElementById('cap-lote-note');
     if(note)note.textContent=desc?`Mesma organização: ${ja} captura(s) ativa(s) → −${desc}% aplicado.`:(lote?'Valor do lote vigente pela data.':'Sem lotes — usa o valor unitário da campanha.');
   }
@@ -1871,12 +1871,12 @@
     const camp=campById(campId), cc=window.CAPCALC||{};
     const baseV=cc.valor||camp.valorUnit||0, com=Math.round(baseV*(+camp.pct||0)/100);
     const rec={id:'sv-'+CAPI,srv:r.nome,cli:r.nome,org:[r.orgao,r.setor].filter(Boolean).join(' · '),area:r.area,st,
-      val:'R$ '+baseV.toLocaleString('pt-BR'),
+      val:'R$ '+baseV.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
       vsub:(cc.mod==='online'?'online':'presencial')+(cc.lote?(' · '+cc.lote):'')+(cc.desc?(' · −'+cc.desc+'%'):'')+' · '+camp.nome.split(' · ')[0],
       atores:[[iniOf(resp),resp,'Responsável · '+camp.escopo,'Responsável · 100%',100,1]],
       tl:[[(ST[st]?ST[st][0]:st)+' — captura registrada',(obs||'—'),'agora · '+resp,0],['Servidor do órgão',r.cargo+' · '+r.orgao,'origem · painel',1]],
-      comm:[[resp+' · 100%','R$ '+com.toLocaleString('pt-BR')]],
-      rule:camp.escopo+' · '+camp.pct+'% · valor unitário R$ '+camp.valorUnit.toLocaleString('pt-BR')+' (definido pelo admin)'};
+      comm:[[resp+' · 100%','R$ '+com.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})]],
+      rule:camp.escopo+' · '+camp.pct+'% · valor unitário R$ '+camp.valorUnit.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' (definido pelo admin)'};
     closeCapture(); render360(rec);
     warn(reciclou
       ? 'Lead devolvido para Prospecção — '+r.nome+'. A comissão apurada foi estornada automaticamente.'
@@ -1888,7 +1888,7 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCapture()});
 
   // ===== PAINEL DE COMISSÕES =====
-  const money=n=>'R$ '+n.toLocaleString('pt-BR');
+  const money=n=>'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   // período (competência) do painel — '' = campanha inteira
   const MESN=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const MESA=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -2118,7 +2118,7 @@
     document.getElementById('tm-ar').value=t&&t.ar!=='—'?t.ar:'Gestão Pública';
     document.getElementById('tm-emp').value=t?t.emp:'Matriz';
     document.getElementById('tm-base').value=t?t.base:5;
-    document.getElementById('tm-meta').value=t&&t.meta?t.meta.toLocaleString('pt-BR'):'';
+    document.getElementById('tm-meta').value=t&&t.meta?t.meta.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
     document.getElementById('tm-cpf').value=t?(t.cpf||''):'';
     document.getElementById('tm-senha').value='';
     document.getElementById('tm-sit').value=t?t.sit:'ativo';
@@ -2381,7 +2381,7 @@
         let comBase, calcTxt;
         if(it){const mm=itemMetric(it,pl)||{tipo:'percentual',val:0}, cbase=itemBase(it,pl,c.meses_contrato);
           comBase=mm.tipo==='fixo'?mm.val:Math.round(cbase*mm.val/100);
-          calcTxt=(it.comissao_modo==='recorrente_mensal')?('R$ '+comBase.toLocaleString('pt-BR')+'/mês'):(mm.tipo==='fixo'?('R$ '+comBase.toLocaleString('pt-BR')+' fixo'):(money(cbase)+' × '+mm.val+'%'));
+          calcTxt=(it.comissao_modo==='recorrente_mensal')?('R$ '+comBase.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'/mês'):(mm.tipo==='fixo'?('R$ '+comBase.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' fixo'):(money(cbase)+' × '+mm.val+'%'));
         }else{comBase=Math.round(baseV*(+camp.pct||0)/100); calcTxt=money(baseV)+' × '+(+camp.pct||0)+'%';}
         mem.push({cli:(it?it.nome+' · ':'')+(e.nome||'—'),t:(e.tipo_cliente==='base'?'base':'novo'),v:baseV,rt:papel+' · '+rat+'%',
           c:calcTxt+(rat!==100?' → '+rat+'%':''),
@@ -2461,11 +2461,11 @@
       .map(a=>[(a.estagio_para?(ST[uiStage(a.estagio_para)]||['—'])[0]:a.tipo),a.descricao||'—',
                fmtD(a.criada_em)+' · '+((funcById[a.funcionario_id]||{}).nome||''),0]);
     const baseV=+c.valor_contrato||+camp.valorUnit||0, tot=Math.round(baseV*(+camp.pct||0)/100);
-    const comm=atores.map(a=>[a[1]+' · '+a[4]+'%','R$ '+Math.round(tot*a[4]/100).toLocaleString('pt-BR')]);
+    const comm=atores.map(a=>[a[1]+' · '+a[4]+'%','R$ '+Math.round(tot*a[4]/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})]);
     return {id:c.id,cli:(e.nome||'—')+' — '+(s.nome||''),area:e.area==='Legislativo'?'leg':'gp',st:uiStage(c.estagio),
-      val:baseV?('R$ '+baseV.toLocaleString('pt-BR')):'a definir',vsub:(camp.nome||'').split(' · ')[0],
+      val:baseV?('R$ '+baseV.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})):'a definir',vsub:(camp.nome||'').split(' · ')[0],
       atores,tl:tl.length?tl:[['Captura','—','',1]],comm,
-      rule:(camp.escopo||'—')+' · '+(+camp.pct||0)+'% · valor unit. R$ '+(+camp.valorUnit||0).toLocaleString('pt-BR')};
+      rule:(camp.escopo||'—')+' · '+(+camp.pct||0)+'% · valor unit. R$ '+(+camp.valorUnit||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})};
   }
 
   // detalhe da entidade (lazy — construído no 1º clique)
@@ -2592,7 +2592,7 @@
   function brlParse(s){s=String(s==null?'':s).replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,'');return parseFloat(s)||0;}
   function brlFmt(el){if(!el)return; var v=(el.value||'').replace(/[^\d,]/g,''); var i=v.indexOf(',');
     var intp=(i<0?v:v.slice(0,i)).replace(/^0+(?=\d)/,''); var dec=i<0?'':v.slice(i+1).replace(/,/g,'').slice(0,2);
-    var g=intp?(+intp).toLocaleString('pt-BR'):(i>=0?'0':''); el.value=(i<0)?g:(g+','+dec);}
+    var g=intp?(+intp).toLocaleString('pt-BR'/*int*/):(i>=0?'0':''); el.value=(i<0)?g:(g+','+dec);}
   ['c-meta','c-valor-unit','c-lote-pres','c-lote-onl'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',()=>brlFmt(el));});
   document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList.contains('cp-preco')||t.dataset.k==='meta_valor'||t.dataset.k==='comissao_valor')return;});
   document.getElementById('c-itens').addEventListener('input',e=>{const t=e.target;if(t.classList&&(t.classList.contains('cp-preco')||t.dataset.k==='meta_valor'))brlFmt(t);});
@@ -2604,7 +2604,7 @@
   document.getElementById('rule-prog-rows').addEventListener('click',e=>{const b=e.target.closest('.rm');if(b){readProg();cProg.splice(+b.dataset.i,1);renderProgRows();}});
   function renderIndRows(cfgInd){const by={};(cfgInd||[]).forEach(x=>by[x.funcionario_id]=x);
     document.getElementById('rule-ind-rows').innerHTML=TEAM.filter(t=>t.fn==='Vendedor').map(t=>{const x=by[t.id]||{};
-      return `<div class="indrow" data-fid="${t.id}"><span class="in-nm">${t.n}</span><input class="in-m" value="${x.meta?(+x.meta).toLocaleString('pt-BR'):''}" placeholder="meta R$"><input class="in-p" type="number" min="0" max="100" value="${x.pct==null?'':x.pct}" placeholder="% pós"><span>%</span></div>`;}).join('')||'<span class="ctmeta">Cadastre vendedores na Equipe.</span>';
+      return `<div class="indrow" data-fid="${t.id}"><span class="in-nm">${t.n}</span><input class="in-m" value="${x.meta?(+x.meta).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):''}" placeholder="meta R$"><input class="in-p" type="number" min="0" max="100" value="${x.pct==null?'':x.pct}" placeholder="% pós"><span>%</span></div>`;}).join('')||'<span class="ctmeta">Cadastre vendedores na Equipe.</span>';
     document.querySelectorAll('#rule-ind-rows .in-m').forEach(el=>el.addEventListener('input',()=>brlFmt(el)));}
   function showRuleCfg(tipo){document.getElementById('rule-prog').hidden=tipo!=='progressiva';
     document.getElementById('rule-pos').hidden=tipo!=='pos_meta'; document.getElementById('rule-ind').hidden=tipo!=='individual';}
@@ -2625,11 +2625,11 @@
     document.getElementById('c-nome').value=c?c.nome:'';
     document.getElementById('c-ini').value=c&&c.inicio?String(c.inicio).slice(0,10):'';
     document.getElementById('c-fim').value=c&&c.fim?String(c.fim).slice(0,10):'';
-    document.getElementById('c-meta').value=c&&c.meta?c.meta.toLocaleString('pt-BR',{maximumFractionDigits:2}):'';
+    document.getElementById('c-meta').value=c&&c.meta?c.meta.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
     document.getElementById('c-seg').value=c&&c.segmento?c.segmento:'Gestão Pública';
     document.getElementById('c-escopo').value=c?c.escopo:'Individual';
     document.getElementById('c-pct').value=c?c.pct:5;
-    document.getElementById('c-valor-unit').value=c&&c.valorUnit?c.valorUnit.toLocaleString('pt-BR',{maximumFractionDigits:2}):'';
+    document.getElementById('c-valor-unit').value=c&&c.valorUnit?c.valorUnit.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
     cAnexos=c?(c.anexos||[]).slice():[]; cLinks=c?(c.links||[]).slice():[];
     cLotes=c?(c.lotes||[]).slice():[]; renderCLotes();
     cItens=c&&c.itens?JSON.parse(JSON.stringify(c.itens)):[]; cItensDel=[]; cPlanoDel=[]; renderCItens();
@@ -2772,15 +2772,15 @@
     try{
       const{data,error}=await sbc.rpc('crm_contar_servidores',params);
       if(error||seq!==CTSEQ||!data||!data[0])return;
-      document.getElementById('crit-ns').textContent=(+data[0].n_servidores).toLocaleString('pt-BR');
-      document.getElementById('crit-n').textContent=(+data[0].n_entidades).toLocaleString('pt-BR');
+      document.getElementById('crit-ns').textContent=(+data[0].n_servidores).toLocaleString('pt-BR'/*int*/);
+      document.getElementById('crit-n').textContent=(+data[0].n_entidades).toLocaleString('pt-BR'/*int*/);
     }catch(e){}
   };
 
   // ---------- lotes do produto (campanha) ----------
   let cLotes=[];
   function renderCLotes(){
-    document.getElementById('c-lotes').innerHTML=cLotes.map((l,i)=>`<div class="loterow"><b>${l.nome||('Lote '+(i+1))}</b><span class="num">até ${l.data?String(l.data).split('-').reverse().join('/'):'—'}</span><span class="num">🏛 R$ ${(+l.pres||0).toLocaleString('pt-BR')}</span><span class="num">💻 R$ ${(+l.online||0).toLocaleString('pt-BR')}</span><button type="button" class="rm" data-i="${i}" aria-label="Remover">✕</button></div>`).join('')
+    document.getElementById('c-lotes').innerHTML=cLotes.map((l,i)=>`<div class="loterow"><b>${l.nome||('Lote '+(i+1))}</b><span class="num">até ${l.data?String(l.data).split('-').reverse().join('/'):'—'}</span><span class="num">🏛 R$ ${(+l.pres||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span><span class="num">💻 R$ ${(+l.online||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span><button type="button" class="rm" data-i="${i}" aria-label="Remover">✕</button></div>`).join('')
       ||'<span class="ctmeta">Nenhum lote — a captura usa o valor unitário.</span>';
   }
   document.getElementById('c-lote-add').addEventListener('click',()=>{
@@ -2805,10 +2805,10 @@
   const selOpts=(k,cur)=>OPTC[k].map(o=>`<option value="${o[0]}"${String(o[0])===String(cur==null?'':cur)?' selected':''}>${o[1]}</option>`).join('');
   const defItem=()=>({nome:'',categoria:'produto',nivel_venda:'orgao',cobranca:'unica',comissao_modo:'total',comissao_tipo:'percentual',comissao_valor:5,meta_valor:null,planos:[]});
   const defPlano=it=>({nome:'',preco:0,unidade:it.cobranca==='mensal'?'mensal':'unica',meses_padrao:it.cobranca==='mensal'?12:null,modalidade:'',vigencia_ate:'',comissao_ovr_tipo:'',comissao_ovr_valor:null});
-  window.citemComm=it=>(it.comissao_tipo==='fixo'?'R$ '+(+it.comissao_valor||0).toLocaleString('pt-BR')+' fixo':(+it.comissao_valor||0)+'%')+(it.comissao_modo==='recorrente_mensal'?'/mês':'');
+  window.citemComm=it=>(it.comissao_tipo==='fixo'?'R$ '+(+it.comissao_valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' fixo':(+it.comissao_valor||0)+'%')+(it.comissao_modo==='recorrente_mensal'?'/mês':'');
   function planoRow(p,ii,pi){return `<div class="cplano" data-pid="${p.id||''}">
     <input class="cp-nome" data-k="nome" value="${(p.nome||'').replace(/"/g,'&quot;')}" placeholder="Plano / Lote">
-    <input class="cp-preco" data-k="preco" value="${p.preco?(+p.preco).toLocaleString('pt-BR',{maximumFractionDigits:2}):''}" placeholder="R$ preço">
+    <input class="cp-preco" data-k="preco" value="${p.preco?(+p.preco).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):''}" placeholder="R$ preço">
     <select data-k="unidade">${selOpts('unidade',p.unidade)}</select>
     <input class="cp-mes" data-k="meses_padrao" value="${p.meses_padrao||''}" placeholder="meses" title="meses do contrato (recorrente)">
     <select data-k="modalidade" title="modalidade (curso)">${selOpts('modalidade',p.modalidade)}</select>
@@ -2824,7 +2824,7 @@
         ${f('categoria','Categoria')}${f('nivel_venda','Nível de venda')}${f('cobranca','Cobrança')}${f('comissao_modo','Comissão')}
         ${f('comissao_tipo','Métrica')}
         <div class="fld"><label>Valor da comissão</label><input class="ci-f" data-k="comissao_valor" value="${it.comissao_valor==null?'':it.comissao_valor}" placeholder="8 ou 2000"></div>
-        <div class="fld"><label>Meta do produto (R$)</label><input class="ci-f" data-k="meta_valor" value="${it.meta_valor==null?'':(+it.meta_valor).toLocaleString('pt-BR',{maximumFractionDigits:2})}" placeholder="opcional"></div>
+        <div class="fld"><label>Meta do produto (R$)</label><input class="ci-f" data-k="meta_valor" value="${it.meta_valor==null?'':(+it.meta_valor).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}" placeholder="opcional"></div>
       </div>
       <div class="ci-planos">${(it.planos||[]).map((p,pi)=>planoRow(p,i,pi)).join('')||'<span class="ctmeta">Sem planos — adicione ao menos um preço.</span>'}
         <button type="button" class="addbtn ci-plano-add" data-ii="${i}">＋ plano / preço</button></div>
@@ -2902,7 +2902,7 @@
       <div class="bnhead"><input class="bn-desc" value="${(b.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição interna do bônus"><button type="button" class="rm bn-del" data-i="${i}">✕</button></div>
       <div class="bngrid">
         <div class="fld"><label>Gatilho</label><select class="bn-f" data-k="gatilho">${selB('gatilho',b.gatilho)}</select></div>
-        ${isMeta?`<div class="fld"><label>Meta (R$)</label><input class="bn-f bnmoney" data-k="meta_valor" value="${b.meta_valor?(+b.meta_valor).toLocaleString('pt-BR'):''}" placeholder="ex.: 100.000"></div>`:''}
+        ${isMeta?`<div class="fld"><label>Meta (R$)</label><input class="bn-f bnmoney" data-k="meta_valor" value="${b.meta_valor?(+b.meta_valor).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):''}" placeholder="ex.: 100.000"></div>`:''}
         ${isTop?`<div class="fld"><label>Top N</label><input class="bn-f" data-k="top_n" type="number" min="1" value="${b.top_n||2}"></div>`:''}
         <div class="fld"><label>Tipo</label><select class="bn-f" data-k="tipo">${selB('tipo',b.tipo)}</select></div>
         ${isVal?`<div class="fld"><label>Valor (${b.tipo==='percentual'?'%':'R$'})</label><input class="bn-f" data-k="valor" value="${b.valor==null?'':b.valor}" placeholder="${b.tipo==='percentual'?'2':'1000'}"></div>`:''}
