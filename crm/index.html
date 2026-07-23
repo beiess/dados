@@ -2719,7 +2719,8 @@
   };
   window.dbSaveFunc=async function(rec,existing){
     try{
-      const emp=(ORGS.find(o=>o.tipo===rec.emp)||{}).id;
+      const emp=(ORGS.find(o=>o.tipo===rec.emp&&o.id)||ORGS.find(o=>o.tipo==='Matriz'&&o.id)||ORGS.find(o=>o.id)||{}).id;
+      if(!emp){warn('⚠ Cadastre ao menos uma empresa (Matriz) antes de adicionar colaboradores.');return;}
       const payload={nome:rec.n,funcao:rec.fn==='Administrador'?'admin':rec.fn==='Gerente'?'gerente':'vendedor',
         cargo:rec.nv==='—'?null:rec.nv,area_atuacao:rec.ar==='—'?null:rec.ar,empresa_id:emp,
         comissao_base_pct:rec.base,meta_individual:rec.meta,cpf:rec.cpf||null,situacao:rec.sit};
