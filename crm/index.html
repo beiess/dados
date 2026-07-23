@@ -1330,11 +1330,20 @@
   const fcount=document.getElementById('fcount');
   const uniq=a=>[...new Set(a)].sort((x,y)=>x.localeCompare(y,'pt'));
   const fill=(sel,vals)=>vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
-  function renderFilters(){
-    Object.values(F).forEach(s=>{while(s.options.length>1)s.remove(1);});
+  const FKEY={uf:'uf',cid:'cid',esf:'esf',resp:'resp',tema:'tema'};
+  function syncFilterOptions(){
     const metas=Object.values(FMETA);
-    fill(F.uf,uniq(metas.map(m=>m.uf).filter(Boolean)));fill(F.cid,uniq(metas.map(m=>m.cid).filter(Boolean)));fill(F.esf,uniq(metas.map(m=>m.esf).filter(Boolean)));fill(F.resp,uniq(metas.map(m=>m.resp).filter(Boolean)));fill(F.tema,uniq(metas.map(m=>m.tema).filter(Boolean)));
-  } renderFilters();
+    Object.keys(FKEY).forEach(k=>{
+      const sel=F[k], field=FKEY[k], cur=sel.value;
+      // entidades que satisfazem TODOS os OUTROS filtros ativos
+      const avail=metas.filter(m=>Object.keys(FKEY).every(k2=>k2===k||!F[k2].value||m[FKEY[k2]]===F[k2].value));
+      const vals=uniq(avail.map(m=>m[field]).filter(Boolean));
+      while(sel.options.length>1)sel.remove(1);
+      fill(sel,vals);
+      sel.value=vals.includes(cur)?cur:'';           // mantém a seleção se ainda coerente
+    });
+  }
+  function renderFilters(){ syncFilterOptions(); } renderFilters();
   let curTab='all';
   const okd=d=>(!F.uf.value||d.uf===F.uf.value)&&(!F.cid.value||d.cid===F.cid.value)&&(!F.esf.value||d.esf===F.esf.value)&&(!F.resp.value||d.resp===F.resp.value)&&(!F.tema.value||d.tema===F.tema.value);
   function applyFilters(){
@@ -1345,8 +1354,8 @@
     rows.querySelectorAll('tr').forEach(tr=>{tr.hidden=!okd(tr.dataset)||(curTab!=='all'&&tr.dataset.st!==curTab);});
     fcount.textContent=vis+(vis===1?' entidade':' entidades');
   }
-  Object.values(F).forEach(s=>s.addEventListener('change',()=>applyAll()));
-  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');['q-serv','f-nome'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});NAMESEL.length=0;renderNameChips();applyAll();});
+  Object.values(F).forEach(s=>s.addEventListener('change',()=>{syncFilterOptions();applyAll();}));
+  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');syncFilterOptions();['q-serv','f-nome'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});NAMESEL.length=0;renderNameChips();applyAll();});
 
   // TABS -> alterna árvore (Todos) x tabela por estágio
   document.getElementById('tabs').addEventListener('click',e=>{
