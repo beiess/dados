@@ -259,6 +259,15 @@
   .chipedit .chip .rm{border:none;background:none;color:var(--faint);cursor:pointer;font-size:12px;padding:0 0 0 2px}
   .chipedit .chip .rm:hover{color:var(--crit)}
   .addline{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .bncard{border:1px solid var(--border-2);border-radius:11px;padding:11px 12px;margin-top:9px;background:var(--surface-2,rgba(0,0,0,.02))}
+  .bnhead{display:flex;gap:8px;align-items:center;margin-bottom:8px} .bnhead .bn-desc{flex:1;font-weight:600}
+  .bngrid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+  @media(min-width:620px){.bngrid{grid-template-columns:repeat(4,1fr)}}
+  .bngrid .fld{display:flex;flex-direction:column} .bngrid label{font-size:10px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+  .bncard .rm{cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:6px;padding:2px 7px}
+  .conqrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:9px 12px;border:1px solid var(--border);border-radius:9px;margin-top:7px;background:var(--surface)}
+  .conqrow .cn{font-weight:650} .conqrow .cv{color:var(--lime,#6f8e10)} .conqrow .cm{color:var(--muted);font-size:12px;font-family:var(--mono,monospace)} .conqrow .cm+*{margin-left:auto}
+  .pill.bonus{background:rgba(212,243,74,.16);color:var(--lime,#7a8a10)}
   .citem{border:1px solid var(--border-2);border-radius:11px;padding:11px 12px;margin-top:9px;background:var(--surface-2,rgba(0,0,0,.02))}
   .citem-h{display:flex;gap:8px;align-items:center;margin-bottom:8px}
   .citem-h .ci-nome{flex:1;font-weight:600}
@@ -706,6 +715,11 @@
           <div class="kpis" id="comm-kpis"></div>
         </section>
 
+        <section class="panel" id="conq-panel" style="margin-bottom:16px" hidden>
+          <div class="commhead"><div><div class="eyebrow">🎁 Bônus conquistados</div><h2 style="font-size:16px">Revelações</h2></div></div>
+          <div id="conq-list"></div>
+        </section>
+
         <section class="panel" style="margin-bottom:16px">
           <div class="tblwrap">
             <table class="commtab">
@@ -852,6 +866,11 @@
       <div class="rulecfg" id="rule-prog"><div class="eyebrow">Percentual por nível — somado a todos os vendedores daquele nível</div><div id="rule-prog-rows"></div><button type="button" class="addbtn" id="rule-prog-add" style="margin-top:7px">＋ Nível</button></div>
       <div class="rulecfg" id="rule-pos" hidden><div class="frow"><label>Percentual adicional após a meta GERAL da campanha (%)</label><input type="number" id="rule-pos-pct" min="0" max="100" placeholder="ex.: 1" style="max-width:120px"></div></div>
       <div class="rulecfg" id="rule-ind" hidden><div class="eyebrow">Meta (R$) e % adicional após a meta — por vendedor</div><div id="rule-ind-rows"></div></div>
+    </div>
+    <div class="frow"><label>🎁 Bônus da campanha (surpresa · oculto do vendedor)</label>
+      <div class="capnote" style="margin:-2px 0 4px">O vendedor vê só um selo “há bônus”; o conteúdo é revelado quando a meta cai (status vendido). % incide sobre o vendido; top N por vendido.</div>
+      <div id="c-bonus"></div>
+      <button class="addbtn" id="c-bonus-add" type="button">＋ Bônus</button>
     </div>
     <div class="frow3">
       <div class="frow"><label>Escopo do rateio</label><select id="c-escopo"><option>Individual</option><option>Com parceiro</option><option>Por equipe</option><option>Só matriz</option><option>Só filial</option><option>Geral</option></select></div>
@@ -1954,7 +1973,7 @@
     const cur=RULEV.find(r=>!r.fim);
     if(cur)document.getElementById('rule-current').textContent=cur.v+' · desde '+cur.ini;
   }
-  renderPeriod(); renderRules(); renderComm(); renderApur(); renderRulelog();
+  renderPeriod(); renderRules(); renderComm(); renderApur(); if(window.renderConq)renderConq(); renderRulelog();
 
   // navegação sidebar: Campanhas ↔ Comissões ↔ Equipe/Organização
   const SECS=['sec-filtros','camp-sections','sec-funil','sec-note'].map(id=>document.getElementById(id));
@@ -2012,7 +2031,7 @@
   });
   // troca de competência + apurar pendentes (admin)
   document.getElementById('comm-period').addEventListener('change',e=>{
-    COMMPER=e.target.value; renderPeriod(); renderComm(); renderApur();
+    COMMPER=e.target.value; renderPeriod(); renderComm(); renderApur(); if(window.renderConq)renderConq();
   });
   document.getElementById('comm-apurar').addEventListener('click',async e=>{
     const b=e.currentTarget; b.disabled=true;
@@ -2213,7 +2232,7 @@
       if(f.funcao==='vendedor'&&(f.situacao||'ativo')!=='inativo')VEND.push([ini(f.nome),f.nome]);});
     const {data:{user}}=await sbc.auth.getUser();
     const meRow=fun.find(f=>f.auth_user_id===user.id)||null;
-    ME=meRow?TEAM.find(t=>t.id===meRow.id):null;
+    ME=meRow?TEAM.find(t=>t.id===meRow.id):null; window.ME=ME;
     window.GESTOR=!!(meRow&&(meRow.funcao!=='vendedor'||meRow.acesso_irrestrito));
     CURRENT=meRow?meRow.nome:(user.email||'—'); USER=CURRENT; renderWM();
     document.getElementById('me-box').innerHTML='<div class="av" style="background:#4FB8C4">'+ini(CURRENT)+'</div><div><b>'+CURRENT+'</b><span>'+(meRow?(meRow.funcao+(meRow.acesso_irrestrito?' · acesso irrestrito':'')):'sem cadastro de funcionário')+'</span></div>';
@@ -2227,7 +2246,7 @@
     say('Carregando campanhas e regras…');
     const cps=(await q('campanhas','*')).filter(c=>!c.arquivada_em);
     CAMPAIGNS.length=0; cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
-      if(window.attachItens)await window.attachItens();
+      if(window.attachItens)await window.attachItens(); if(window.attachBonus)await window.attachBonus();
     const rvs=await q('regras_versoes','*');
     RULEV.length=0; rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
 
@@ -2240,7 +2259,7 @@
     window.CAPS=await q('capturas','*');
     PARTS=await q('participacoes','*');
     ATIVS=await q('atividades','*');
-    APS=await q('apuracoes','*');
+    APS=await q('apuracoes','*'); window.CONQ=await q('bonus_conquistas','*');
 
     // mapas
     const setsByEnt={},unitsByParent={},srvBySetor={},ctByEnt={},ctBySrv={};
@@ -2295,7 +2314,7 @@
     LEADSET=buildLeadset();
     renderTree(); renderRows(); renderFilters(); applyFilters();
     renderPeriod(); renderRules();
-    renderComm(); renderApur(); renderRulelog(); renderTeam(); renderCampHeader();
+    renderComm(); renderApur(); if(window.renderConq)renderConq(); renderRulelog(); renderTeam(); renderCampHeader();
     renderTabCounts(); renderStageTotais();
   }
 
@@ -2365,14 +2384,14 @@
     try{
       window.CAPS=await q('capturas','*');
       PARTS=await q('participacoes','*'); ATIVS=await q('atividades','*');
-      APS=await q('apuracoes','*'); window.APSX=APS;
+      APS=await q('apuracoes','*'); window.CONQ=await q('bonus_conquistas','*'); window.APSX=APS;
       const falta=[...new Set(window.CAPS.map(c=>c.servidor_id))].filter(id=>id&&!srvById[id]);
       if(falta.length){
         const {data}=await sbc.from('crm_servidores').select('id,entidade_id,setor_id,nome,cargo,email,telefone,cpf,painel1_id').in('id',falta);
         (data||[]).forEach(v=>srvById[v.id]=v);
       }
       rebuildCapState(); refreshCascadeBadges(); rebuildComm(); renderRows(); renderTabCounts(); renderStageTotais(); renderCampHeader(); applyFilters();
-      renderPeriod(); renderComm(); renderApur();
+      renderPeriod(); renderComm(); renderApur(); if(window.renderConq)renderConq();
     }catch(e){}
   };
   // recarrega CAMPANHAS + REGRAS do banco e re-renderiza (nova campanha/regra ao vivo)
@@ -2380,11 +2399,11 @@
     try{
       const cps=(await q('campanhas','*')).filter(c=>!c.arquivada_em);
       CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
-      if(window.attachItens)await window.attachItens();
+      if(window.attachItens)await window.attachItens(); if(window.attachBonus)await window.attachBonus();
       const rvs=await q('regras_versoes','*');
       RULEV.length=0;rvs.sort((a,b)=>a.versao-b.versao).forEach(r=>RULEV.push({v:'v'+r.versao,versao:r.versao,ini:fmtD(r.vigente_de),fim:r.vigente_ate?fmtD(r.vigente_ate):null,desc:r.descricao,por:(funcById[r.criado_por]||{}).nome||'—',cfg:r.config}));
       renderCampHeader(); renderRules(); renderRulelog(); renderPeriod();
-      rebuildComm(); renderComm(); renderApur();
+      rebuildComm(); renderComm(); renderApur(); if(window.renderConq)renderConq();
     }catch(e){}
   };
   // publica nova versão da regra de comissão (fecha a vigência atual — snapshot imutável)
@@ -2514,7 +2533,7 @@
     const encerr=c.status==='encerrada';
     return `<section class="camp${col}" data-cid="${c.id}" style="${c.cor?('border-top:3px solid '+c.cor):''}">
       <div class="camp-head">
-        <div class="l"><span class="pill ativa"${c.cor?` style="background:${c.cor}22;color:${c.cor}"`:''}>● ${encerr?'Encerrada':'Ativa'}</span>
+        <div class="l"><span class="pill ativa"${c.cor?` style="background:${c.cor}22;color:${c.cor}"`:''}>● ${encerr?'Encerrada':'Ativa'}</span>${(window.BONUSCOUNT&&window.BONUSCOUNT[c.id]>0)?'<span class="pill bonus">🎁 há bônus</span>':''}
           <h1>${c.nome}</h1><div class="sub">${sub}</div></div>
         <button class="btn-ghost campmini camp-toggle" data-cid="${c.id}" title="Recolher / expandir">${col?'▸ Expandir':'▾ Recolher'}</button>
         ${admin?`<button class="editbtn camp-edit" data-cid="${c.id}">✎ Editar</button>`:''}
@@ -2587,6 +2606,7 @@
     document.getElementById('c-cor').value=(c&&c.cor)||'#C9A227';
     document.getElementById('c-cli-novo').value=(c&&c.cliNovo!=null)?c.cliNovo:'';
     fillRuleCfg(c);
+    cBonus=c&&c.bonus?JSON.parse(JSON.stringify(c.bonus)):[]; cBonusDel=[]; renderBonus();
   };
   window.dbSaveCamp=async function(){
     try{
@@ -2605,9 +2625,10 @@
       else{const{data,error}=await sbc.from('campanhas').insert(payload).select('id').single();if(error)throw error;CAMP_EDIT_ID=data.id;}
       window.CURCAMP=CAMP_EDIT_ID;
       if(window.dbSaveItens)await window.dbSaveItens(CAMP_EDIT_ID);
+      if(window.dbSaveBonus)await window.dbSaveBonus(CAMP_EDIT_ID);
       const cps=(await q('campanhas','*')).filter(c=>!c.arquivada_em);
       CAMPAIGNS.length=0;cps.forEach(c=>CAMPAIGNS.push({id:c.id,nome:c.nome,escopo:c.escopo_rateio||'Individual',pct:+c.pct_comissao||0,valorUnit:+c.valor_unitario||0,inicio:c.inicio,fim:c.fim,meta:+c.meta_valor||0,segmento:c.segmento,anexos:c.anexos||[],links:c.links||[],criterios:c.criterios||{},regra:c.regra_versao,status:c.status,lotes:c.lotes||[],descOrg:+c.desconto_org_pct||0,cor:c.cor||null,regraTipo:c.regra_tipo||null,regraCfg:c.regra_config||{},cliNovo:c.cliente_novo_pct}));
-      if(window.attachItens)await window.attachItens();
+      if(window.attachItens)await window.attachItens(); if(window.attachBonus)await window.attachBonus();
       renderCampHeader(); warn('Campanha gravada no banco ✓');
     }catch(e){warn('⚠ Campanha não gravada: '+(e.message||e));}
   };
@@ -2839,6 +2860,65 @@
       Object.values(iby).flat().forEach(it=>{window.ITEMBY[it.id]=it;(it.planos||[]).forEach(p=>{window.PLANOBY[p.id]=p;});});
     }catch(e){}
   };
+  // ========== BÔNUS (2ª onda) ==========
+  let cBonus=[], cBonusDel=[];
+  const OPTB={gatilho:[['meta_equipe','Meta da equipe'],['meta_vendedor','Meta por vendedor'],['top_vendedores','Top vendedores']],
+    tipo:[['percentual','% percentual'],['fixo','R$ fixo'],['premio','Prêmio']], escopo:[['todos','Todos'],['individual','Individual']]};
+  const selB=(k,cur)=>OPTB[k].map(o=>`<option value="${o[0]}"${String(o[0])===String(cur||'')?' selected':''}>${o[1]}</option>`).join('');
+  function mapBonus(b){return{id:b.id,descricao:b.descricao,gatilho:b.gatilho,meta_valor:b.meta_valor,top_n:b.top_n,tipo:b.tipo,valor:b.valor,premio_desc:b.premio_desc,escopo:b.escopo,funcionario_id:b.funcionario_id};}
+  function bonusCard(b,i){const isMeta=b.gatilho!=='top_vendedores',isTop=b.gatilho==='top_vendedores',isVal=b.tipo==='percentual'||b.tipo==='fixo',isPrem=b.tipo==='premio',isInd=b.escopo==='individual';
+    return `<div class="bncard" data-id="${b.id||''}" data-i="${i}">
+      <div class="bnhead"><input class="bn-desc" value="${(b.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição interna do bônus"><button type="button" class="rm bn-del" data-i="${i}">✕</button></div>
+      <div class="bngrid">
+        <div class="fld"><label>Gatilho</label><select class="bn-f" data-k="gatilho">${selB('gatilho',b.gatilho)}</select></div>
+        ${isMeta?`<div class="fld"><label>Meta (R$)</label><input class="bn-f bnmoney" data-k="meta_valor" value="${b.meta_valor?(+b.meta_valor).toLocaleString('pt-BR'):''}" placeholder="ex.: 100.000"></div>`:''}
+        ${isTop?`<div class="fld"><label>Top N</label><input class="bn-f" data-k="top_n" type="number" min="1" value="${b.top_n||2}"></div>`:''}
+        <div class="fld"><label>Tipo</label><select class="bn-f" data-k="tipo">${selB('tipo',b.tipo)}</select></div>
+        ${isVal?`<div class="fld"><label>Valor (${b.tipo==='percentual'?'%':'R$'})</label><input class="bn-f" data-k="valor" value="${b.valor==null?'':b.valor}" placeholder="${b.tipo==='percentual'?'2':'1000'}"></div>`:''}
+        ${isPrem?`<div class="fld" style="grid-column:span 2"><label>Prêmio</label><input class="bn-f" data-k="premio_desc" value="${(b.premio_desc||'').replace(/"/g,'&quot;')}" placeholder="ex.: Viagem, iPhone…"></div>`:''}
+        <div class="fld"><label>Escopo</label><select class="bn-f" data-k="escopo">${selB('escopo',b.escopo)}</select></div>
+        ${isInd?`<div class="fld"><label>Vendedor</label><select class="bn-f" data-k="funcionario_id"><option value="">—</option>${TEAM.filter(t=>t.fn==='Vendedor').map(t=>`<option value="${t.id}"${String(t.id)===String(b.funcionario_id||'')?' selected':''}>${t.n}</option>`).join('')}</select></div>`:''}
+      </div></div>`;}
+  function renderBonus(){const el=document.getElementById('c-bonus'); if(!el)return;
+    el.innerHTML=cBonus.map(bonusCard).join('')||'<span class="ctmeta">Nenhum bônus — opcional. Use ＋ para adicionar.</span>';}
+  function readBonus(){const out=[];
+    document.querySelectorAll('#c-bonus .bncard').forEach(card=>{const b={id:card.dataset.id||undefined,descricao:card.querySelector('.bn-desc').value.trim()};
+      card.querySelectorAll('.bn-f').forEach(f=>{b[f.dataset.k]=f.value;});
+      b.meta_valor=(b.meta_valor==null||b.meta_valor==='')?null:(+String(b.meta_valor).replace(/\D/g,'')||null);
+      b.top_n=b.top_n?parseInt(b.top_n)||2:2;
+      b.valor=(b.valor==null||b.valor==='')?null:(parseFloat(String(b.valor).replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))||0);
+      b.premio_desc=b.premio_desc||null; b.funcionario_id=b.funcionario_id||null; out.push(b);});
+    cBonus=out;}
+  document.getElementById('c-bonus-add').addEventListener('click',()=>{readBonus();cBonus.push({descricao:'',gatilho:'meta_equipe',meta_valor:null,top_n:2,tipo:'fixo',valor:null,premio_desc:null,escopo:'todos',funcionario_id:null});renderBonus();});
+  document.getElementById('c-bonus').addEventListener('change',()=>{readBonus();renderBonus();});
+  document.getElementById('c-bonus').addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('bnmoney'))brlFmt(e.target);});
+  document.getElementById('c-bonus').addEventListener('click',e=>{const d=e.target.closest('.bn-del');if(d){readBonus();const i=+d.dataset.i;if(cBonus[i].id)cBonusDel.push(cBonus[i].id);cBonus.splice(i,1);renderBonus();}});
+  window.dbSaveBonus=async function(campId){readBonus();
+    for(const id of cBonusDel){try{await sbc.from('campanha_bonus').delete().eq('id',id);}catch(e){}} cBonusDel=[];
+    for(const b of cBonus){const p={campanha_id:campId,descricao:b.descricao||null,gatilho:b.gatilho,meta_valor:b.meta_valor,top_n:b.top_n||2,
+        tipo:b.tipo,valor:b.valor,premio_desc:b.tipo==='premio'?b.premio_desc:null,escopo:b.escopo,funcionario_id:b.escopo==='individual'?b.funcionario_id:null};
+      if(b.id){const{error}=await sbc.from('campanha_bonus').update(p).eq('id',b.id);if(error)throw error;}
+      else{const{error}=await sbc.from('campanha_bonus').insert(p);if(error)throw error;}}};
+  window.attachBonus=async function(){try{
+    const bs=await q('campanha_bonus','*'); const by={}; bs.forEach(b=>{(by[b.campanha_id]=by[b.campanha_id]||[]).push(mapBonus(b));});
+    CAMPAIGNS.forEach(c=>{c.bonus=by[c.id]||[];});
+    window.BONUSCOUNT={};
+    for(const c of CAMPAIGNS){try{const{data}=await sbc.rpc('crm_tem_bonus',{p_camp:c.id});window.BONUSCOUNT[c.id]=+data||0;}catch(e){window.BONUSCOUNT[c.id]=(c.bonus||[]).length;}}
+  }catch(e){}};
+  // ---------- conquistas (revelação) ----------
+  window.renderConq=function(){const panel=document.getElementById('conq-panel'),el=document.getElementById('conq-list'); if(!el)return;
+    const list=(window.CONQ||[]);
+    if(!list.length){if(panel)panel.hidden=true; return;} if(panel)panel.hidden=false;
+    el.innerHTML=list.slice().sort((a,b)=>String(b.revelado_em||'').localeCompare(String(a.revelado_em||''))).map(c=>{
+      const nome=(funcById[c.funcionario_id]||{}).nome||'—';
+      const val=c.tipo==='premio'?('🎁 '+(c.premio_desc||'Prêmio')):('<b class="money">'+money(+c.valor||0)+'</b>');
+      const deliver=c.tipo==='premio'?(c.entregue?'<span class="pill">entregue ✓</span>':(window.IS_ADMIN?`<button class="btn-ghost conq-deliver" data-id="${c.id}" style="padding:3px 9px;font-size:11px">marcar entregue</button>`:'<span class="ctmeta">a entregar</span>')):'';
+      return `<div class="conqrow"><span class="cn">🎉 ${nome}</span><span class="cv">${val}</span><span class="cm">${c.competencia||''} · ${fmtD(c.revelado_em)}</span>${deliver}</div>`;}).join('');};
+  document.getElementById('conq-list').addEventListener('click',async e=>{const b=e.target.closest('.conq-deliver'); if(!b)return;
+    const{error}=await sbc.from('bonus_conquistas').update({entregue:true,entregue_em:new Date().toISOString()}).eq('id',b.dataset.id);
+    if(error){warn('⚠ '+error.message);return;} if(window.reloadConq)await window.reloadConq();});
+  window.reloadConq=async function(newrow){try{window.CONQ=await q('bonus_conquistas','*'); window.renderConq();
+    if(newrow&&window.ME&&String(newrow.funcionario_id)===String(window.ME.id))warn('🎉 Bônus revelado para você!');}catch(e){}};
 
   // ---------- LOGIN ----------
   const LGD=document.getElementById('login'), APPW=document.getElementById('appwrap');
@@ -2869,6 +2949,8 @@
       .on('postgres_changes',{event:'*',schema:'public',table:'regras_versoes'},bumpCR)
       .on('postgres_changes',{event:'*',schema:'public',table:'campanha_itens'},bumpCR)
       .on('postgres_changes',{event:'*',schema:'public',table:'item_planos'},bumpCR)
+      .on('postgres_changes',{event:'*',schema:'public',table:'campanha_bonus'},bumpCR)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'bonus_conquistas'},p=>{if(window.reloadConq)window.reloadConq(p.new);})
       .subscribe(st=>{const dot=document.getElementById('rt-dot');
         if(dot){const on=st==='SUBSCRIBED';dot.classList.toggle('on',on);dot.title=on?'Ao vivo — o painel atualiza sozinho':'Reconectando…';}});
   }
