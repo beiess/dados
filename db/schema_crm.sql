@@ -1077,3 +1077,19 @@ create policy "crm_anexos_read"   on storage.objects for select using (bucket_id
 create policy "crm_anexos_insert" on storage.objects for insert to authenticated with check (bucket_id='crm-anexos' and app_is_admin());
 create policy "crm_anexos_update" on storage.objects for update to authenticated using (bucket_id='crm-anexos' and app_is_admin());
 create policy "crm_anexos_delete" on storage.objects for delete to authenticated using (bucket_id='crm-anexos' and app_is_admin());
+
+-- ============================================================================
+-- CRM v18 — desempate do top por HABITANTES (população IBGE)  [APLICADA 22/07/2026]
+-- Tabela ibge_populacao (5.571 municípios, carregada da API do IBGE — agregado
+-- 6579 / var 9324). O top de vendedores desempata: vendido → qtd de contratos →
+-- SOMA DA POPULAÇÃO das cidades onde o vendedor fechou contratos (via cod_ibge).
+-- crm_avaliar_bonus atualizado com o 3º critério. Ver migração aplicada.
+-- ============================================================================
+create table if not exists ibge_populacao (
+  cod_ibge text primary key, municipio text, uf text, populacao bigint
+);
+alter table ibge_populacao enable row level security;
+create policy ibgepop_sel on ibge_populacao for select to authenticated using (true);
+-- dados: carregados de https://servicodados.ibge.gov.br/api/v3/agregados/6579/periodos/-1/variaveis/9324?localidades=N6[all]
+-- crm_avaliar_bonus (top_vendedores): order by sum(valor_contrato) desc, count(*) desc,
+--   sum(populacao das cidades distintas dos contratos) desc — ver migração crm_v18_top_desempate_populacao.
