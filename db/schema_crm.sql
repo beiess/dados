@@ -1132,3 +1132,26 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 -- linkados). Busca por nome SEM order (planner para cedo no LIMIT — 'ana paula'
 -- caía de 7s p/ 0,3s); ordena por id só no loadP1 (paginação estável).
 -- Ver definição completa em crm_v23_busca_left_join_ibge + crm_v23b_busca_order_condicional.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- crm_v24_materializar_painel1 / crm_v24b_materializar_fix (2026-07-24)
+-- "Capturar servidores de órgãos que ainda não estão no CRM".
+-- Contexto: 87% dos 8,4M servidores do Painel 1 têm entidade_id nulo e muitos
+-- órgãos (ex.: Prefeitura de São José da Barra / NELSON DE ALMEIDA ASSAD) não
+-- existem em crm_entidades — só a Câmara existia. A busca (v23) já resolvia a
+-- entidade por ibge+poder para EXIBIR, mas não havia como CAPTURAR o servidor.
+--
+-- RPC crm_materializar_painel1(p_painel1 bigint) SECURITY DEFINER:
+--   1. lê a linha do painel1_servidores;
+--   2. deriva o poder pelo nome do órgão (ilike '%c_mara%' → Legislativo);
+--   3. acha a entidade do org atual por cod_ibge + poder; se não houver, CRIA
+--      (nome=orgao, município do ibge_populacao, esfera initcap, tipo_orgao
+--      Prefeitura/Câmara, area Gestão Pública/Legislativo, fonte='painel1');
+--   4. materializa o servidor em crm_servidores (dedup por painel1_id | cpf |
+--      nome dentro da entidade), origem='painel1', copiando cargo/email/telefone;
+--   5. retorna (servidor_id, entidade_id, entidade_nome). Idempotente.
+--   grant apenas a authenticated (revoke public/anon) → respeita RLS por org
+--   via app_org(). App: botão ⊕ em cada resultado da busca (sugPaint/suggest
+--   carregam painel1_id) chama a RPC, injeta um SVREG sintético e abre a captura.
+-- Correção v24b: a coluna de saída entidade_id sombreava crm_servidores.entidade_id
+--   ("column reference entidade_id is ambiguous") → qualificado com alias (s.).
