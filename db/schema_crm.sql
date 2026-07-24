@@ -1231,3 +1231,24 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 --   drawerUpd (✎ no funil) passa capId=cap.id. cap-camp fica travado quando há
 --   captura (item 2). isCampCol default = recolhido (só expande com preferência
 --   explícita salva == 0).
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- crm_v28 crm_buscar_servidores: busca por nome respeita o filtro de cidade (2026-07-24)
+-- Sintoma: aplicar o filtro de Cidade e depois buscar por nome mostrava nomes de
+-- todas as cidades. Causa: suggest() (typeahead) e applyAll() chamavam
+-- crm_buscar_servidores só com p_nome; os params p_uf/p_cidade existiam mas não eram
+-- passados. App: passa p_uf:F.uf.value / p_cidade:F.cid.value nas duas chamadas.
+-- Dois cuidados no RPC:
+--  (1) FORMATO: ibge_populacao.municipio é "Cidade - UF", mas F.cid (crm_entidades.
+--      municipio) é o nome limpo — igualdade zerava tudo. Resolve-se a cidade para
+--      cod_ibge (split_part(municipio,' - ',1)=p_cidade, desambiguado por UF).
+--  (2) DESEMPENHO: com a cidade vindo por parâmetro/subquery o planner gerava plano
+--      GENÉRICO e caía em Seq Scan de 8,4M (silva+Andradas = 18s), ignorando ix_p1_ibge.
+--      Solução: crm_buscar_servidores virou plpgsql que resolve os cod_ibge da cidade
+--      e os injeta como LITERAIS (p.ibge in ('3102605',...)) via query dinâmica —
+--      o planner passa a usar ix_p1_ibge. Filtra painel1 (nome/cidade/uf/... via CTE
+--      base com ORDER+LIMIT) e só então enriquece (entidade + contatos) as ≤N linhas.
+--      Resultado: silva+Andradas 18s→0,19s; maria+BH 0,37s; nome específico ~2s;
+--      cascata por entidade e paginação preservadas. Interpolação segura (format %L /
+--      quote_literal; ibge são dígitos). p_tema/p_tem_contato (não usados pelo app)
+--      ficam pós-limit. Aplicado direto (psycopg2) por instabilidade do apply_migration.
