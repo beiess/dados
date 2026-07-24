@@ -283,7 +283,7 @@ function mfilter(q){q=norm(q);const lst=document.getElementById('mlst');if(!lst)
 function msel2(ib,on){on?sel.add(ib):sel.delete(ib);}
 function mall(on){sel=new Set(on?muniList().map(m=>m.ibge):[]);closePop();toggleMuni({target:document.getElementById('msel')});}
 // filtros do cabeçalho: UF (servidores estaduais, origem p12<uf>:*) e Esfera (municipal×estadual)
-const UFS27=['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+const UFS27=['BR','AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']; // BR = federais sem UF de lotação (SIAPE etc.)
 const ESFN={municipal:'Municipal',estadual:'Estadual',federal:'Federal',justica:'Justiça'};
 let selUF=new Set(), selEsf=new Set(['municipal','estadual','federal','justica']), ESF=null;
 async function ensureESF(){if(ESF)return;
