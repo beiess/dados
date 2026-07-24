@@ -573,6 +573,9 @@
 
   .namesug{position:fixed;z-index:120;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh-2);max-height:300px;overflow-y:auto;padding:4px;min-width:260px}
   .sugitem{display:block;width:100%;text-align:left;background:none;border:none;border-radius:7px;padding:7px 10px;cursor:pointer;color:var(--ink);font:inherit}
+  .sugrow{display:flex;align-items:stretch;gap:2px} .sugrow .sugitem{flex:1;width:auto}
+  .sugcap{border:none;background:var(--gold-soft,#f5ecd0);color:var(--gold,#b8860b);border-radius:7px;cursor:pointer;padding:0 12px;font-size:15px;font-weight:800}
+  .sugcap:hover{background:var(--gold,#b8860b);color:#fff}
   .sugitem:hover{background:var(--accent-wash)}
   .sugitem b{display:block;font-size:12.5px;font-weight:650}
   .sugitem span{font-size:10.5px;color:var(--faint)}
@@ -3116,7 +3119,7 @@
   function sugPaint(inp,items,pend){
     const box=document.getElementById('namesug');
     box._items=items;
-    box.innerHTML=items.slice(0,14).map((s,i)=>`<button type="button" class="sugitem" data-i="${i}"><b>${s.n}</b><span>${s.mun||'—'} · ${s.org==='P1'?'Painel 1':'base CRM'}</span></button>`).join('')
+    box.innerHTML=items.slice(0,14).map((s,i)=>`<div class="sugrow"><button type="button" class="sugitem" data-i="${i}"><b>${s.n}</b><span>${s.mun||'—'} · ${s.org==='P1'?'Painel 1':'base CRM'}</span></button>${s.p1?`<button type="button" class="sugcap" data-i="${i}" title="Adicionar ao CRM e capturar">⊕</button>`:''}</div>`).join('')
       +(pend?'<div class="sugwait">⏳ buscando no Painel 1 (1,36M registros)…</div>':'')
       +(!items.length&&!pend?'<div class="sugwait">nenhum servidor encontrado</div>':'');
     const r=inp.getBoundingClientRect();
@@ -3138,11 +3141,28 @@
     try{
       const{data,error}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_limit:12});
       if(seq!==SUGSEQ)return;                              // chegou atrasada — outra busca assumiu
-      if(!error)(data||[]).forEach(x=>add({n:x.nome,eid:x.entidade_id,ibge:'',mun:x.municipio||'—',org:'P1'}));
+      if(!error)(data||[]).forEach(x=>add({n:x.nome,eid:x.entidade_id,ibge:'',mun:x.municipio||'—',org:'P1',p1:x.painel1_id}));
       sugPaint(inp,items,false);
     }catch(e){if(seq===SUGSEQ)sugPaint(inp,items,false);}
   }
+  async function capturarPainel1(s){
+    if(!s||!s.p1)return;
+    if(!CAMPAIGNS.length){warn('Crie uma campanha primeiro (＋ Nova campanha — admin).');return;}
+    document.getElementById('namesug').hidden=true;
+    warn('Preparando captura de '+s.n+'…');
+    try{
+      const{data,error}=await sbc.rpc('crm_materializar_painel1',{p_painel1:s.p1});
+      if(error)throw error;
+      const m=data&&data[0]; if(!m){warn('⚠ Servidor não encontrado no Painel 1.');return;}
+      if(!entById[m.entidade_id])entById[m.entidade_id]={id:m.entidade_id,nome:m.entidade_nome,municipio:(s.mun||'').split(' - ')[0],uf:'',area:'Gestão Pública',esfera:'Municipal'};
+      if(window.SRVN){(window.SRVN[m.entidade_id]=window.SRVN[m.entidade_id]||[]).push(norm(s.n));}
+      const r={sid:m.servidor_id,eid:m.entidade_id,nome:s.n,cargo:'',setor:'',unidade:'',orgao:m.entidade_nome,area:'gp',p1id:s.p1};
+      SVREG.push(r); CAPI=SVREG.length-1;
+      openCaptureSv(CAPI);
+    }catch(e){warn('⚠ Não foi possível preparar a captura: '+(e.message||e));}
+  }
   document.getElementById('namesug').addEventListener('click',e=>{
+    const cap=e.target.closest('.sugcap'); if(cap){capturarPainel1(document.getElementById('namesug')._items[+cap.dataset.i]);return;}
     const b=e.target.closest('.sugitem'); if(!b)return;
     const s=document.getElementById('namesug')._items[+b.dataset.i];
     if(s&&!NAMESEL.some(x=>norm(x.n)===norm(s.n)&&x.ibge===s.ibge))NAMESEL.push(s);
