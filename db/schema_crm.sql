@@ -1155,3 +1155,30 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 --   carregam painel1_id) chama a RPC, injeta um SVREG sintético e abre a captura.
 -- Correção v24b: a coluna de saída entidade_id sombreava crm_servidores.entidade_id
 --   ("column reference entidade_id is ambiguous") → qualificado com alias (s.).
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- crm_v25_split_majoracao_oculta (2026-07-24)
+-- Painel de comissões POR VENDEDOR (sigilo) + majoração cliente-novo oculta.
+-- Motivação: a "majoração para cliente novo" deve ser oculta do vendedor
+-- ("por enquanto não mostrar"), mas crm_regra_bonus_pct a somava junto ao bônus
+-- de regra (progressiva/pós-meta/individual) num único pct — que ia parar na
+-- memoria ("+X% regra") e em pct_aplicado, vazando para a tela do vendedor.
+--   • apuracoes.majoracao_oculta numeric not null default 0 (nova coluna).
+--   • crm_regra_bonus_pct(c,fid): agora só o bônus VISÍVEL (removido o bloco de
+--     cliente novo).
+--   • crm_majoracao_oculta(c): nova — só a % de cliente novo (entidade tipo_cliente
+--     <> 'base' e campanhas.cliente_novo_pct <> 0).
+--   • crm_grava_apur: valor/memoria/pct_aplicado ficam só com o visível; a parte
+--     oculta (base×cliente_novo% × rateio) vai para majoracao_oculta. Total real a
+--     pagar = valor + majoracao_oculta (o gestor soma; o vendedor vê só valor).
+-- App (crm/index.html):
+--   • rebuildComm só monta a linha do próprio vendedor quando !GESTOR
+--     (TEAM.filter …&&(GESTOR||t.id===MEID)); antes montava a prevista de TODOS os
+--     colegas a partir de CAPS (capturas são visíveis a todo o org) → vazamento.
+--   • KPIs "vendido/ganhas/meta" escopados ao próprio vendedor (meta individual);
+--     título vira "Minhas comissões · sigilo".
+--   • gestor vê "+ R$ x cliente novo (oculto)" na memória e o total no valor;
+--     vendedor não. window.MEID = funcionário logado.
+-- Nota de robustez: a coluna majoracao_oculta trafega no select do vendedor (RLS é
+--   por linha, não por coluna); o ocultamento hoje é na UI. Hardening futuro: RPC
+--   SECURITY DEFINER devolvendo projeção redigida p/ perfil vendedor.
