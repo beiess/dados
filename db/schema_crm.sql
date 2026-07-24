@@ -1211,3 +1211,23 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 --   senha ✓. RISCO conhecido: escreve em tabelas internas do Auth — se o Supabase
 --   mudar o schema do GoTrue, revisar esta função (alternativa robusta = Edge
 --   Function provisionar-logins via API oficial, quando o deploy for liberado).
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- crm_v27_captura_por_campanha + ajustes de app (2026-07-24)
+-- Três correções pedidas: (1) vendedor não conseguia alterar o status do PRÓPRIO
+-- lead; (2) não permitir trocar a campanha de uma captura existente, mas o servidor
+-- deve ficar disponível em outras campanhas; (3) campanhas recolhidas por padrão.
+--   DB: ux_cap_legacy_srv era unique(servidor_id) — exclusividade GLOBAL por servidor
+--   (bloqueava o servidor em qualquer outra campanha). Passa a unique(campanha_id,
+--   servidor_id) WHERE ativo AND item_id IS NULL — por campanha, alinhado às
+--   item-based (ux_cap_item_srv/org já têm campanha_id). Validado: servidor entra em
+--   2 campanhas distintas; duplicar na mesma campanha segue bloqueado.
+--   App (crm/index.html): a "propriedade" do lead deixou de ser por NOME
+--   (c.responsavel===CURRENT, frágil) e por CAPTURES[servidor_id] (nulo em venda por
+--   órgão → o lead virava "nova captura" travada em Prospecção e o save duplicava).
+--   openCaptureSv resolve a captura real (_dbc via c.dbId ou r.capId do funil) e
+--   monta cEff; ownCap = (_dbc.responsavel_id === window.MEID). checkConc lê
+--   window.CAPEFF. dbSaveCap atualiza por dbId resolvido (não por servidor_id).
+--   drawerUpd (✎ no funil) passa capId=cap.id. cap-camp fica travado quando há
+--   captura (item 2). isCampCol default = recolhido (só expande com preferência
+--   explícita salva == 0).
