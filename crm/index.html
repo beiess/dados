@@ -3042,7 +3042,7 @@
     if(!HL.length)return;
     let p1set=null;
     if(!NAMESEL.length&&qs.length>=4&&typeof sbc!=='undefined'){
-      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_limit:100});
+      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_limit:100});
         p1set=new Set((data||[]).map(x=>String(x.entidade_id)));}catch(e){}
     }
     let shown=0;
@@ -3151,7 +3151,7 @@
     // 2) Painel 1: assíncrono; só a ÚLTIMA requisição renderiza
     if(typeof sbc==='undefined')return;
     try{
-      const{data,error}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_limit:12});
+      const{data,error}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_limit:12});
       if(seq!==SUGSEQ)return;                              // chegou atrasada — outra busca assumiu
       if(!error)(data||[]).forEach(x=>add({n:x.nome,eid:x.entidade_id,ibge:'',mun:x.municipio||'—',org:'P1',p1:x.painel1_id}));
       sugPaint(inp,items,false);
