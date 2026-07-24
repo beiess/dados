@@ -1119,3 +1119,16 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 -- ============================================================================
 -- (ver definição completa de crm_buscar_servidores na migração crm_v22_busca_rapida:
 --  idêntica à anterior, apenas 'order by p.id' no lugar de 'order by p.nome')
+
+-- ============================================================================
+-- CRM v23 — busca por nome encontra TODO servidor do Painel 1  [APLICADA 24/07/2026]
+-- Bug: crm_buscar_servidores fazia INNER JOIN em crm_entidades pelo entidade_id.
+-- Mas 87% dos 8,4M servidores do Painel 1 estão SEM entidade_id (ex.: NELSON DE
+-- ALMEIDA ASSAD, cuja Prefeitura nem está no CRM — só a Câmara está) → sumiam.
+-- FIX: LEFT JOIN resolvendo a entidade por IBGE + poder (câmara×resto, do campo
+-- p.orgao); quando o órgão não está no CRM, devolve o dado do próprio Painel 1
+-- (orgao, uf, esfera, município via ibge_populacao). loadP1 (p_entidade) também
+-- passa a casar por ibge+poder (mostra todos os servidores do órgão, não só os
+-- linkados). Busca por nome SEM order (planner para cedo no LIMIT — 'ana paula'
+-- caía de 7s p/ 0,3s); ordena por id só no loadP1 (paginação estável).
+-- Ver definição completa em crm_v23_busca_left_join_ibge + crm_v23b_busca_order_condicional.
