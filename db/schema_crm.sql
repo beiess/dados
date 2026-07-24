@@ -1182,3 +1182,32 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 -- Nota de robustez: a coluna majoracao_oculta trafega no select do vendedor (RLS é
 --   por linha, não por coluna); o ocultamento hoje é na UI. Hardening futuro: RPC
 --   SECURITY DEFINER devolvendo projeção redigida p/ perfil vendedor.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- crm_v26_drenar_logins + crm_v26c_cron (2026-07-24)
+-- Fecha o buraco do provisionamento de login da equipe. Sintoma: vendedora
+-- Kathellyn (e 12 dos 15 funcionários) não logava. Causa: o app, ao salvar
+-- colaborador com CPF+senha, só ENFILEIRA em logins_pendentes; a criação da conta
+-- no Auth é um passo server-side (tools/crm_logins.py) que raramente rodava — a
+-- fila ficava parada. Só Israel e Kelly tinham conta.
+-- Solução escolhida (SQL + cron; deploy de Edge Function estava bloqueado):
+--   • public.crm_drenar_logins() SECURITY DEFINER: para cada linha de
+--     logins_pendentes, deriva o e-mail alias cpf<digitos>@crm.plenumbrasil.com.br,
+--     e — se o funcionário já tem conta (ou existe conta com o e-mail) — troca a
+--     senha (bcrypt $2a$10$ via extensions.crypt/gen_salt) e confirma o e-mail;
+--     senão CRIA a conta escrevendo direto em auth.users + auth.identities
+--     (espelha o formato do GoTrue: aud/role='authenticated', instance_id zero,
+--     raw_app_meta_data provider email, identity_data sub/email, provider_id=uid).
+--     Vincula funcionarios.auth_user_id e apaga a linha da fila. Idempotente.
+--   • cron.schedule('crm-drenar-logins','* * * * *', …) drena a cada minuto.
+--   • execute revogado de public/anon/authenticated (só o cron/postgres chama).
+--   • App: mensagem do dbSaveFunc trocada de "rode tools/crm_logins.py" para
+--     "login provisionado automaticamente (até 1 min)".
+-- Cuidados do schema do GoTrue nesta versão: auth.users.confirmed_at e
+--   auth.identities.email são GERADAS (não inserir); os 4 tokens sem default
+--   (confirmation_token/recovery_token/email_change_token_new/email_change) recebem
+--   '' p/ evitar erro de NULL→string no login. Validado ponta a ponta: conta criada
+--   por SQL faz login real (grant_type=password) ✓, senha errada 400 ✓, troca de
+--   senha ✓. RISCO conhecido: escreve em tabelas internas do Auth — se o Supabase
+--   mudar o schema do GoTrue, revisar esta função (alternativa robusta = Edge
+--   Function provisionar-logins via API oficial, quando o deploy for liberado).
