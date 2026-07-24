@@ -1038,7 +1038,7 @@
   document.getElementById('adm').addEventListener('click',()=>document.body.classList.toggle('admin'));
   document.getElementById('hamb').addEventListener('click',()=>document.body.classList.toggle('sidehide'));
   // recolher/editar/anexar por seção — delegado no container de campanhas
-  function isCampCol(id){try{return (JSON.parse(localStorage.getItem('crm-camp-col')||'{}'))[id]===1;}catch(e){return false;}}
+  function isCampCol(id){try{return (JSON.parse(localStorage.getItem('crm-camp-col')||'{}'))[id]!==0;}catch(e){return true;}}
   function setCampCol(id,v){try{const o=JSON.parse(localStorage.getItem('crm-camp-col')||'{}');o[id]=v?1:0;localStorage.setItem('crm-camp-col',JSON.stringify(o));}catch(e){}}
   document.getElementById('camp-sections').addEventListener('click',e=>{
     const tog=e.target.closest('.camp-toggle'); if(tog){const sec=tog.closest('.camp'),col=sec.classList.toggle('collapsed');tog.textContent=col?'▸ Expandir':'▾ Recolher';setCampCol(tog.dataset.cid,col);return;}
@@ -1398,7 +1398,7 @@
     if(!cap){warn('Captura não sincronizada — recarregue a página.');return;}
     const s=(typeof srvById!=='undefined'&&srvById[cap.servidor_id])||{}, e=(typeof entById!=='undefined'&&entById[cap.entidade_id])||{};
     SVREG.push({nome:s.nome||CUR.cli,cargo:s.cargo||'',orgao:e.nome||'',orgId:cap.entidade_id,area:null,
-      setor:'',unidade:'',sid:cap.servidor_id,eid:cap.entidade_id,p1:null,cpf:s.cpf||'',p1id:(s.painel1_id||null),info:[]});
+      setor:'',unidade:'',sid:cap.servidor_id,eid:cap.entidade_id,capId:cap.id,p1:null,cpf:s.cpf||'',p1id:(s.painel1_id||null),info:[]});
     close(); openCaptureSv(SVREG.length-1);
   });
   function close(){drawer.classList.remove('open');scrim.classList.remove('open');rows.querySelectorAll('tr.sel').forEach(t=>t.classList.remove('sel'))}
@@ -1694,8 +1694,8 @@
     if(note)note.textContent=desc?`Mesma organização: ${ja} captura(s) ativa(s) → −${desc}% aplicado.`:(lote?'Valor do lote vigente pela data.':'Sem lotes — usa o valor unitário da campanha.');
   }
   function checkConc(){
-    const c=CAPTURES[capKey(CAPI)], warnEl=document.getElementById('cap-warn'), save=document.getElementById('cap-save');
-    if(c){const camp=campById(c.campId), nomeC=camp?camp.nome.split(' · ')[0]:'', own=c.responsavel===CURRENT;
+    const eff=window.CAPEFF||{}, c=eff.c, warnEl=document.getElementById('cap-warn'), save=document.getElementById('cap-save');
+    if(c){const camp=campById(c.campId), nomeC=camp?camp.nome.split(' · ')[0]:'', own=eff.own;
       warnEl.hidden=false;
       if(own){
         warnEl.innerHTML=`Você é o responsável por este servidor na campanha <b>${nomeC}</b> — atualize o estágio (avanço sequencial, uma fase por vez) e a observação.`;
@@ -1730,32 +1730,37 @@
   function openCaptureSv(i){
     if(!CAMPAIGNS.length){warn('Crie uma campanha primeiro (＋ Nova campanha — admin).');return;}
     const r=SVREG[i]; if(!r)return; CAPI=i; const c=CAPTURES[capKey(i)];
+    const _dbc=(c&&c.dbId&&(window.CAPS||[]).find(x=>x.id===c.dbId))||(r.capId&&(window.CAPS||[]).find(x=>x.id===r.capId))||null;
+    const cEff=c||(_dbc?{campId:_dbc.campanha_id,responsavel:(funcById[_dbc.responsavel_id]||{}).nome||'—',estagio:uiStage(_dbc.estagio),obs:_dbc.obs||'',dbId:_dbc.id}:null);
+    const ownCap=_dbc?(String(_dbc.responsavel_id)===String(window.MEID)):(cEff?cEff.responsavel===CURRENT:false);
+    window.CAPEFF={c:cEff,own:ownCap,dbc:_dbc};
     document.getElementById('cap-title').textContent=(r.isOrg?'Vender produto — ':'Capturar — ')+r.nome;
     document.getElementById('cap-sub').textContent=r.isOrg?('Venda por órgão · '+r.nome):[r.cargo,r.setor&&('· '+r.setor),r.unidade&&('· '+r.unidade),r.orgao&&('· '+r.orgao)].filter(Boolean).join(' ');
     const eyb=document.querySelector('#capmodal .eyebrow'); if(eyb)eyb.textContent=r.isOrg?'Vender produto ao órgão':'Capturar servidor';
-    const sel=document.getElementById('cap-camp'); sel.innerHTML=CAMPAIGNS.map(x=>`<option value="${x.id}">${x.nome}</option>`).join(''); sel.value=c?c.campId:CAMPAIGNS[0].id;
-    document.getElementById('cap-st').value=c?c.estagio:'prospeccao';
-    document.getElementById('cap-obs').value=c?(c.obs||''):'';
-    const resp=c?c.responsavel:CURRENT, lock=document.getElementById('cap-resp-lock'), rsel=document.getElementById('cap-resp-sel');
+    const sel=document.getElementById('cap-camp'); sel.innerHTML=CAMPAIGNS.map(x=>`<option value="${x.id}">${x.nome}</option>`).join(''); sel.value=cEff?cEff.campId:CAMPAIGNS[0].id;
+    sel.disabled=!!cEff; sel.title=cEff?'A campanha da captura não pode ser alterada — o servidor continua disponível para captura em outras campanhas.':'';
+    document.getElementById('cap-st').value=cEff?cEff.estagio:'prospeccao';
+    document.getElementById('cap-obs').value=cEff?(cEff.obs||''):'';
+    const resp=cEff?cEff.responsavel:CURRENT, lock=document.getElementById('cap-resp-lock'), rsel=document.getElementById('cap-resp-sel');
     if(isGestor()){lock.hidden=true; rsel.hidden=false; rsel.innerHTML=VEND.map(v=>`<option ${v[1]===resp?'selected':''}>${v[1]}</option>`).join('');}
     else{rsel.hidden=true; lock.hidden=false; document.getElementById('cap-resp-av').innerHTML=avmini(resp); document.getElementById('cap-resp-nome').textContent=resp;}
-    populateCapItems(campById(sel.value),c,r.isOrg?'orgao':null);
+    populateCapItems(campById(sel.value),cEff,r.isOrg?'orgao':null);
     document.getElementById('cap-contatos-row').hidden=!r.isOrg; if(r.isOrg)renderCapContatos(r.eid,'');
-    renderCapParams(); checkConc(); initCapParts(c);
+    renderCapParams(); checkConc(); initCapParts(cEff);
     (function(){const row=document.getElementById('cap-contrato-row'),ck=document.getElementById('cap-contrato-ativo');
-      const dbc=c&&c.dbId&&(window.CAPS||[]).find(x=>x.id===c.dbId);
+      const dbc=_dbc;
       const recor=dbc&&dbc.item_id&&itemById(dbc.item_id)&&itemById(dbc.item_id).comissao_modo==='recorrente_mensal';
       const won=dbc&&['fechamento','pos_venda'].includes(dbc.estagio);
       if(row){row.hidden=!(window.IS_ADMIN&&recor&&won); if(!row.hidden){ck.checked=!!dbc.contrato_ativo; ck.dataset.capid=dbc.id;}}
     })();
     (function(){
       const stSel=document.getElementById('cap-st'), UI=['prospeccao','qualificacao','proposta','negociacao','fechamento','posvenda'];
-      const own=c&&c.responsavel===CURRENT;
+      const own=ownCap;
       [...stSel.options].forEach(o=>o.disabled=false); stSel.disabled=false; stSel.title='';
       if(window.IS_ADMIN){ /* administrador: livre */ }
-      else if(!c){ stSel.value='prospeccao'; stSel.disabled=true;
+      else if(!cEff){ stSel.value='prospeccao'; stSel.disabled=true;
         stSel.title='Nova captura entra em Prospecção — o avanço é sequencial, fase a fase'; }
-      else if(own){ const cur=c.estagio, i=UI.indexOf(cur);
+      else if(own){ const cur=cEff.estagio, i=UI.indexOf(cur);
         // responsável: fase atual, próxima (avanço sequencial) OU reciclar p/ Prospecção
         [...stSel.options].forEach(o=>{o.disabled=!(o.value===cur||o.value===UI[i+1]||o.value==='prospeccao');});
         stSel.value=cur;
@@ -2694,24 +2699,26 @@
   window.dbSaveCap=async function(i,campId,resp,st,obs){
     const r=SVREG[i]; if(!r)return;
     if(!r.isOrg){try{await ensureSrv(r);}catch(e){warn('⚠ Não foi possível vincular o servidor: '+(e.message||e));return;}}
-    const respId=(TEAM.find(t=>t.n===resp)||{}).id, k=capKey(i), cur=CAPTURES[k];
+    const respId=(TEAM.find(t=>t.n===resp)||{}).id, k=capKey(i), cur=CAPTURES[k]||{};
+    const dbId=cur.dbId||(r&&r.capId)||((window.CAPEFF&&window.CAPEFF.dbc)?window.CAPEFF.dbc.id:null);
     try{
       const cc=window.CAPCALC||{}, orgao=cc.nivel==='orgao';
       const base={campanha_id:campId,responsavel_id:respId,estagio:dbStage(st),obs,modalidade:cc.mod||null,
         valor_contrato:cc.valor||null,item_id:cc.item_id||null,plano_id:cc.plano_id||null,meses_contrato:cc.meses||null};
-      if(cur&&cur.dbId){
-        const{error}=await sbc.from('capturas').update(base).eq('id',cur.dbId);
+      if(dbId){
+        const{error}=await sbc.from('capturas').update(base).eq('id',dbId);
         if(error)throw error;
-        await sbc.from('atividades').insert({captura_id:cur.dbId,tipo:'mudanca_estagio',descricao:obs||null,estagio_para:dbStage(st)});
+        if(CAPTURES[k])CAPTURES[k].dbId=dbId;
+        await sbc.from('atividades').insert({captura_id:dbId,tipo:'mudanca_estagio',descricao:obs||null,estagio_para:dbStage(st)});
       }else{
         const{data,error}=await sbc.from('capturas').insert(Object.assign({servidor_id:orgao?null:r.sid,entidade_id:r.eid},base)).select('id').single();
-        if(error)throw error; CAPTURES[k].dbId=data.id;
+        if(error)throw error; if(CAPTURES[k]){CAPTURES[k].dbId=data.id;}else{CAPTURES[k]={dbId:data.id};}
         await sbc.from('atividades').insert({captura_id:data.id,tipo:'captura',descricao:obs||null,estagio_para:dbStage(st)});
         const cts=(window.CAPCONTATOS||[]).map(String); if(orgao&&r.sid&&!cts.includes(String(r.sid)))cts.push(String(r.sid));
         if(orgao&&cts.length){const{error:ce}=await sbc.from('captura_contatos').upsert(cts.map(sid=>({captura_id:data.id,servidor_id:sid,papel:'contato'})),{onConflict:'captura_id,servidor_id'}); if(ce)warn('⚠ Contatos não gravados: '+ce.message);}
         window.CAPCONTATOS=[];
       }
-      const capId=(cur&&cur.dbId)||CAPTURES[k].dbId;
+      const capId=dbId||(CAPTURES[k]&&CAPTURES[k].dbId);
       if(window.CAPPARTS_SAVE&&capId){
         const{error:pd}=await sbc.from('participacoes').delete().eq('captura_id',capId);
         if(pd)warn('⚠ Rateio não gravado: '+pd.message);
