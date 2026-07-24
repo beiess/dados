@@ -2736,7 +2736,7 @@
       if(fid){const{error}=await sbc.from('funcionarios').update(payload).eq('id',fid);if(error)throw error;}
       else{const{data,error}=await sbc.from('funcionarios').insert(payload).select('id').single();if(error)throw error;fid=data.id;rec.id=fid;}
       if(rec.senha&&rec.cpf){const{error}=await sbc.from('logins_pendentes').upsert({funcionario_id:fid,cpf:rec.cpf,senha:rec.senha});
-        if(error)throw error; warn('Colaborador gravado ✓ · login pendente — rode tools/crm_logins.py');}
+        if(error)throw error; warn('Colaborador gravado ✓ · login sendo provisionado automaticamente (entra em até 1 min). Usuário: o CPF · senha: a que você definiu.');}
       else warn('Colaborador gravado no banco ✓');
     }catch(e){warn('⚠ Colaborador não gravado: '+(e.message||e));}
   };
