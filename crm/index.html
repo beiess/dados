@@ -709,7 +709,7 @@
       <div id="view-comm" hidden>
         <section class="panel" style="margin-bottom:16px">
           <div class="commhead">
-            <div><div class="eyebrow">Comissões · consolidado da equipe</div><h2 id="comm-title">—</h2></div>
+            <div><div class="eyebrow" id="comm-eyebrow">Comissões · consolidado da equipe</div><h2 id="comm-title">—</h2></div>
             <select id="comm-period"></select>
             <span class="spacer"></span>
             <button class="btn-ghost adminonly" id="comm-apurar" title="Varre vendas em fechamento/pós-venda ainda sem apuração e gera as comissões">⚖ Apurar pendentes</button>
@@ -1941,6 +1941,7 @@
     ganhas=vis.filter(m=>m.s==='apurada').length-vis.filter(m=>m.s==='estorno').length,
     val=vis.reduce((s,m)=>s+(m.s==='estorno'?-m.v:m.v),0); return{ap,pr,ganhas,val,vis};};
   function renderComm(){
+    const eb=document.getElementById('comm-eyebrow'); if(eb)eb.textContent=window.GESTOR?'Comissões · consolidado da equipe':'Minhas comissões · sigilo';
     const curv=(RULEV.find(r=>!r.fim)||{}).v||'v1';
     document.getElementById('comm-rows').innerHTML=COMM.map((v,ix)=>{const a=commAgg(v);
       if(!a.vis.length&&!v.meta)return '';
@@ -1961,19 +1962,19 @@
     let ap=0,pr=0; COMM.forEach(v=>{const a=commAgg(v);ap+=a.ap;pr+=a.pr;});
     let ganhas,vendido;
     if(COMMPER===''){
-      const GANH=(window.CAPS||[]).filter(c=>c.ativo&&['fechamento','pos_venda'].includes(c.estagio));
+      const GANH=(window.CAPS||[]).filter(c=>c.ativo&&['fechamento','pos_venda'].includes(c.estagio)&&(window.GESTOR||c.responsavel_id===window.MEID));
       vendido=GANH.reduce((s,c)=>s+(+c.valor_contrato||0),0); ganhas=GANH.length;
     }else{
       const seen={}; (window.APSX||[]).filter(a=>a.competencia===COMMPER).forEach(a=>{if(!(a.captura_id in seen))seen[a.captura_id]=+a.base_valor||0;});
       ganhas=Object.keys(seen).length; vendido=Object.values(seen).reduce((s,x)=>s+x,0);
     }
-    const _cc=curCamp(); const metaC=(_cc&&_cc.meta)||0, metaPct=metaC?Math.min(999,Math.round(vendido/metaC*100)):0;
+    const _cc=curCamp(); const metaC=window.GESTOR?((_cc&&_cc.meta)||0):((window.ME&&+window.ME.meta)||0), metaPct=metaC?Math.min(999,Math.round(vendido/metaC*100)):0;
     document.getElementById('comm-kpis').innerHTML=
       `<div class="kpi"><div class="k">Comissão apurada</div><div class="v num" style="color:var(--good)">${money(ap)}</div></div>
        <div class="kpi accent"><div class="k">Comissão prevista</div><div class="v num">${money(pr)}</div></div>
        <div class="kpi"><div class="k">Vendas ganhas</div><div class="v num">${ganhas}</div></div>
-       <div class="kpi"><div class="k">Vendido (ganhas)</div><div class="v num">${money(vendido)}</div></div>
-       <div class="kpi"><div class="k">Meta da campanha</div><div class="v num">${metaPct}%</div><div class="metabar"><i style="width:${metaPct}%"></i></div></div>`;
+       <div class="kpi"><div class="k">${window.GESTOR?'Vendido (ganhas)':'Meu vendido'}</div><div class="v num">${money(vendido)}</div></div>
+       <div class="kpi"><div class="k">${window.GESTOR?'Meta da campanha':'Minha meta'}</div><div class="v num">${metaPct}%</div><div class="metabar"><i style="width:${metaPct}%"></i></div></div>`;
     const rm=document.getElementById('rule-meta'); if(rm)rm.textContent=metaPct+'%';
   }
   document.getElementById('comm-rows').addEventListener('click',e=>{
@@ -2272,7 +2273,7 @@
       if(f.funcao==='vendedor'&&(f.situacao||'ativo')!=='inativo')VEND.push([ini(f.nome),f.nome]);});
     const {data:{user}}=await sbc.auth.getUser();
     const meRow=fun.find(f=>f.auth_user_id===user.id)||null;
-    ME=meRow?TEAM.find(t=>t.id===meRow.id):null; window.ME=ME;
+    ME=meRow?TEAM.find(t=>t.id===meRow.id):null; window.ME=ME; window.MEID=meRow?meRow.id:null;
     window.GESTOR=!!(meRow&&(meRow.funcao!=='vendedor'||meRow.acesso_irrestrito));
     CURRENT=meRow?meRow.nome:(user.email||'—'); USER=CURRENT; renderWM();
     document.getElementById('me-box').innerHTML='<div class="av" style="background:#4FB8C4">'+ini(CURRENT)+'</div><div><b>'+CURRENT+'</b><span>'+(meRow?(meRow.funcao+(meRow.acesso_irrestrito?' · acesso irrestrito':'')):'sem cadastro de funcionário')+'</span></div>';
@@ -2379,7 +2380,7 @@
   // prevista respeita participações (rateio) e NÃO duplica captura já apurada
   function rebuildComm(){
     COMM.length=0;
-    TEAM.filter(t=>t.fn==='Vendedor').forEach(t=>{
+    TEAM.filter(t=>t.fn==='Vendedor'&&(window.GESTOR||t.id===window.MEID)).forEach(t=>{
       const mem=[];
       (window.CAPS||[]).filter(c=>c.ativo&&c.estagio!=='perdida').forEach(c=>{
         if(APS.some(a=>a.captura_id===c.id&&a.funcionario_id===t.id&&!a.estorno_de&&!APS.some(e2=>e2.estorno_de===a.id)))return;
@@ -2401,14 +2402,18 @@
           rv:'v'+(camp.regra||(RULEV.length?RULEV[RULEV.length-1].versao:1))});});
       APS.filter(a=>a.funcionario_id===t.id).forEach(a=>{
         const cap=(window.CAPS||[]).find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
+        const oc=+a.majoracao_oculta||0;
         mem.push({cli:(e&&e.nome)||'—',t:'novo',v:+a.base_valor||0,rt:(+a.rateio_pct||100)+'%',
-          c:a.memoria||'',r:+a.valor,s:(a.estorno_de?'estorno':'apurada'),rv:'v'+a.regra_versao,comp:a.competencia});});
+          c:(a.memoria||'')+(window.GESTOR&&oc?' + '+money(oc)+' cliente novo (oculto)':''),
+          r:(+a.valor)+(window.GESTOR?oc:0),s:(a.estorno_de?'estorno':'apurada'),rv:'v'+a.regra_versao,comp:a.competencia});});
       if(mem.length||t.meta)COMM.push({i:t.i,n:t.n,nv:t.nv,ar:t.ar==='—'?'Gestão Pública':t.ar,emp:t.emp,base:t.base,meta:t.meta,mem});});
     APUR.length=0;
     APS.slice().sort((a,b)=>String(b.apurado_em||'').localeCompare(String(a.apurado_em||''))).forEach(a=>{
       const cap=(window.CAPS||[]).find(c=>c.id===a.captura_id),e=cap?entById[cap.entidade_id]:null;
+      const _oc=+a.majoracao_oculta||0;
       APUR.push({comp:a.competencia,vend:(funcById[a.funcionario_id]||{}).nome||'—',cli:(e&&e.nome)||'—',
-        rv:'v'+a.regra_versao,calc:a.memoria||'',val:+a.valor,em:fmtD(a.apurado_em)+' · '+((funcById[a.apurado_por]||{}).nome||'fechamento')});});
+        rv:'v'+a.regra_versao,calc:(a.memoria||'')+(window.GESTOR&&_oc?' + '+money(_oc)+' cli. novo (oculto)':''),
+        val:(+a.valor)+(window.GESTOR?_oc:0),em:fmtD(a.apurado_em)+' · '+((funcById[a.apurado_por]||{}).nome||'fechamento')});});
   }
   // contadores REAIS das abas (substituem os números estáticos do conceito)
   function renderTabCounts(){
