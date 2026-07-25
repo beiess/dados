@@ -710,12 +710,13 @@ function enrParse(ev){const f=ev.target.files[0];if(!f)return;
     if(aoa.length<2){alert('arquivo sem linhas de dados');return;}
     ENR.hdr=aoa[0].map(h=>''+h);ENR.rows=aoa.slice(1);
     const guess=re=>ENR.hdr.findIndex(h=>re.test(norm(h)));
-    const gN=guess(/NOME/),gC=guess(/CPF|DOCUMENTO/),gM=guess(/CIDADE|MUNICIPIO/);
+    const gN=guess(/NOME/),gC=guess(/CPF|DOCUMENTO/),gM=guess(/CIDADE|MUNICIPIO/),gU=guess(/^UF$|SG.?UF|ESTADO/);
     const opt=s=>'<option value=-1>— nenhuma —</option>'+ENR.hdr.map((h,i)=>'<option value='+i+(i===s?' selected':'')+'>'+esc(h||('coluna '+(i+1)))+'</option>').join('');
     document.getElementById('enr-cfg').innerHTML=
      '<div class=sec><h4>2 · Onde estão os dados no seu arquivo ('+ENR.rows.length.toLocaleString('pt-BR')+' linhas)</h4>'
-     +'<table><tr><th>Nome</th><th>CPF</th><th>Cidade (desambiguação · opcional)</th></tr>'
-     +'<tr><td><select id=enr-cn>'+opt(gN)+'</select></td><td><select id=enr-cc>'+opt(gC)+'</select></td><td><select id=enr-cm>'+opt(gM)+'</select></td></tr></table></div>'
+     +'<table><tr><th>Nome</th><th>CPF</th><th>Cidade</th><th>UF</th></tr>'
+     +'<tr><td><select id=enr-cn>'+opt(gN)+'</select></td><td><select id=enr-cc>'+opt(gC)+'</select></td><td><select id=enr-cm>'+opt(gM)+'</select></td><td><select id=enr-cu>'+opt(gU)+'</select></td></tr></table>'
+     +'<div style="font-size:11px;color:#57606a;margin-top:4px">Cidade + UF desambiguam municípios de mesmo nome entre estados (opcional, mas recomendado quando o arquivo tiver mais de uma UF).</div></div>'
      +'<div class=sec><h4>3 · Campos a preencher (voltam como colunas p1_*)</h4>'
      +ENRFLD.map(f=>'<label style="display:inline-flex;gap:5px;margin:2px 12px 2px 0"><input type=checkbox data-f='+f[0]+((f[0]==='telefone'||f[0]==='email')?' checked':'')+'> '+f[1]+'</label>').join('')
      +'</div><div class=sec><button class=go id=enr-go style="background:#0d1117;color:#fff">Processar e baixar preenchido</button> <span id=enr-st style="font-size:12px;color:#57606a"></span></div>';
@@ -723,14 +724,23 @@ function enrParse(ev){const f=ev.target.files[0];if(!f)return;
   };
   rd.readAsArrayBuffer(f);}
 async function enrRun(){
-  const cn=+document.getElementById('enr-cn').value,cc=+document.getElementById('enr-cc').value,cm=+document.getElementById('enr-cm').value;
+  const cn=+document.getElementById('enr-cn').value,cc=+document.getElementById('enr-cc').value,
+        cm=+document.getElementById('enr-cm').value,cu=+document.getElementById('enr-cu').value;
   if(cn<0&&cc<0){alert('indique a coluna de Nome ou a de CPF');return;}
   const flds=[...document.querySelectorAll('#enr-cfg input[data-f]:checked')].map(i=>i.dataset.f);
   if(!flds.length){alert('marque ao menos um campo para preencher');return;}
   const st=document.getElementById('enr-st'),go=document.getElementById('enr-go');go.disabled=true;
-  const mByN={};munis.forEach(m=>{const k=norm(m.nome);mByN[k]=(k in mByN)?null:m.ibge;}); // nome de cidade ambíguo entre UFs → ignora
+  // cidade só por nome é ambígua entre UFs; cidade+UF resolve sem ambiguidade
+  const UFNOME={'ACRE':'AC','ALAGOAS':'AL','AMAPA':'AP','AMAZONAS':'AM','BAHIA':'BA','CEARA':'CE','DISTRITO FEDERAL':'DF','ESPIRITO SANTO':'ES','GOIAS':'GO','MARANHAO':'MA','MATO GROSSO':'MT','MATO GROSSO DO SUL':'MS','MINAS GERAIS':'MG','PARA':'PA','PARAIBA':'PB','PARANA':'PR','PERNAMBUCO':'PE','PIAUI':'PI','RIO DE JANEIRO':'RJ','RIO GRANDE DO NORTE':'RN','RIO GRANDE DO SUL':'RS','RONDONIA':'RO','RORAIMA':'RR','SANTA CATARINA':'SC','SAO PAULO':'SP','SERGIPE':'SE','TOCANTINS':'TO'};
+  const UFSET=new Set(Object.values(UFNOME));
+  const ufSigla=v=>{v=norm(v);return UFSET.has(v)?v:(UFNOME[v]||'');};
+  const mByN={}, mByNU={};   // nome→ibge (só se único no país) e nome|uf→ibge
+  munis.forEach(m=>{const k=norm(m.nome);mByN[k]=(k in mByN)?null:m.ibge;mByNU[k+'|'+m.uf]=m.ibge;});
+  const ibgeDe=(cid,uf)=>{const k=norm(cid);if(!k)return '';
+    if(uf){const s=ufSigla(uf);if(s&&mByNU[k+'|'+s])return mByNU[k+'|'+s];}
+    return mByN[k]||'';};
   const ped=ENR.rows.map((r,i)=>({i,cpf:cc>=0?''+(r[cc]||''):'',nome:cn>=0?''+(r[cn]||''):'',
-    ibge:(cm>=0&&mByN[norm(''+(r[cm]||''))])||''}));
+    ibge:cm>=0?ibgeDe(r[cm],cu>=0?r[cu]:''):''}));
   const out={};
   try{
     for(let k=0;k<ped.length;k+=300){
