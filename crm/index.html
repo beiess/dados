@@ -661,6 +661,8 @@
         <label class="fsel">Esfera administrativa<select id="f-esf"><option value="">Todas</option></select></label>
         <label class="fsel">Responsável<select id="f-resp"><option value="">Todos</option></select></label>
         <label class="fsel">Tema<select id="f-tema"><option value="">Todos</option></select></label>
+        <label class="fsel">Cargo / função<input id="f-cargo" placeholder="ex.: professor, engenheiro… (Enter)" autocomplete="off"></label>
+        <label class="fsel">Responsabilidade<input id="f-respab" placeholder="ex.: pregoeiro, ordenador… (Enter)" autocomplete="off"></label>
         <label class="fsel">Nome do servidor<input id="f-nome" placeholder="digite 3+ letras e selecione…" autocomplete="off"></label>
         <div class="namechips" id="namechips"></div>
         <span class="fb-spacer"></span>
@@ -1330,6 +1332,8 @@
   // ===== FILTROS (estado, cidade, esfera, responsável, tema) =====
   const vTree=document.getElementById('view-tree'), vStage=document.getElementById('view-stage');
   const F={uf:document.getElementById('f-uf'),cid:document.getElementById('f-cid'),esf:document.getElementById('f-esf'),resp:document.getElementById('f-resp'),tema:document.getElementById('f-tema')};
+  const pFilt=()=>({cargo:((document.getElementById('f-cargo')||{}).value||'').trim(),resp:((document.getElementById('f-respab')||{}).value||'').trim()});
+  function resetBuiltDetails(){document.querySelectorAll('#view-tree .edetail[data-built]').forEach(d=>{delete d.dataset.built;d.innerHTML='';d.closest('.tnode.open')&&d.closest('.tnode.open').classList.remove('open');});}
   const fcount=document.getElementById('fcount');
   const uniq=a=>[...new Set(a)].sort((x,y)=>x.localeCompare(y,'pt'));
   const fill=(sel,vals)=>vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
@@ -1358,7 +1362,7 @@
     fcount.textContent=vis+(vis===1?' entidade':' entidades');
   }
   Object.values(F).forEach(s=>s.addEventListener('change',()=>{syncFilterOptions();applyAll();}));
-  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');syncFilterOptions();['q-serv','f-nome'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});NAMESEL.length=0;renderNameChips();applyAll();});
+  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');syncFilterOptions();['q-serv','f-nome','f-cargo','f-respab'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});NAMESEL.length=0;renderNameChips();applyAll();});
 
   // TABS -> alterna árvore (Todos) x tabela por estágio
   document.getElementById('tabs').addEventListener('click',e=>{
@@ -2511,13 +2515,14 @@
   // Painel 1 (1,36M registros) integrado SOB DEMANDA por órgão — dedup c/ a base do CRM
   async function loadP1(block,nd,offset){
     const st=block.querySelector('.p1status'), body=block.querySelector('.p1body');
+    const _pf=pFilt();
     try{
       // busca ativa: resultado vem PRIMEIRO, independente da paginação alfabética
       if(offset===0&&window.P1RAW&&window.P1RAW.length){
         block._skip=new Set();
         let achados=[];
         for(const termo of window.P1RAW.slice(0,5)){
-          try{const{data:hs}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_nome:String(termo).replace(/[%_]/g,''),p_limit:20});
+          try{const{data:hs}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_nome:String(termo).replace(/[%_]/g,''),p_cargo:_pf.cargo||null,p_resp:_pf.resp||null,p_limit:20});
             (hs||[]).forEach(p=>{if(!block._skip.has(norm(p.nome))){block._skip.add(norm(p.nome));achados.push(p);}});}catch(e){}
         }
         if(achados.length){
@@ -2527,7 +2532,7 @@
           body.querySelectorAll('.p1hits .snm').forEach(b=>revealHit(b));
         }
       }
-      const {data,error}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_limit:1000,p_offset:offset});
+      const {data,error}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_cargo:_pf.cargo||null,p_resp:_pf.resp||null,p_limit:1000,p_offset:offset});
       if(error)throw error;
       const seen=(window.SRVN&&window.SRVN[nd.id])||[];
       const novos=(data||[]).filter(p=>p.nome&&!seen.includes(norm(p.nome))&&!(block._skip&&block._skip.has(norm(p.nome))));
@@ -3036,13 +3041,16 @@
     document.querySelectorAll('.snm.hit').forEach(x=>x.classList.remove('hit','hit-flash'));
     applyFilters();
     const raw=((document.getElementById('f-nome')||{}).value||(document.getElementById('q-serv')||{}).value||'').trim(), qs=raw?norm(raw):'';
+    const pf=pFilt(), personF=!!(pf.cargo||pf.resp);
     const HL=NAMESEL.length?NAMESEL.map(s=>norm(s.n)):(qs?[qs]:[]);
     window.P1HL=HL;
     window.P1RAW=NAMESEL.length?NAMESEL.map(s=>s.n):(raw?[raw]:[]);
-    if(!HL.length)return;
+    if(personF||window.__lastPersonF)resetBuiltDetails();
+    window.__lastPersonF=personF;
+    if(!HL.length&&!personF)return;
     let p1set=null;
-    if(!NAMESEL.length&&qs.length>=4&&typeof sbc!=='undefined'){
-      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_limit:100});
+    if(!NAMESEL.length&&(qs.length>=4||personF)&&typeof sbc!=='undefined'){
+      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:(qs.length>=4?raw.replace(/[%_]/g,''):null),p_cargo:pf.cargo||null,p_resp:pf.resp||null,p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_limit:400});
         p1set=new Set((data||[]).map(x=>String(x.entidade_id)));}catch(e){}
     }
     let shown=0;
@@ -3053,6 +3061,8 @@
       let has;
       if(NAMESEL.length){
         has=NAMESEL.some(s=>(s.eid&&s.eid===eid)||(s.ibge&&s.ibge===ibge)||idx.some(x=>x.includes(norm(s.n))));
+      }else if(personF){
+        has=!!(p1set&&(p1set.has(eid)||p1set.has(ibge)));
       }else{
         has=idx.some(x=>x.includes(qs));
         if(!has)has=[...el.querySelectorAll('.snm')].some(b=>norm(b.textContent).includes(qs));
@@ -3075,6 +3085,7 @@
   document.getElementById('fapply').addEventListener('click',applyAll);
   document.getElementById('q-serv').addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});
   document.getElementById('f-nome').addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});
+  ['f-cargo','f-respab'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});});
   document.getElementById('q-serv').addEventListener('input',e=>{document.getElementById('f-nome').value=e.target.value;});
   document.getElementById('f-nome').addEventListener('input',e=>{document.getElementById('q-serv').value=e.target.value;});
   document.getElementById('view-tree').addEventListener('change',e=>{
@@ -3151,7 +3162,7 @@
     // 2) Painel 1: assíncrono; só a ÚLTIMA requisição renderiza
     if(typeof sbc==='undefined')return;
     try{
-      const{data,error}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_limit:12});
+      const{data,error}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_cargo:pFilt().cargo||null,p_resp:pFilt().resp||null,p_limit:12});
       if(seq!==SUGSEQ)return;                              // chegou atrasada — outra busca assumiu
       if(!error)(data||[]).forEach(x=>add({n:x.nome,eid:x.entidade_id,ibge:'',mun:x.municipio||'—',org:'P1',p1:x.painel1_id}));
       sugPaint(inp,items,false);
