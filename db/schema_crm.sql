@@ -1252,3 +1252,22 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 --      cascata por entidade e paginação preservadas. Interpolação segura (format %L /
 --      quote_literal; ibge são dígitos). p_tema/p_tem_contato (não usados pelo app)
 --      ficam pós-limit. Aplicado direto (psycopg2) por instabilidade do apply_migration.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Filtros de Cargo/função e Responsabilidade (nível pessoa) + ix_p1_cargo_trgm (2026-07-25)
+-- Pedido: filtrar por cargo, função, responsabilidade; nem todos têm o dado, ao
+-- aplicar trazer só os que têm/combinam. painel1_servidores tem cargo_funcao (cargo
+-- E função na MESMA coluna, ~96% preench.), setor (~31%) e responsabilidade (~0,2%
+-- — 34k linhas). Como cargo/função são a mesma coluna, viraram UM filtro "Cargo/
+-- função" (→ p_cargo) + "Responsabilidade" (→ p_resp). O RPC crm_buscar_servidores
+-- já tinha p_cargo/p_resp (ilike); só faltava a UI passar. App: inputs f-cargo/
+-- f-respab; loadP1 (cascata) e suggest (typeahead) passam p_cargo/p_resp → só
+-- servidores casando aparecem; applyAll estreita a cascata às entidades com servidor
+-- casando (RPC p_cargo/p_resp/p_uf/p_cidade, limit 400) e invalida detalhes já
+-- montados (resetBuiltDetails) p/ recarregar filtrado. "Só quem tem" é natural: ilike
+-- não casa nulo.
+-- Índice: create index concurrently ix_p1_cargo_trgm on painel1_servidores using gin
+--   (cargo_funcao gin_trgm_ops) — 222 MB. Sem ele, cargo RARO sem cidade/nome fazia
+--   seq scan (oftalmologista standalone = 14,5s → 0,25s). responsabilidade é esparsa
+--   (34k) e já era rápida standalone, não precisou de índice. Combinado c/ cidade/
+--   nome sempre foi rápido (ix_p1_ibge / trgm de nome). Ver crm_v28 (busca dinâmica).
