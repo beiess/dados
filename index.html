@@ -693,7 +693,9 @@ async function saveCell(el){const id=el.dataset.id,col=el.dataset.col;let val=el
   el.dataset.orig=val;el.style.background='#dafbe1';setTimeout(()=>el.style.background='#fffbe6',900);}
 // ===== Enriquecer arquivo: upload → busca por CPF/nome (rpc p1_lookup) → devolve preenchido =====
 let ENR={rows:null,hdr:null,name:'',ext:''};
-const ENRFLD=[['telefone','Telefone'],['email','Email'],['instagram','Instagram'],['contato_adicional','Contato adicional'],['orgao','Órgão(s)'],['setor','Setor'],['cargo_funcao','Cargo/função'],['remuneracao','Remuneração'],['data_nascimento','Data de nascimento'],['origem','Origem (fontes)']];
+const ENRFLD=[['telefone','Telefone'],['email','Email'],['instagram','Instagram'],['contato_adicional','Contato adicional'],['municipio','Cidade'],['uf','Estado (UF)'],['orgao','Órgão(s)'],['setor','Setor'],['cargo_funcao','Cargo/função'],['remuneracao','Remuneração'],['data_nascimento','Data de nascimento'],['origem','Origem (fontes)']];
+// ibge → {cidade, uf} para preencher Cidade/Estado a partir do código que o p1_lookup devolve
+const MUNI_BY_IBGE={};
 function openEnriq(){const card=document.getElementById('card');
   card.innerHTML='<h3>⬆ Enriquecer arquivo pelo Painel 1 <span class=x onclick=fecharPerfil()>✕</span></h3>'
    +'<div class=bd><div class=sec><h4>1 · Arquivo (CSV ou Excel — sem limite de linhas; precisa ter coluna de nome ou CPF)</h4>'
@@ -737,7 +739,8 @@ async function enrRun(){
   const UFSET=new Set(Object.values(UFNOME));
   const ufSigla=v=>{v=norm(v);return UFSET.has(v)?v:(UFNOME[v]||'');};
   const mByN={}, mByNU={};   // nome→ibge (só se único no país) e nome|uf→ibge
-  munis.forEach(m=>{const k=norm(m.nome);mByN[k]=(k in mByN)?null:m.ibge;mByNU[k+'|'+m.uf]=m.ibge;});
+  munis.forEach(m=>{const k=norm(m.nome);mByN[k]=(k in mByN)?null:m.ibge;mByNU[k+'|'+m.uf]=m.ibge;
+    if(!MUNI_BY_IBGE[m.ibge])MUNI_BY_IBGE[m.ibge]={cidade:m.nome,uf:m.uf};});
   const ibgeDe=(cid,uf)=>{const k=norm(cid);if(!k)return '';
     if(uf){const s=ufSigla(uf);if(s&&mByNU[k+'|'+s])return mByNU[k+'|'+s];}
     return mByN[k]||'';};
@@ -756,16 +759,19 @@ async function enrRun(){
   // "só quando vazio": localiza a coluna equivalente no arquivo p/ cada campo
   const onlyNull=document.getElementById('enr-onlynull').checked;
   const FCOL={telefone:/TELEFONE|\bFONE\b|CELULAR|WHATS/,email:/E-?MAIL/,instagram:/INSTAGRAM/,
-    contato_adicional:/CONTATO/,orgao:/ORGAO|ENTIDADE|LOTACAO/,setor:/SETOR/,
+    contato_adicional:/CONTATO/,municipio:/CIDADE|MUNICIPIO/,uf:/^UF$|SG.?UF|ESTADO/,orgao:/ORGAO|ENTIDADE|LOTACAO/,setor:/SETOR/,
     cargo_funcao:/CARGO|FUNCAO/,remuneracao:/REMUNERACAO|SALARIO|VENCIMENTO|PROVENTO/,data_nascimento:/NASC/};
   const hn=ENR.hdr.map(norm);
   const srcCol={}; flds.forEach(f=>{if(FCOL[f]){const j=hn.findIndex(h=>FCOL[f].test(h));if(j>=0)srcCol[f]=j;}});
   let nc=0,nn=0,na=0,nf=0;
   const rows2=ENR.rows.map((r,i)=>{const x=out[i]||{},d=x.dados||{};
     if(x.status==='cpf')nc++;else if(x.status==='nome')nn++;else if((''+x.status).indexOf('ambiguo')===0)na++;else nf++;
+    const mu=MUNI_BY_IBGE[d.ibge]||{};
     return r.concat([x.status||''],flds.map(f=>{
       // preserva o dado do arquivo: se a coluna equivalente já tem valor, não preenche
       if(onlyNull&&f in srcCol&&(''+(r[srcCol[f]]||'')).trim()!=='')return '';
+      if(f==='municipio')return mu.cidade||'';
+      if(f==='uf')return mu.uf||'';
       let v=d[f]==null?'':''+d[f];
       if(f==='data_nascimento'&&/^\d{4}-\d{2}-\d{2}$/.test(v))v=v.split('-').reverse().join('/');
       return v;}));});
