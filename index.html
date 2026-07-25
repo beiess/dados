@@ -719,6 +719,8 @@ function enrParse(ev){const f=ev.target.files[0];if(!f)return;
      +'<div style="font-size:11px;color:#57606a;margin-top:4px">Cidade + UF desambiguam municípios de mesmo nome entre estados (opcional, mas recomendado quando o arquivo tiver mais de uma UF).</div></div>'
      +'<div class=sec><h4>3 · Campos a preencher (voltam como colunas p1_*)</h4>'
      +ENRFLD.map(f=>'<label style="display:inline-flex;gap:5px;margin:2px 12px 2px 0"><input type=checkbox data-f='+f[0]+((f[0]==='telefone'||f[0]==='email')?' checked':'')+'> '+f[1]+'</label>').join('')
+     +'<div style="margin-top:8px"><label style="display:inline-flex;gap:6px;font-size:12.5px"><input type=checkbox id=enr-onlynull checked> <b>Preencher só quando o campo estiver vazio no arquivo</b></label>'
+     +'<div style="font-size:11px;color:#57606a;margin-top:3px">Se o seu arquivo já tem uma coluna equivalente (ex.: e-mail) com valor, o dado do Painel 1 só é escrito nas linhas em branco — nunca sobrescreve o que você já tem. Desmarque para trazer o dado do Painel 1 em todas as linhas.</div></div>'
      +'</div><div class=sec><button class=go id=enr-go style="background:#0d1117;color:#fff">Processar e baixar preenchido</button> <span id=enr-st style="font-size:12px;color:#57606a"></span></div>';
     document.getElementById('enr-go').addEventListener('click',enrRun);
   };
@@ -751,10 +753,20 @@ async function enrRun(){
     }
   }catch(e){st.textContent='erro: '+e.message;go.disabled=false;return;}
   const hdr2=ENR.hdr.concat(['p1_status'],flds.map(f=>'p1_'+f));
+  // "só quando vazio": localiza a coluna equivalente no arquivo p/ cada campo
+  const onlyNull=document.getElementById('enr-onlynull').checked;
+  const FCOL={telefone:/TELEFONE|\bFONE\b|CELULAR|WHATS/,email:/E-?MAIL/,instagram:/INSTAGRAM/,
+    contato_adicional:/CONTATO/,orgao:/ORGAO|ENTIDADE|LOTACAO/,setor:/SETOR/,
+    cargo_funcao:/CARGO|FUNCAO/,remuneracao:/REMUNERACAO|SALARIO|VENCIMENTO|PROVENTO/,data_nascimento:/NASC/};
+  const hn=ENR.hdr.map(norm);
+  const srcCol={}; flds.forEach(f=>{if(FCOL[f]){const j=hn.findIndex(h=>FCOL[f].test(h));if(j>=0)srcCol[f]=j;}});
   let nc=0,nn=0,na=0,nf=0;
   const rows2=ENR.rows.map((r,i)=>{const x=out[i]||{},d=x.dados||{};
     if(x.status==='cpf')nc++;else if(x.status==='nome')nn++;else if((''+x.status).indexOf('ambiguo')===0)na++;else nf++;
-    return r.concat([x.status||''],flds.map(f=>{let v=d[f]==null?'':''+d[f];
+    return r.concat([x.status||''],flds.map(f=>{
+      // preserva o dado do arquivo: se a coluna equivalente já tem valor, não preenche
+      if(onlyNull&&f in srcCol&&(''+(r[srcCol[f]]||'')).trim()!=='')return '';
+      let v=d[f]==null?'':''+d[f];
       if(f==='data_nascimento'&&/^\d{4}-\d{2}-\d{2}$/.test(v))v=v.split('-').reverse().join('/');
       return v;}));});
   const ws=XLSX.utils.aoa_to_sheet([hdr2].concat(rows2));
