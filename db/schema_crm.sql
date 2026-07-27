@@ -1271,3 +1271,9 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 --   seq scan (oftalmologista standalone = 14,5s → 0,25s). responsabilidade é esparsa
 --   (34k) e já era rápida standalone, não precisou de índice. Combinado c/ cidade/
 --   nome sempre foi rápido (ix_p1_ibge / trgm de nome). Ver crm_v28 (busca dinâmica).
+
+-- Filtro de Setor (2026-07-27): 3º filtro de nível pessoa (f-setor → p_setor), mesmo
+-- padrão de cargo/responsabilidade (loadP1/suggest/applyAll/fclear/Enter; personF inclui
+-- setor). setor ~31% preench.; SEM índice — standalone raro ~3s (varredura menor que a
+-- de cargo_funcao 96%), combinado c/ cidade/nome 0,4-0,8s. Se precisar acelerar o
+-- standalone raro, criar gin trgm em setor. Responsabilidade (f-respab) já estava no ar.
