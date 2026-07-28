@@ -1277,3 +1277,14 @@ create policy acessos_sel on crm_acessos for select to authenticated using (org_
 -- setor). setor ~31% preench.; SEM índice — standalone raro ~3s (varredura menor que a
 -- de cargo_funcao 96%), combinado c/ cidade/nome 0,4-0,8s. Se precisar acelerar o
 -- standalone raro, criar gin trgm em setor. Responsabilidade (f-respab) já estava no ar.
+
+-- Sigilo por papel (2026-07-27): contatos (email/telefone) NUNCA foram omitidos —
+-- svLine/ctline renderizam p/ todos, inclusive vendedor. O que havia: body.protect
+-- (user-select:none em .ctval/.snm/... + marca d'água #wm) e bloqueios copy/cut/
+-- contextmenu/dragstart/Ctrl+P/S aplicados a TODOS (inclusive admin). Ajuste: admin
+-- real (window.IS_ADMIN, de funcionarios.funcao/acesso_irrestrito) fica ISENTO —
+-- handlers dão return se IS_ADMIN; no hydrate remove body.protect (libera seleção/
+-- cópia/print e some a marca d'água) e esconde .seclock. Não-admin mantém tudo.
+-- OBS: body.admin é só toggle de demo (#adm), NÃO o papel real — usar window.IS_ADMIN.
+-- LIMITE: screenshot de SO não é bloqueável por web; a marca d'água (usuário+data/hora)
+-- é o deterrente/identificador p/ não-admin.
