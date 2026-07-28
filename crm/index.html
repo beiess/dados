@@ -1457,11 +1457,12 @@
   let tmr; const toast=document.getElementById('toast'), tmsg=document.getElementById('toast-msg');
   function warn(msg){tmsg.textContent=msg;toast.classList.add('on');clearTimeout(tmr);tmr=setTimeout(()=>toast.classList.remove('on'),2200);}
   // bloqueia copiar / recortar / menu de contexto / arrastar
-  ['copy','cut'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();warn('Cópia bloqueada — segredo de negócio Plenum.');}));
-  document.addEventListener('contextmenu',e=>{e.preventDefault();warn('Menu bloqueado — dados protegidos.');});
-  document.addEventListener('dragstart',e=>e.preventDefault());
+  ['copy','cut'].forEach(ev=>document.addEventListener(ev,e=>{if(window.IS_ADMIN)return;e.preventDefault();warn('Cópia bloqueada — segredo de negócio Plenum.');}));
+  document.addEventListener('contextmenu',e=>{if(window.IS_ADMIN)return;e.preventDefault();warn('Menu bloqueado — dados protegidos.');});
+  document.addEventListener('dragstart',e=>{if(window.IS_ADMIN)return;e.preventDefault();});
   // Ctrl/Cmd+P e Ctrl/Cmd+S
   document.addEventListener('keydown',e=>{
+    if(window.IS_ADMIN)return;
     if((e.ctrlKey||e.metaKey)&&['p','s'].includes(e.key.toLowerCase())){e.preventDefault();warn('Impressão/exportação bloqueada — sigilo de negócio.');}
   });
 
@@ -2290,6 +2291,7 @@
     if(!window.GESTOR){const ab=document.querySelector('.adminbox'); if(ab)ab.style.display='none';}
     const ADMIN=!!(meRow&&(meRow.funcao==='admin'||meRow.acesso_irrestrito));
     window.IS_ADMIN=ADMIN;
+    if(ADMIN){document.body.classList.remove('protect');document.querySelectorAll('.seclock').forEach(el=>el.style.display='none');}
     if(!ADMIN){
       document.querySelectorAll('.nav a:not(#nav-campanhas), .nav .sec').forEach(el=>el.style.display='none');
     }
