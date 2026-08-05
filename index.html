@@ -86,7 +86,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.3</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.4</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -346,22 +346,27 @@ async function loadPanel(n,ids){
   const todos=ids.length>300, key=(n===1?'ibge':'cod_ibge');
   const inq=(n===3||todos)?'':'&'+key+'=in.('+inList(ids)+')';
   if(n===1){
-    // filtros independentes/complementares no SERVIDOR: municipal (por ibge) ∪ demais esferas (esfera/uf);
-    // tipo_orgao (coluna materializada) entra como E-lógico nas duas partes
-    const tq=selTOrg.size?'&tipo_orgao=in.('+[...selTOrg].map(t=>encodeURIComponent('"'+t+'"')).join(',')+')':'';
+    // filtros independentes/complementares no SERVIDOR: municipal (por ibge) ∪ demais esferas.
+    // REGRA DE OURO da paginação: cada consulta usa SÓ igualdades de valor único que casam com
+    // um prefixo de índice + order=id — IN-list múltiplo quebra a ordem global e vira seq scan
+    const tipos=[...selTOrg], tq1=t=>t?'&tipo_orgao=eq.'+encodeURIComponent(t):'';
     const wantMun=p1WantMun(ids), wantOut=p1WantOut(ids), outras=[...selEsf].filter(e=>e!=='municipal');
+    const ufs=(selUF.size&&selUF.size<UFS27.length)?[...selUF]:[null];
+    const combos=(wantOut?outras.length*ufs.length*(tipos.length||1):0);
+    if(combos>80){showErr('Combinação muito ampla ('+combos+' consultas): selecione menos UFs ou tipos por vez — ou marque todas as UFs p/ remover o recorte de UF.');return;}
     loading('Carregando Painel 1 (servidores)'+(wantMun?' · '+(todos?'todos os':ids.length)+' município(s)':'')
       +(wantOut?' · '+(outras.length===ESFS.length-1?'todas as esferas não-municipais':outras.join('+'))+(selUF.size?' de '+selUF.size+' UF(s)':' (Brasil)'):'')
-      +(selTOrg.size?' · tipo: '+[...selTOrg].join('/'):'')+'…');
+      +(tipos.length?' · tipo: '+tipos.join('/'):'')+'…');
     let p1=[],cap1=0;
-    if(wantMun){ // municipal: por município (ibge); "todos" = só linhas com ibge (exclui estaduais)
-      p1=p1.concat(await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+(todos?'&ibge=not.is.null':inq)+tq,prog));
-      cap1=Math.max(cap1,_lastCapped);}
-    if(wantOut){ // demais esferas: UMA consulta por esfera/uf (índices (uf,esfera,id) e (esfera,id))
-      let q='&esfera=in.('+outras.join(',')+')';
-      if(selUF.size&&selUF.size<UFS27.length)q+='&uf=in.('+[...selUF].join(',')+')';
-      p1=p1.concat(await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+q+tq,prog));
-      cap1=Math.max(cap1,_lastCapped);}
+    if(wantMun){ // municipal: por município (ibge in-list; resultado pequeno) ou "todos"+tipo (índice parcial (tipo_orgao,id) where ibge not null)
+      for(const t of (tipos.length?tipos:[null])){
+        p1=p1.concat(await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+(todos?'&ibge=not.is.null':inq)+tq1(t),prog));
+        cap1=Math.max(cap1,_lastCapped);}}
+    if(wantOut){ // demais esferas: 1 consulta por esfera×UF×tipo (prefixos: (esfera,id)/(uf,esfera,id)/(esfera,tipo,id)/(uf,esfera,tipo,id))
+      for(const e of outras)for(const u of ufs)for(const t of (tipos.length?tipos:[null])){
+        p1=p1.concat(await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+'&esfera=eq.'+e+(u?'&uf=eq.'+u:'')+tq1(t),prog));
+        cap1=Math.max(cap1,_lastCapped);}}
+    const seen1=new Set();p1=p1.filter(r=>!seen1.has(r.id)&&(seen1.add(r.id),true)); // união municipal∪esferas pode sobrepor (linha com ibge e esfera não-municipal)
     capped[1]=cap1;
     dados[1]=p1.map(r=>{const e=cadByKey[r.ibge+'|'+norm(r.orgao)]||{};
       return Object.assign({},r,{telefone:r.telefone||e.contato||'',email:r.email||e.email||'',instagram:r.instagram||igram(e.redes_sociais),contato_adicional:r.contato_adicional||''});});
