@@ -86,11 +86,11 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.2</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.3</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
-  <button class=mbtn id=tsel onclick="toggleTOrg(event)" title="Tipo de órgão (classificado pelo nome) — filtra o que está carregado, na hora">Tipo de órgão ▾</button>
+  <button class=mbtn id=tsel onclick="toggleTOrg(event)" title="Tipo de órgão — filtra o carregado na hora (Aplicar) ou busca direto no servidor (Carregar), combinável com os demais filtros">Tipo de órgão ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
   <span id=cnt></span><span class=sp></span>
@@ -284,32 +284,32 @@ function mfilter(q){q=norm(q);const lst=document.getElementById('mlst');if(!lst)
     '<label><input type=checkbox '+(sel.has(m.ibge)?'checked':'')+' onchange="msel2(\''+m.ibge+'\',this.checked)"> '+esc(m.nome)+' <span style="color:#8c959f">'+(m.uf||'MG')+(m.n1?' · '+m.n1:'')+'</span></label>').join('');}
 function msel2(ib,on){on?sel.add(ib):sel.delete(ib);}
 function mall(on){sel=new Set(on?muniList().map(m=>m.ibge):[]);closePop();toggleMuni({target:document.getElementById('msel')});}
-// filtros do cabeçalho: UF (servidores estaduais, origem p12<uf>:*) e Esfera (municipal×estadual)
+// filtros do cabeçalho: compõem UMA consulta no servidor (colunas materializadas esfera/uf/ibge/tipo_orgao)
 const UFS27=['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
-let selUF=new Set(), selEsf=new Set(['municipal','estadual']), P12O={};
-async function ensureP12O(){if(Object.keys(P12O).length)return;
-  try{const {data}=await sb.rpc('p1_origens');
-    (data||[]).forEach(r=>{const u=r.origem.slice(3,5).toUpperCase();(P12O[u]=P12O[u]||[]).push(r);});}catch(e){}}
-function ufN(u){return (P12O[u]||[]).reduce((s,r)=>s+(+r.n||0),0);}
+const ESFS=[['municipal','Municipal (MG, por município)'],['estadual','Estadual e outras fontes'],['federal','Federal (SIAPE/Congresso)'],['justica','Justiça (magistrados/MP)'],['privado','Privado (eventos/empresas)']];
+let selUF=new Set(), selEsf=new Set(['municipal','estadual']), ESFUF=null;
+async function ensureEsfN(){if(ESFUF)return;
+  try{const {data}=await sb.rpc('p1_esferas');ESFUF=data||[];}catch(e){ESFUF=[];}}
+function ufN(u){return (ESFUF||[]).filter(r=>r.uf===u&&r.esfera!=='municipal').reduce((s,r)=>s+(+r.n||0),0);}
+function esfN(e){return (ESFUF||[]).filter(r=>r.esfera===e).reduce((s,r)=>s+(+r.n||0),0);}
 function toggleUF(ev){closePop();const p=document.createElement('div');p.className='pop';p.id='upop';
   const r=ev.target.getBoundingClientRect();p.style.left=r.left+'px';p.style.top=(r.bottom+4)+'px';
-  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Servidores por UF (estaduais e outras fontes) · municipais: use “Municípios ▾”</div>'
+  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Recorte por UF (esferas não-municipais; combina com Esfera e Tipo) · municipais: use “Municípios ▾”</div>'
     +'<div class=row><button onclick="uall(true)">marcar todas</button><button onclick="uall(false)">limpar</button></div>'
     +'<div class=lst style="columns:2" id=ulst>carregando…</div>'
     +'<div class=row><button onclick="carregar()" style="background:#0d1117;color:#fff">Carregar</button></div>';
   document.body.appendChild(p);
-  ensureP12O().then(()=>{const l=document.getElementById('ulst');if(!l)return;
+  ensureEsfN().then(()=>{const l=document.getElementById('ulst');if(!l)return;
     l.innerHTML=UFS27.map(u=>'<label><input type=checkbox '+(selUF.has(u)?'checked':'')+' onchange="usel2(\''+u+'\',this.checked)"> '+u+' <span style="color:#8c959f">('+ufN(u).toLocaleString('pt-BR')+')</span></label>').join('');});}
 function usel2(u,on){on?selUF.add(u):selUF.delete(u);}
 function uall(on){selUF=new Set(on?UFS27:[]);closePop();toggleUF({target:document.getElementById('usel')});}
 function toggleEsf(ev){closePop();const p=document.createElement('div');p.className='pop';p.id='epop';
   const r=ev.target.getBoundingClientRect();p.style.left=r.left+'px';p.style.top=(r.bottom+4)+'px';
-  p.innerHTML='<div class=lst>'
-    +'<label><input type=checkbox '+(selEsf.has('municipal')?'checked':'')+' onchange="esel2(\'municipal\',this.checked)"> Municipal — por municípios (MG)</label>'
-    +'<label><input type=checkbox '+(selEsf.has('estadual')?'checked':'')+' onchange="esel2(\'estadual\',this.checked)"> Estadual e outras fontes — por UF</label>'
-    +'</div><div style="font-size:11px;color:#57606a;margin-top:6px">Federal / Justiça / AL: Painel 12</div>'
+  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Cada esfera pode ser carregada sozinha ou combinada com UF, municípios e Tipo de órgão</div>'
+    +'<div class=lst id=elst>'+ESFS.map(([k,lb])=>'<label><input type=checkbox '+(selEsf.has(k)?'checked':'')+' onchange="esel2(\''+k+'\',this.checked)"> '+lb+' <span class=esfn data-esf="'+k+'" style="color:#8c959f"></span></label>').join('')+'</div>'
     +'<div class=row><button onclick="carregar()" style="background:#0d1117;color:#fff">Carregar</button></div>';
-  document.body.appendChild(p);}
+  document.body.appendChild(p);
+  ensureEsfN().then(()=>{document.querySelectorAll('#elst .esfn').forEach(s=>{const n=esfN(s.dataset.esf);if(n)s.textContent='('+n.toLocaleString('pt-BR')+')';});});}
 function esel2(k,on){on?selEsf.add(k):selEsf.delete(k);}
 // Tipo de órgão — classificação pelo nome, filtro CLIENT-SIDE sobre o que está carregado
 let selTOrg=new Set();
@@ -329,10 +329,10 @@ function tipoOrgao(o){o=norm(o||'');if(!o)return 'Outros';
   return 'Outros';}
 function toggleTOrg(ev){closePop();const p=document.createElement('div');p.className='pop';p.id='tpop';
   const r=ev.target.getBoundingClientRect();p.style.left=r.left+'px';p.style.top=(r.bottom+4)+'px';
-  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Classificação pelo nome do órgão — aplica na hora, sobre o que está carregado</div>'
+  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Classificação pelo nome do órgão. <b>Aplicar</b> filtra na hora o que está carregado; <b>Carregar</b> busca no servidor só esse(s) tipo(s) — combinável com Esfera/UF/Municípios, sem precisar de carga prévia</div>'
     +'<div class=row><button onclick="tall()">limpar (todos)</button></div>'
     +'<div class=lst>'+TORGS.map((t,i)=>'<label><input type=checkbox '+(selTOrg.has(t)?'checked':'')+' onchange="tsel2('+i+',this.checked)"> '+t+'</label>').join('')+'</div>'
-    +'<div class=row><button onclick="tapply()" style="background:#0d1117;color:#fff">Aplicar</button></div>';
+    +'<div class=row><button onclick="tapply()">Aplicar (no carregado)</button><button onclick="tapply();carregar()" style="background:#0d1117;color:#fff">Carregar do servidor</button></div>';
   document.body.appendChild(p);}
 function tsel2(i,on){const t=TORGS[i];on?selTOrg.add(t):selTOrg.delete(t);}
 function tall(){selTOrg=new Set();tapply();}
@@ -346,17 +346,22 @@ async function loadPanel(n,ids){
   const todos=ids.length>300, key=(n===1?'ibge':'cod_ibge');
   const inq=(n===3||todos)?'':'&'+key+'=in.('+inList(ids)+')';
   if(n===1){
-    const wantMun=selEsf.has('municipal')&&ids.length>0, wantEst=selEsf.has('estadual')&&selUF.size>0;
-    loading('Carregando Painel 1 (servidores)'+(wantMun?' · '+ids.length+' município(s)':'')+(wantEst?' · '+selUF.size+' UF(s) estaduais':'')+'…');
+    // filtros independentes/complementares no SERVIDOR: municipal (por ibge) ∪ demais esferas (esfera/uf);
+    // tipo_orgao (coluna materializada) entra como E-lógico nas duas partes
+    const tq=selTOrg.size?'&tipo_orgao=in.('+[...selTOrg].map(t=>encodeURIComponent('"'+t+'"')).join(',')+')':'';
+    const wantMun=p1WantMun(ids), wantOut=p1WantOut(ids), outras=[...selEsf].filter(e=>e!=='municipal');
+    loading('Carregando Painel 1 (servidores)'+(wantMun?' · '+(todos?'todos os':ids.length)+' município(s)':'')
+      +(wantOut?' · '+(outras.length===ESFS.length-1?'todas as esferas não-municipais':outras.join('+'))+(selUF.size?' de '+selUF.size+' UF(s)':' (Brasil)'):'')
+      +(selTOrg.size?' · tipo: '+[...selTOrg].join('/'):'')+'…');
     let p1=[],cap1=0;
     if(wantMun){ // municipal: por município (ibge); "todos" = só linhas com ibge (exclui estaduais)
-      p1=p1.concat(await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+(todos?'&ibge=not.is.null':inq),prog));
+      p1=p1.concat(await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+(todos?'&ibge=not.is.null':inq)+tq,prog));
       cap1=Math.max(cap1,_lastCapped);}
-    if(wantEst){ // por UF (base p12, ibge nulo): 1 busca POR ORIGEM EXATA — igualdade pagina no índice sem sort
-      await ensureP12O();
-      for(const u of [...selUF])for(const o of (P12O[u]||[])){
-        p1=p1.concat(await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+'&origem=eq.'+encodeURIComponent(o.origem),prog));
-        cap1=Math.max(cap1,_lastCapped);}}
+    if(wantOut){ // demais esferas: UMA consulta por esfera/uf (índices (uf,esfera,id) e (esfera,id))
+      let q='&esfera=in.('+outras.join(',')+')';
+      if(selUF.size&&selUF.size<UFS27.length)q+='&uf=in.('+[...selUF].join(',')+')';
+      p1=p1.concat(await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+q+tq,prog));
+      cap1=Math.max(cap1,_lastCapped);}
     capped[1]=cap1;
     dados[1]=p1.map(r=>{const e=cadByKey[r.ibge+'|'+norm(r.orgao)]||{};
       return Object.assign({},r,{telefone:r.telefone||e.contato||'',email:r.email||e.email||'',instagram:r.instagram||igram(e.redes_sociais),contato_adicional:r.contato_adicional||''});});
@@ -382,13 +387,18 @@ async function loadPanel(n,ids){
     dados[7]=await sbfetch('servidores_estado_2026','select='+P7C.join(','),prog);capped[7]=_lastCapped;}
   panelSig[n]=(n===3||n===7)?'ALL':curSig; fstate[n]={};sortState[n]=null;expanded[n]=new Set();
 }
+// quais componentes da consulta P1 estão ativos com os filtros atuais:
+// municipal precisa de municípios; as demais esferas rodam com qualquer recorte
+// (UF ou Tipo) — ou sozinhas, se “municipal” estiver desmarcada
+function p1WantMun(ids){return selEsf.has('municipal')&&ids.length>0;}
+function p1WantOut(ids){const outras=[...selEsf].filter(e=>e!=='municipal');
+  return outras.length>0&&(selUF.size>0||selTOrg.size>0||!selEsf.has('municipal'));}
 async function carregar(){closePop();const ids=[...sel];
-  const temMun=selEsf.has('municipal')&&ids.length>0, temEst=selEsf.has('estadual')&&selUF.size>0;
-  if(!temMun&&!temEst){showErr('Selecione município(s) ou UF(s) estaduais — confira também o filtro Esfera.');return;}
+  if(!p1WantMun(ids)&&!p1WantOut(ids)){showErr('Combine os filtros: município(s) p/ esfera municipal; p/ as demais esferas basta marcar a esfera (e opcionalmente UF/Tipo). Dica: desmarque “Municipal” p/ carregar uma esfera inteira.');return;}
   document.getElementById('msel').textContent=ids.length?('Municípios ('+ids.length+') ▾'):'Municípios ▾';
   document.getElementById('usel').textContent=selUF.size?('UF ('+selUF.size+') ▾'):'UF ▾';
-  document.getElementById('esel').textContent='Esfera ('+(selEsf.size===2?'todas':(selEsf.has('municipal')?'mun':'est'))+') ▾';
-  curSig=ids.slice().sort().join(',')+'|u:'+[...selUF].sort().join(',')+'|e:'+[...selEsf].sort().join(',');
+  document.getElementById('esel').textContent='Esfera ('+(selEsf.size===ESFS.length?'todas':selEsf.size)+') ▾';
+  curSig=ids.slice().sort().join(',')+'|u:'+[...selUF].sort().join(',')+'|e:'+[...selEsf].sort().join(',')+'|t:'+[...selTOrg].sort().join(',');
   dados[1]=[];dados[4]=[];dados[5]=[];dados[6]=[];dados[10]=[];dados[11]=[];panelSig[4]=panelSig[5]=panelSig[6]=panelSig[10]=panelSig[11]='';
   try{await loadPanel(1,ids);}catch(e){showErr(e.message);return;}
   tab=1;setTabUI();render();
@@ -400,7 +410,7 @@ async function setTab(n){tab=n;setTabUI();closePop();
   if(n===13&&!dados[13].length){renderCT();return;}
   if(n===3||n===7){if(panelSig[n]!=='ALL'){try{await loadPanel(n,[]);}catch(e){showErr('Painel '+(n===7?8:n)+': '+e.message);return;}}}
   else if(n===1||n===4||n===5||n===6||n===10||n===11){
-    const okP1=(n===1&&selEsf.has('estadual')&&selUF.size>0); // P1 também carrega só por UF estadual
+    const okP1=(n===1&&p1WantOut([...sel])); // P1 também carrega sem municípios (esfera/UF/tipo)
     if(!sel.size && !okP1 && panelSig[n]!=='XREF'){showErr('Selecione município(s) em “Municípios ▾” e clique Carregar.');return;}
     if(panelSig[n]!==curSig && panelSig[n]!=='XREF' && (sel.size||okP1)){try{await loadPanel(n,[...sel]);}catch(e){showErr(e.message);return;}}
   }
