@@ -61,6 +61,8 @@
   .rt-dot.on{background:#5FCF7F;box-shadow:0 0 0 3px color-mix(in srgb,#5FCF7F 25%,transparent)}
   .me .av{width:30px;height:30px;border-radius:50%;background:#7A5296;color:#fff;display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
   .me b{color:#fff;font-size:12.5px;display:block;font-weight:600}.me span{font-size:11px;color:#8299a0}
+  .me .sairbtn{margin-left:auto;background:none;border:1px solid #1C2F35;color:#8299a0;border-radius:8px;padding:4px 9px;font:inherit;font-size:10.5px;cursor:pointer;flex:none}
+  .me .sairbtn:hover{color:#fff;border-color:#8299a0}
 
   .main{display:flex;flex-direction:column;min-width:0}
   .top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:10px 20px}
@@ -568,6 +570,8 @@
   .p1block>.bt .bt-sub{font-family:var(--mono);font-size:10px}
 
   .fsel input{font-family:var(--sans);font-size:12.5px;font-weight:550;color:var(--ink);border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:6px 9px;min-width:150px;letter-spacing:normal;text-transform:none}
+  .fchk{display:flex;align-items:center;gap:6px;align-self:end;font-size:11px;font-weight:600;color:var(--ink);border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:7px 10px;cursor:pointer;letter-spacing:normal;text-transform:none;white-space:nowrap}
+  .fchk input{accent-color:var(--accent);cursor:pointer;margin:0}
   .fsel input::placeholder{color:var(--faint);font-weight:400}
   .fsel input:focus{outline:2px solid var(--accent);outline-offset:1px}
 
@@ -664,6 +668,8 @@
         <label class="fsel">Cargo / função<input id="f-cargo" placeholder="ex.: professor, engenheiro… (Enter)" autocomplete="off"></label>
         <label class="fsel">Setor<input id="f-setor" placeholder="ex.: saúde, educação… (Enter)" autocomplete="off"></label>
         <label class="fsel">Responsabilidade<input id="f-respab" placeholder="ex.: pregoeiro, ordenador… (Enter)" autocomplete="off"></label>
+        <label class="fchk" title="Mostrar apenas servidores com telefone; desmarcado, traz todos os registros do Painel 1"><input type="checkbox" id="f-tel" checked>📞 Só com telefone</label>
+        <label class="fchk" title="Mostrar apenas servidores com e-mail; desmarcado, traz todos os registros do Painel 1"><input type="checkbox" id="f-email">✉ Só com e-mail</label>
         <label class="fsel">Nome do servidor<input id="f-nome" placeholder="digite 3+ letras e selecione…" autocomplete="off"></label>
         <div class="namechips" id="namechips"></div>
         <span class="fb-spacer"></span>
@@ -1333,7 +1339,7 @@
   // ===== FILTROS (estado, cidade, esfera, responsável, tema) =====
   const vTree=document.getElementById('view-tree'), vStage=document.getElementById('view-stage');
   const F={uf:document.getElementById('f-uf'),cid:document.getElementById('f-cid'),esf:document.getElementById('f-esf'),resp:document.getElementById('f-resp'),tema:document.getElementById('f-tema')};
-  const pFilt=()=>({cargo:((document.getElementById('f-cargo')||{}).value||'').trim(),setor:((document.getElementById('f-setor')||{}).value||'').trim(),resp:((document.getElementById('f-respab')||{}).value||'').trim()});
+  const pFilt=()=>({cargo:((document.getElementById('f-cargo')||{}).value||'').trim(),setor:((document.getElementById('f-setor')||{}).value||'').trim(),resp:((document.getElementById('f-respab')||{}).value||'').trim(),tel:!!(document.getElementById('f-tel')||{}).checked,email:!!(document.getElementById('f-email')||{}).checked});
   function resetBuiltDetails(){document.querySelectorAll('#view-tree .edetail[data-built]').forEach(d=>{delete d.dataset.built;d.innerHTML='';d.closest('.tnode.open')&&d.closest('.tnode.open').classList.remove('open');});}
   const fcount=document.getElementById('fcount');
   const uniq=a=>[...new Set(a)].sort((x,y)=>x.localeCompare(y,'pt'));
@@ -1363,7 +1369,7 @@
     fcount.textContent=vis+(vis===1?' entidade':' entidades');
   }
   Object.values(F).forEach(s=>s.addEventListener('change',()=>{syncFilterOptions();applyAll();}));
-  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');syncFilterOptions();['q-serv','f-nome','f-cargo','f-setor','f-respab'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});NAMESEL.length=0;renderNameChips();applyAll();});
+  document.getElementById('fclear').addEventListener('click',()=>{Object.values(F).forEach(s=>s.value='');syncFilterOptions();['q-serv','f-nome','f-cargo','f-setor','f-respab'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const _ft=document.getElementById('f-tel');if(_ft)_ft.checked=true;const _fe=document.getElementById('f-email');if(_fe)_fe.checked=false;NAMESEL.length=0;renderNameChips();resetBuiltDetails();applyAll();});
 
   // TABS -> alterna árvore (Todos) x tabela por estágio
   document.getElementById('tabs').addEventListener('click',e=>{
@@ -2287,7 +2293,8 @@
     ME=meRow?TEAM.find(t=>t.id===meRow.id):null; window.ME=ME; window.MEID=meRow?meRow.id:null;
     window.GESTOR=!!(meRow&&(meRow.funcao!=='vendedor'||meRow.acesso_irrestrito));
     CURRENT=meRow?meRow.nome:(user.email||'—'); USER=CURRENT; renderWM();
-    document.getElementById('me-box').innerHTML='<div class="av" style="background:#4FB8C4">'+ini(CURRENT)+'</div><div><b>'+CURRENT+'</b><span>'+(meRow?(meRow.funcao+(meRow.acesso_irrestrito?' · acesso irrestrito':'')):'sem cadastro de funcionário')+'</span></div>';
+    document.getElementById('me-box').innerHTML='<div class="av" style="background:#4FB8C4">'+ini(CURRENT)+'</div><div><b>'+CURRENT+'</b><span>'+(meRow?(meRow.funcao+(meRow.acesso_irrestrito?' · acesso irrestrito':'')):'sem cadastro de funcionário')+'</span></div><button class="sairbtn" id="btn-sair" title="Encerrar sessão">Sair</button>';
+    document.getElementById('btn-sair').addEventListener('click',async()=>{await sbc.auth.signOut();location.reload();});
     if(!window.GESTOR){const ab=document.querySelector('.adminbox'); if(ab)ab.style.display='none';}
     const ADMIN=!!(meRow&&(meRow.funcao==='admin'||meRow.acesso_irrestrito));
     window.IS_ADMIN=ADMIN;
@@ -2525,7 +2532,7 @@
         block._skip=new Set();
         let achados=[];
         for(const termo of window.P1RAW.slice(0,5)){
-          try{const{data:hs}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_nome:String(termo).replace(/[%_]/g,''),p_cargo:_pf.cargo||null,p_setor:_pf.setor||null,p_resp:_pf.resp||null,p_limit:20});
+          try{const{data:hs}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_nome:String(termo).replace(/[%_]/g,''),p_cargo:_pf.cargo||null,p_setor:_pf.setor||null,p_resp:_pf.resp||null,p_com_tel:_pf.tel||null,p_com_email:_pf.email||null,p_limit:20});
             (hs||[]).forEach(p=>{if(!block._skip.has(norm(p.nome))){block._skip.add(norm(p.nome));achados.push(p);}});}catch(e){}
         }
         if(achados.length){
@@ -2535,7 +2542,7 @@
           body.querySelectorAll('.p1hits .snm').forEach(b=>revealHit(b));
         }
       }
-      const {data,error}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_cargo:_pf.cargo||null,p_setor:_pf.setor||null,p_resp:_pf.resp||null,p_limit:1000,p_offset:offset});
+      const {data,error}=await sbc.rpc('crm_buscar_servidores',{p_entidade:nd.id,p_cargo:_pf.cargo||null,p_setor:_pf.setor||null,p_resp:_pf.resp||null,p_com_tel:_pf.tel||null,p_com_email:_pf.email||null,p_limit:1000,p_offset:offset});
       if(error)throw error;
       const seen=(window.SRVN&&window.SRVN[nd.id])||[];
       const novos=(data||[]).filter(p=>p.nome&&!seen.includes(norm(p.nome))&&!(block._skip&&block._skip.has(norm(p.nome))));
@@ -2746,7 +2753,7 @@
       if(!emp){warn('⚠ Cadastre ao menos uma empresa (Matriz) antes de adicionar colaboradores.');return;}
       const payload={nome:rec.n,funcao:rec.fn==='Administrador'?'admin':rec.fn==='Gerente'?'gerente':'vendedor',
         cargo:rec.nv==='—'?null:rec.nv,area_atuacao:rec.ar==='—'?null:rec.ar,empresa_id:emp,
-        comissao_base_pct:rec.base,meta_individual:rec.meta,cpf:rec.cpf||null,situacao:rec.sit};
+        comissao_base_pct:rec.base,meta_individual:rec.meta,cpf:rec.cpf||(existing&&existing.cpf)||null,situacao:rec.sit};
       let fid=existing&&existing.id;
       if(fid){const{error}=await sbc.from('funcionarios').update(payload).eq('id',fid);if(error)throw error;}
       else{const{data,error}=await sbc.from('funcionarios').insert(payload).select('id').single();if(error)throw error;fid=data.id;rec.id=fid;}
@@ -3053,7 +3060,7 @@
     if(!HL.length&&!personF)return;
     let p1set=null;
     if(!NAMESEL.length&&(qs.length>=4||personF)&&typeof sbc!=='undefined'){
-      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:(qs.length>=4?raw.replace(/[%_]/g,''):null),p_cargo:pf.cargo||null,p_setor:pf.setor||null,p_resp:pf.resp||null,p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_limit:400});
+      try{const{data}=await sbc.rpc('crm_buscar_servidores',{p_nome:(qs.length>=4?raw.replace(/[%_]/g,''):null),p_cargo:pf.cargo||null,p_setor:pf.setor||null,p_resp:pf.resp||null,p_com_tel:pf.tel||null,p_com_email:pf.email||null,p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_limit:400});
         p1set=new Set((data||[]).map(x=>String(x.entidade_id)));}catch(e){}
     }
     let shown=0;
@@ -3089,6 +3096,7 @@
   document.getElementById('q-serv').addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});
   document.getElementById('f-nome').addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});
   ['f-cargo','f-setor','f-respab'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')applyAll();});});
+  ['f-tel','f-email'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',()=>{resetBuiltDetails();applyAll();});});
   document.getElementById('q-serv').addEventListener('input',e=>{document.getElementById('f-nome').value=e.target.value;});
   document.getElementById('f-nome').addEventListener('input',e=>{document.getElementById('q-serv').value=e.target.value;});
   document.getElementById('view-tree').addEventListener('change',e=>{
@@ -3165,7 +3173,7 @@
     // 2) Painel 1: assíncrono; só a ÚLTIMA requisição renderiza
     if(typeof sbc==='undefined')return;
     try{
-      const{data,error}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_cargo:pFilt().cargo||null,p_setor:pFilt().setor||null,p_resp:pFilt().resp||null,p_limit:12});
+      const{data,error}=await sbc.rpc('crm_buscar_servidores',{p_nome:raw.replace(/[%_]/g,''),p_uf:F.uf.value||null,p_cidade:F.cid.value||null,p_cargo:pFilt().cargo||null,p_setor:pFilt().setor||null,p_resp:pFilt().resp||null,p_com_tel:pFilt().tel||null,p_com_email:pFilt().email||null,p_limit:12});
       if(seq!==SUGSEQ)return;                              // chegou atrasada — outra busca assumiu
       if(!error)(data||[]).forEach(x=>add({n:x.nome,eid:x.entidade_id,ibge:'',mun:x.municipio||'—',org:'P1',p1:x.painel1_id}));
       sugPaint(inp,items,false);
