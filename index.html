@@ -80,7 +80,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <h2>Painel Estratégico</h2>
   <p>Acesso restrito. Dados identificados protegidos por login (LGPD/LAI).</p>
   <form onsubmit="entrar();return false;">
-  <input id=email type=email placeholder="e-mail" autocomplete=username>
+  <input id=email type=text placeholder="e-mail ou CPF" autocomplete=username>
   <input id=pw type=password placeholder="senha" autocomplete=current-password>
   <button type=submit>Entrar</button></form><div id=err></div>
 </div>
@@ -246,7 +246,9 @@ async function sbfetch(tbl,qs,onprog){
 }
 function inList(ids){return ids.join(',');}
 async function entrar(){document.getElementById('err').textContent='Entrando…';
-  const {error}=await sb.auth.signInWithPassword({email:document.getElementById('email').value.trim(),password:document.getElementById('pw').value});
+  const u=document.getElementById('email').value.trim(), d=u.replace(/\D/g,'');
+  const em=(d.length===11&&!u.includes('@'))?('cpf'+d+'@crm.plenumbrasil.com.br'):u;
+  const {error}=await sb.auth.signInWithPassword({email:em,password:document.getElementById('pw').value});
   if(error){document.getElementById('err').textContent=error.message;return;}start();}
 async function sair(){await sb.auth.signOut();location.reload();}
 async function crmBloqueado(){try{const {data:{user}}=await sb.auth.getUser();if(!user)return false;
