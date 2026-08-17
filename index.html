@@ -86,12 +86,14 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.4</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.5</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <button class=mbtn id=tsel onclick="toggleTOrg(event)" title="Tipo de órgão — filtra o carregado na hora (Aplicar) ou busca direto no servidor (Carregar), combinável com os demais filtros">Tipo de órgão ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
+  <input id=qsetor placeholder="setor…" style="width:120px" oninput=render() title="filtra pela coluna setor do painel carregado (contém o texto)">
+  <input id=qcargo placeholder="cargo…" style="width:120px" oninput=render() title="filtra por cargo/função do painel carregado (contém o texto)">
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
   <span id=cnt></span><span class=sp></span>
   <a href="crm/" class=mbtn style="text-decoration:none" title="Abrir o Plenum CRM (equipe comercial)">📇 CRM</a>
@@ -501,11 +503,15 @@ function ftoggle(v,on){const p=document.getElementById('fpop'),col=p._col;let s=
 function fall(on){const p=document.getElementById('fpop');fstate[tab][p._col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
 function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];let roles=(s&&s.size)?[...s]:p._vals;if(!roles.length){alert('selecione');return;}buscaResp(roles);}
 function limparFiltros(){fstate[tab]={};sortState[tab]=null;if(xref&&xref.tab===tab)xref=null;render();}
-function getFiltered(){const cols=colsOf(),rows=dados[tab]||[],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
+function getFiltered(){const cols=colsOf(),rows=dados[tab]||[],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];
+  const qs=document.getElementById('qsetor').value.trim().toLowerCase(),qc=document.getElementById('qcargo').value.trim().toLowerCase();
+  const scols=['setor','desc_lotacao_atual','sigla_lotacao_atual'].filter(c=>cols.includes(c)),ccols=['cargo_funcao','cargo','funcao','atividade','cargo_efetivo_atual'].filter(c=>cols.includes(c));const out=[];
   for(const r of rows){if(!r)continue;
     if(xref&&xref.tab===tab&&!xref.match(r))continue;
     if(tab===1&&selTOrg.size&&!selTOrg.has(tipoOrgao(r.orgao)))continue;
     if(q&&!cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q)))continue;
+    if(qs&&scols.length&&!scols.some(c=>(''+(r[c]||'')).toLowerCase().includes(qs)))continue;
+    if(qc&&ccols.length&&!ccols.some(c=>(''+(r[c]||'')).toLowerCase().includes(qc)))continue;
     let ok=true;for(const c in fs){if(!fs[c])continue;const cell=(''+(r[c]||'')).trim();
       if(MV[c]){if(!cell.split(' | ').some(x=>fs[c].has(x.trim()))){ok=false;break;}}else if(!fs[c].has(cell)){ok=false;break;}}
     if(ok)out.push(r);}
