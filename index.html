@@ -87,7 +87,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.6</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.7</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -197,16 +197,17 @@ function prog(n){var e=document.getElementById('progc');if(e)e.textContent=n.toL
 function showErr(msg){tw().innerHTML='<div class="msg err">⚠ '+esc(msg)+'</div>';}
 async function token(){const {data}=await sb.auth.getSession();return data&&data.session?data.session.access_token:null;}
 let _lastTotal=0,_lastCapped=0,capOverride=0;
-async function fetchRange(tbl,qs,t,from,to,withCount){
+async function fetchKey(tbl,qs,t,gtId,lteId,limit,withCount){
   // até 3 tentativas: 5xx/queda de rede numa página não aborta mais a carga inteira
   let last;
+  const url=SB_URL+'/rest/v1/'+tbl+'?'+qs+(gtId!=null?'&id=gt.'+gtId:'')+(lteId!=null?'&id=lte.'+lteId:'')+'&limit='+limit;
   for(let tent=0;tent<3;tent++){
     if(tent)await new Promise(rs=>setTimeout(rs,1200*tent));
     const c=new AbortController(), timer=setTimeout(()=>c.abort(),TIMEOUT);
-    const h={apikey:SB_ANON,Authorization:'Bearer '+t,'Range-Unit':'items','Range':from+'-'+to};
-    if(withCount)h['Prefer']='count=exact';
+    const h={apikey:SB_ANON,Authorization:'Bearer '+t};
+    if(withCount)h['Prefer']='count=planned';  // estimativa do planner: instantânea (count=exact em 4M+ linhas também estourava timeout)
     let r;
-    try{r=await fetch(SB_URL+'/rest/v1/'+tbl+'?'+qs,{headers:h,signal:c.signal});}
+    try{r=await fetch(url,{headers:h,signal:c.signal});}
     catch(e){clearTimeout(timer);
       last=new Error(e.name==='AbortError'?('tempo esgotado (>'+(TIMEOUT/1000)+'s) em '+tbl):('falha de rede em '+tbl+': '+e.message));continue;}
     clearTimeout(timer);
@@ -224,27 +225,31 @@ async function fetchRange(tbl,qs,t,from,to,withCount){
 // busca paginada: 1ª página traz a contagem total (Prefer:count=exact); o resto vem em PARALELO (pool)
 async function sbfetch(tbl,qs,onprog){
   const t=await token(); if(!t) throw new Error('sessão expirada — recarregue e faça login');
-  qs=qs.replace(/&?order=[^&]*/g,'')+'&order=id';  // paginação estável: ordena por chave única (PK) — sem isso as páginas paralelas podem repetir/pular linhas
+  qs=qs.replace(/&?order=[^&]*/g,'')+'&order=id';  // paginação estável: ordena por chave única (PK)
+  qs=qs.replace(/(^|&)select=([^&]*)/,(m,p,v)=>p+'select='+(v.split(',').includes('id')?v:'id,'+v));  // keyset precisa do id no payload
   const page=1000, CAP=capOverride||DLCAP; _lastCapped=0;
-  const first=await fetchRange(tbl,qs,t,0,page-1,true);
+  const first=await fetchKey(tbl,qs,t,null,null,page,true);
   let all=first.data.slice(); if(onprog)onprog(all.length);
-  const total=first.total; _lastTotal=total;
-  if(all.length<page||(total>=0&&total<=page)) return all;
-  if(total<0){ // sem contagem: cai p/ sequencial
-    let from=page;
-    while(true){const res=await fetchRange(tbl,qs,t,from,from+page-1,false);all=all.concat(res.data);if(onprog)onprog(all.length);
-      if(res.data.length<page)break;from+=page;if(all.length>=CAP){_lastCapped=all.length;break;}}
-    return all;
-  }
-  const stop=Math.min(total,CAP); if(total>CAP)_lastCapped=CAP;
-  const ranges=[];for(let from=page;from<stop;from+=page)ranges.push([from,Math.min(from+page,stop)-1]);
-  const slots=new Array(ranges.length); let next=0, err=null; const CONC=Math.min(6,ranges.length);
-  async function worker(){while(next<ranges.length&&!err){const i=next++,[a,b]=ranges[i];
-    try{slots[i]=(await fetchRange(tbl,qs,t,a,b,false)).data;}catch(e){err=e;return;}
-    if(onprog)onprog(all.length+slots.reduce((s,x)=>s+(x?x.length:0),0));}}
+  _lastTotal=first.total;
+  if(all.length<page) return all;
+  const lastId=all[all.length-1].id;
+  const top=await fetchKey(tbl,qs.replace('&order=id','&order=id.desc'),t,lastId,null,1,false);  // maior id sob os mesmos filtros (1 seek)
+  if(!top.data.length) return all;
+  const maxId=top.data[0].id;
+  // keyset particionado por faixas de id: toda página é um seek de índice — custo constante em qualquer profundidade (offset profundo dava 57014 no compute pequeno)
+  const NSP=24, w=Math.max(1,Math.ceil((maxId-lastId)/NSP));
+  const spans=[];for(let a=lastId;a<maxId;a+=w)spans.push([a,Math.min(a+w,maxId)]);
+  const slots=spans.map(()=>[]); let next=0, err=null, stopAll=false; const CONC=Math.min(6,spans.length);
+  const count=()=>all.length+slots.reduce((s,x)=>s+x.length,0);
+  async function worker(){while(next<spans.length&&!err&&!stopAll){const i=next++,[a,b]=spans[i];let cur=a;
+    while(!err&&!stopAll){let res;try{res=await fetchKey(tbl,qs,t,cur,b,page,false);}catch(e){err=e;return;}
+      slots[i]=slots[i].concat(res.data);if(onprog)onprog(count());
+      if(count()>=CAP){stopAll=true;break;}
+      if(res.data.length<page)break;cur=res.data[res.data.length-1].id;}}}
   await Promise.all(Array.from({length:CONC},worker));
   if(err)throw err;
-  for(const s of slots)if(s)all=all.concat(s);
+  for(const s of slots)all=all.concat(s);
+  if(all.length>CAP){_lastCapped=CAP;all=all.slice(0,CAP);}else if(stopAll)_lastCapped=all.length;
   return all;
 }
 function inList(ids){return ids.join(',');}
