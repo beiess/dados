@@ -87,7 +87,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.8</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.9</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -135,7 +135,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
-const P1C=["orgao","setor","cargo_funcao","nome","cpf","data_nascimento","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","sancionado","mandato_eletivo","socio_empresa","consta_site","origem"];
+const P1C=["orgao","setor","cargo_funcao","nome","cpf","data_nascimento","matricula","telefone","email","instagram","contato_adicional","remuneracao","responsabilidade","sancionado","mandato_eletivo","pep","candidatura","escolaridade","estado_civil","cor_raca","ocupacao","socio_empresa","consta_site","origem"];
 const P2C=["orgao","esfera","cnpj","endereco","contato","email","emails_setoriais","site_oficial","portal_transparencia","ouvidoria","gestores","atores_validados","observacoes"];
 const P3C=["razao_social","documento","situacao","cnae_principal","porte","municipio_uf","telefone","email","capital_social","data_abertura","socios","fontes","valor_empenho_obra","n_empenhos_obra","qtd_licitacoes_obra","valor_licitacao","nome_fantasia","natureza_juridica","endereco"];
 const P4C=["orgao","unidade_orcamentaria","num_processo","num_contrato","data_assinatura","contratado","doc_contratado","objeto","vig_inicio","vig_fim","qtd_aditivos","rescisao","valor_original","valor_atualizado"];
@@ -150,7 +150,7 @@ const ML={redes_sociais:1,responsabilidade:1,email:1,emails_setoriais:1,gestores
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1,data_nascimento:1};
 const LINKC={site_oficial:1,portal_transparencia:1,site:1};
-const WID={redes_sociais:240,orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,data_nascimento:110,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,objeto:380,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120,tipo_orgao:100,municipio:160,entidade:280,nome_pessoa:200,cargo:180,telefone1:130,telefone2:130,melhor_contato:110,obs:220,fonte_arquivo:120};
+const WID={redes_sociais:240,pep:60,candidatura:250,escolaridade:170,estado_civil:120,cor_raca:110,ocupacao:180,orgao:220,setor:180,cargo_funcao:180,nome:200,cpf:130,data_nascimento:110,matricula:100,telefone:130,email:200,instagram:120,contato_adicional:150,remuneracao:110,responsabilidade:240,consta_site:80,origem:190,sancionado:240,mandato_eletivo:250,socio_empresa:260,razao_social:260,documento:130,cnae_principal:230,porte:140,municipio_uf:140,capital_social:110,data_abertura:100,socios:240,fontes:120,valor_empenho_obra:130,n_empenhos_obra:100,valor_licitacao:120,natureza_juridica:200,esfera:120,cnpj:140,endereco:230,contato:140,emails_setoriais:230,site_oficial:70,portal_transparencia:90,ouvidoria:80,gestores:300,atores_validados:280,observacoes:200,unidade_orcamentaria:240,num_processo:120,num_contrato:110,data_assinatura:110,contratado:260,doc_contratado:130,objeto:380,vig_inicio:100,vig_fim:100,qtd_aditivos:90,rescisao:90,valor_original:120,valor_atualizado:120,tipo_orgao:100,municipio:160,entidade:280,nome_pessoa:200,cargo:180,telefone1:130,telefone2:130,melhor_contato:110,obs:220,fonte_arquivo:120};
 Object.assign(WID,{cod_ibge:90,seq_orgao:100,seq_unidade:110,cod_orgao:90,cod_unidade:100,funcao:170,subfuncao:200,programa:250,acao:280,subacao:150,natureza_despesa:300,fonte_recurso:300,valor:140});
 Object.assign(WID,{tipo_responsabilidade:300,origem:110,no_painel1:100,email:230});
 Object.assign(WID,{masp:90,situacao_atual:160,cargo_efetivo_atual:260,comissao_atual:200,funcao_gratif_atual:220,carga_horaria:90,sigla_lotacao_atual:120,desc_lotacao_atual:280,sigla_dotacao_atual:120,desc_dotacao_atual:280,data_inicio:100,data_aposentadoria:120,data_desligamento:120,n_vinculos:90,vinculos_adm:110,cargos_efetivos_periodo:300,comissoes_periodo:220,funcoes_gratif_periodo:240,orgaos_lotacao_periodo:210,situacoes_periodo:170,mudou_situacao:110,n_meses:80,primeiro_mes:100,ultimo_mes:100,presente_em:190});
@@ -723,9 +723,13 @@ async function perfil(cpf,nome){
     const chips=[];
     uniq('sancionado').forEach(v=>chips.push('<span class="chip s" title="'+esc(v)+'">⚠ sancionado</span>'));
     uniq('mandato_eletivo').forEach(v=>chips.push('<span class="chip m" title="'+esc(v)+'">🗳 '+esc(v)+'</span>'));
+    if(p1.some(r=>(r.pep||'').trim()==='sim'))chips.push('<span class="chip m" title="pessoa politicamente exposta (eleito)">🏛 PEP</span>');
     if(p1.some(r=>(r.socio_empresa||'').trim()))chips.push('<span class="chip o" title="'+esc(uniq('socio_empresa').join(' | '))+'">🏢 sócio de empresa</span>');
     let h='<div class=bd>';
     if(chips.length)h+='<div class=sec>'+chips.join('')+'</div>';
+    const perfil=[['Candidatura','candidatura'],['Escolaridade','escolaridade'],['Estado civil','estado_civil'],['Cor/raça','cor_raca'],['Ocupação (TSE)','ocupacao']]
+      .map(([lb,k])=>{const v=uniq(k);return v.length?'<b>'+lb+':</b> '+esc(v.join(' | ')):null}).filter(Boolean);
+    if(perfil.length)h+='<div class=sec><h4>Perfil (TSE)</h4>'+perfil.join(' &nbsp;·&nbsp; ')+'</div>';
     h+='<div class=sec><h4>Vínculos como servidor — Painel 1 ('+p1.length+')</h4>';
     h+=p1.length?('<table><tr><th>Município</th><th>Órgão</th><th>Setor</th><th>Cargo</th><th>Remuneração</th></tr>'+p1.slice(0,60).map(r=>'<tr><td>'+esc(munNome(r.ibge))+'</td><td>'+esc(r.orgao||'—')+'</td><td>'+esc(r.setor||'—')+'</td><td>'+esc(r.cargo_funcao||'—')+'</td><td>'+esc(r.remuneracao||'—')+'</td></tr>').join('')+'</table>'):'<span class=na>não encontrado no Painel 1</span>';
     h+='</div><div class=sec><h4>Responsabilidades em licitações — Painel 6 ('+p6.length+')</h4>';
