@@ -87,7 +87,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.9</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.10</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -115,6 +115,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <div class="tab" id=t12 onclick="setTab(12)">🇧🇷 Painel 12 — Servidores Brasil (União/Justiça/AL)</div>
   <div class="tab" id=t13 onclick="setTab(13)">📇 Painel 13 — Contatos (Outras Fontes)</div>
   <div class="tab" id=t14 onclick="setTab(14)">🧑‍💼 Painel 14 — Gestores RH/Folha/Ordenadores</div>
+  <div class="tab" id=t15 onclick="setTab(15)">📧 Painel 15 — Central de E-mails</div>
   <button onclick="openCols(event)">☰ colunas</button>
   <button onclick="limparFiltros()">limpar filtros</button>
   <button onclick="exportCSV()">⬇ CSV</button>
@@ -145,7 +146,7 @@ const P6C=["cod_ibge","orgao","nome","tipo_responsabilidade","cpf","email","orig
 const P7C=["masp","nome","no_painel1","situacao_atual","cargo_efetivo_atual","comissao_atual","funcao_gratif_atual","carga_horaria","sigla_lotacao_atual","desc_lotacao_atual","sigla_dotacao_atual","desc_dotacao_atual","data_inicio","data_aposentadoria","data_desligamento","n_vinculos","vinculos_adm","cargos_efetivos_periodo","comissoes_periodo","funcoes_gratif_periodo","orgaos_lotacao_periodo","situacoes_periodo","mudou_situacao","n_meses","primeiro_mes","ultimo_mes","presente_em"];
 const POBC=["municipio","razao_social","cnpj","poder","esfera","n_obras","valor_estimado_obras","n_setores_obras","setores_obras","modalidades_obras","primeira_obra","ultima_obra","email","emails_setoriais","telefone","site","situacao_cadastral","exemplos_objeto","uf"];
 const PESC=["nome","cpf","setor","email","origem","orgao","municipio"];  // Painel 11 — pessoas ligadas a obras (tabela pessoas_obras, deduplicada); cpf mascarado
-function colsOf(){return tab===14?P14C:(tab===13?P13C:(tab===12?P12C:(tab===10?POBC:(tab===11?PESC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C))))))))));}
+function colsOf(){return tab===15?P15C:(tab===14?P14C:(tab===13?P13C:(tab===12?P12C:(tab===10?POBC:(tab===11?PESC:(tab===1?P1C:(tab===2?P2C:(tab===3?P3C:(tab===4?P4C:(tab===5?P5C:(tab===6?P6C:P7C)))))))))));}
 const ML={redes_sociais:1,responsabilidade:1,email:1,emails_setoriais:1,gestores:1,atores_validados:1,observacoes:1,socios:1,sancionado:1,mandato_eletivo:1,socio_empresa:1,objeto:1,cargo_efetivo_atual:1,desc_lotacao_atual:1,desc_dotacao_atual:1,vinculos_adm:1,cargos_efetivos_periodo:1,comissoes_periodo:1,funcoes_gratif_periodo:1,orgaos_lotacao_periodo:1,situacoes_periodo:1,situacao_atual:1,obs:1};
 const MV={responsabilidade:1,atores_validados:1,gestores:1,emails_setoriais:1};
 const EDIT={telefone:1,email:1,instagram:1,contato_adicional:1,data_nascimento:1};
@@ -166,6 +167,9 @@ const P12C=["esfera_adm","esfera","poder","uf","orgao_superior","entidade","orga
 // Painel 13 — contatos consolidados de "Outras Fontes" (tabela contatos_orgaos_fontes)
 const P13C=["tipo_orgao","municipio","entidade","nome_pessoa","cargo","setor","email","telefone1","telefone2","melhor_contato","obs","cnpj","fonte_arquivo"];
 const P14C=["area","nome","cargo","setor","orgao","esfera","municipio","uf","email","telefone","telefone2","origem","obs"];
+// Painel 15 — Central de E-mails (view v_email_central)
+const P15C=["email","dominio","tipo","risco","confiabilidade","smtp_status","mx_ok","mx_provedor","spf","dmarc","assertividade","estrategia","tags","n_ocorrencias","fontes","entrada_em"];
+Object.assign(WID,{dominio:180,tipo:120,risco:80,confiabilidade:90,smtp_status:110,mx_ok:70,mx_provedor:110,spf:60,dmarc:70,assertividade:100,estrategia:340,tags:200,n_ocorrencias:80,entrada_em:120});
 Object.assign(WID,{esfera_adm:110,orgao_superior:220,natureza_juridica:150,org_ref_status:120,codigo_siorg:90,lattes:130,email:230,telefone:120,email_institucional:230,telefone_institucional:140,partido:80,remuneracao_liquida:120,instituidor_pensao:240,id_servidor_portal:110,entidade:260,atividade:200,tipo_vinculo:130,situacao:150,regime:170,jornada:110,data_ingresso_orgao:110,competencia:95,fonte:130,poder:130,classe_cargo:90,cargo:220});
 Object.assign(ML,{entidade:1,orgao:1,cargo:1,atividade:1});
 TOTC[12]=["remuneracao","remuneracao_liquida"];Object.assign(NUMC,{remuneracao_liquida:1});Object.assign(ML,{instituidor_pensao:1});
@@ -350,7 +354,7 @@ function tapply(){closePop();document.getElementById('tsel').textContent=selTOrg
 function closePop(){['mpop','fpop','cpop','upop','epop','tpop'].forEach(id=>{var e=document.getElementById(id);if(e)e.remove();});}
 let panelSig={1:'',2:'',3:'',4:'',5:'',6:'',7:''}, curSig='';
 // Painéis extras (obras=10/11, servidores Brasil=12) — inicializa suas fatias de estado
-[10,11,12,13,14].forEach(t=>{dados[t]=[];fstate[t]={};colw[t]={};sortState[t]=null;visState[t]=null;groupBy[t]=[];expanded[t]=new Set();capped[t]=0;panelSig[t]='';});
+[10,11,12,13,14,15].forEach(t=>{dados[t]=[];fstate[t]={};colw[t]={};sortState[t]=null;visState[t]=null;groupBy[t]=[];expanded[t]=new Set();capped[t]=0;panelSig[t]='';});
 // carrega UM painel (por município, ou MG-wide no caso do P3). Sem order= no servidor (ordenação é no cliente).
 async function loadPanel(n,ids){
   const todos=ids.length>300, key=(n===1?'ibge':'cod_ibge');
@@ -418,12 +422,13 @@ async function carregar(){closePop();const ids=[...sel];
   try{await loadPanel(1,ids);}catch(e){showErr(e.message);return;}
   tab=1;setTabUI();render();
 }
-const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11,t12:12,t13:13,t14:14};
+const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11,t12:12,t13:13,t14:14,t15:15};
 function setTabUI(){Object.entries(TABIDS).forEach(([id,n])=>{const e=document.getElementById(id);if(e)e.classList.toggle('on',tab===n);});}
 async function setTab(n){tab=n;setTabUI();closePop();
   if(n===12&&!dados[12].length){renderBR();return;}
   if(n===13&&!dados[13].length){renderCT();return;}
   if(n===14&&!dados[14].length){renderP14();return;}
+  if(n===15){renderE();return;}
   if(n===3||n===7){if(panelSig[n]!=='ALL'){try{await loadPanel(n,[]);}catch(e){showErr('Painel '+(n===7?8:n)+': '+e.message);return;}}}
   else if(n===1||n===4||n===5||n===6||n===10||n===11){
     const okP1=(n===1&&p1WantOut([...sel])); // P1 também carrega sem municípios (esfera/UF/tipo)
@@ -522,6 +527,68 @@ async function loadP14(){
   catch(e){showErr(e.message);return;}
   if(!dados[14].length){renderP14();var d=document.createElement('div');d.className='msg err';d.textContent='Nenhum gestor para esses filtros.';tw().appendChild(d);return;}
   panelSig[14]='P14';fstate[14]={};sortState[14]=null;expanded[14]=new Set();render();}
+// ── Painel 15 — Central de E-mails (validação + classificação + estratégia) ──
+function ecTile(lbl,val,cor,sub){return '<div style="flex:1;min-width:120px;background:#fff;border:1px solid #d0d7de;border-top:3px solid '+cor+';border-radius:8px;padding:9px 11px">'
+  +'<div style="font-size:22px;font-weight:700;color:'+cor+'">'+(val==null?'—':Number(val).toLocaleString('pt-BR'))+'</div>'
+  +'<div style="font-size:11px;color:#57606a;text-transform:uppercase;letter-spacing:.3px">'+lbl+'</div>'
+  +(sub?'<div style="font-size:11px;color:#8b949e;margin-top:2px">'+sub+'</div>':'')+'</div>';}
+function ecChips(obj,cores){if(!obj)return '';return Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+  '<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:100px;font-size:11px;background:'+((cores&&cores[k])||'#eef1f4')+';color:#24292f">'+esc(k)+': <b>'+Number(v).toLocaleString('pt-BR')+'</b></span>').join('');}
+async function renderE(){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='';
+  tw().innerHTML='<div class=msg><b>📧 Painel 15 — Central de E-mails</b> · validação (sintaxe → domínio/MX → caixa SMTP), classificação de tipo/risco, autenticação do domínio (SPF/DKIM/DMARC) e <b>recomendação de estratégia de ação</b> por e-mail. Base consolidada de todas as fontes (Painéis 1, 2 BR, 6, 13, 14).<br>'
+  +'<div id=ecKPI style="margin:10px 0"><span class=na>carregando indicadores…</span></div>'
+  +'<div class=row style="flex-wrap:wrap;gap:6px">'
+  +'<select id=ecTipo class=s><option value="">todos os tipos</option><option>institucional</option><option>corporativo</option><option>pessoal</option><option>role</option><option>educacional</option><option>descartavel</option><option>suspeito</option></select>'
+  +'<select id=ecRisco class=s><option value="">todos os riscos</option><option value=baixo>risco baixo</option><option value=medio>risco médio</option><option value=alto>risco alto</option></select>'
+  +'<select id=ecSmtp class=s><option value="">SMTP: qualquer</option><option value=valido>caixa ativa (válido)</option><option value=invalido>inexistente</option><option value=catch_all>catch-all</option><option value=incerto>incerto</option><option value=nao_testado>não testado</option></select>'
+  +'<select id=ecConf class=s><option value="">confiabilidade: toda</option><option value=70>alta (≥70)</option><option value=40>média (≥40)</option></select>'
+  +'<input class=s id=ecDom placeholder="domínio (ex.: mg.gov.br)" style="width:180px">'
+  +'<input class=s id=ecBusca placeholder="e-mail contém…" style="width:180px">'
+  +'<label style="font-size:12px;display:flex;align-items:center;gap:3px"><input type=checkbox id=ecMx> só com MX</label>'
+  +'<label style="font-size:12px;display:flex;align-items:center;gap:3px"><input type=checkbox id=ecNoDesc> excluir descartáveis</label>'
+  +'<button onclick="loadE()" style="background:#0969da;color:#fff">Carregar lista</button></div>'
+  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Os indicadores acima são da base inteira; a lista respeita os filtros (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas). Cada e-mail é único; a coluna <b>estratégia</b> traz a recomendação de ação.</div></div>';
+  try{const {data}=await sb.rpc('email_central_stats');const s=data||{};
+    const box=document.getElementById('ecKPI');if(!box)return;
+    const cls=s.classificados||0, mx=s.com_mx||0;
+    box.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:8px">'
+      +ecTile('E-mails únicos',s.total,'#0969da',(s.atualizado?('atualizado '+String(s.atualizado).slice(0,10)):''))
+      +ecTile('Classificados',cls,'#1f883d',(s.total?Math.round(100*cls/s.total)+'% da base':''))
+      +ecTile('Com correio (MX)',mx,'#1a7f37',(cls?Math.round(100*mx/cls)+'% dos classif.':''))
+      +ecTile('Sem MX (descartar)',s.sem_mx,'#cf222e','domínio não recebe e-mail')
+      +ecTile('Caixa ativa (SMTP)',s.smtp_valido,'#1a7f37','confirmado por handshake')
+      +ecTile('Inexistentes',s.smtp_invalido,'#cf222e','bounce garantido')
+      +ecTile('Catch-all/incerto',(s.smtp_catchall||0)+(s.smtp_incerto||0),'#9a6700','não confirmável')
+      +ecTile('SMTP pendente',s.smtp_pendente,'#57606a','fila de verificação')
+      +ecTile('Domínio autenticado',s.autenticados,'#8250df','SPF + DMARC')
+      +ecTile('Confiab. alta',s.conf_alta,'#1f883d','≥70 pontos')
+      +'</div>'
+      +'<div style="margin-top:8px"><b style="font-size:12px">Por tipo:</b> '+ecChips(s.por_tipo,{institucional:'#dafbe1',descartavel:'#ffebe9',suspeito:'#ffebe9',pessoal:'#fff8c5'})
+      +' &nbsp; <b style="font-size:12px">Por risco:</b> '+ecChips(s.por_risco,{baixo:'#dafbe1',medio:'#fff8c5',alto:'#ffebe9'})+'</div>';
+  }catch(e){const box=document.getElementById('ecKPI');if(box)box.innerHTML='<span class=na>indicadores indisponíveis: '+esc(e.message||e)+'</span>';}}
+async function loadE(){
+  const tipo=(document.getElementById('ecTipo')||{}).value||'',
+        risco=(document.getElementById('ecRisco')||{}).value||'',
+        smtp=(document.getElementById('ecSmtp')||{}).value||'',
+        conf=(document.getElementById('ecConf')||{}).value||'',
+        dom=((document.getElementById('ecDom')||{}).value||'').trim(),
+        bus=((document.getElementById('ecBusca')||{}).value||'').trim(),
+        soMx=(document.getElementById('ecMx')||{}).checked,
+        noDesc=(document.getElementById('ecNoDesc')||{}).checked;
+  let q='select='+P15C.join(',')+'&order=confiabilidade.desc.nullslast';
+  if(tipo)q+='&tipo=eq.'+tipo;
+  if(risco)q+='&risco=eq.'+risco;
+  if(smtp)q+='&smtp_status=eq.'+smtp;
+  if(conf)q+='&confiabilidade=gte.'+conf;
+  if(dom)q+='&dominio=ilike.*'+encodeURIComponent(dom)+'*';
+  if(bus)q+='&email=ilike.*'+encodeURIComponent(bus)+'*';
+  if(soMx)q+='&mx_ok=is.true';
+  if(noDesc)q+='&descartavel=is.false';
+  loading('Carregando Central de E-mails…');
+  try{dados[15]=await sbfetch('v_email_central',q,prog);capped[15]=_lastCapped;}
+  catch(e){showErr(e.message);return;}
+  if(!dados[15].length){renderE();var d=document.createElement('div');d.className='msg err';d.textContent='Nenhum e-mail para esses filtros.';tw().appendChild(d);return;}
+  panelSig[15]='P15';fstate[15]={};sortState[15]=null;expanded[15]=new Set();render();}
 async function buscaResp(roles){closePop();loading('Buscando responsabilidade em todo o MG…');
   try{const byId={};
     for(const role of roles){const rows=await sbfetch('painel1_servidores','select=id,ibge,'+P1C.join(',')+'&responsabilidade=ilike.*'+encodeURIComponent(role)+'*',prog);
