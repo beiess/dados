@@ -87,7 +87,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.10</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.11</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -542,11 +542,23 @@ async function renderE(){var gb=document.getElementById('gbar');if(gb)gb.innerHT
   +'<select id=ecRisco class=s><option value="">todos os riscos</option><option value=baixo>risco baixo</option><option value=medio>risco médio</option><option value=alto>risco alto</option></select>'
   +'<select id=ecSmtp class=s><option value="">SMTP: qualquer</option><option value=valido>caixa ativa (válido)</option><option value=invalido>inexistente</option><option value=catch_all>catch-all</option><option value=incerto>incerto</option><option value=nao_testado>não testado</option></select>'
   +'<select id=ecConf class=s><option value="">confiabilidade: toda</option><option value=70>alta (≥70)</option><option value=40>média (≥40)</option></select>'
-  +'<input class=s id=ecDom placeholder="domínio (ex.: mg.gov.br)" style="width:180px">'
-  +'<input class=s id=ecBusca placeholder="e-mail contém…" style="width:180px">'
+  +'<select id=ecAssert class=s><option value="">assertividade: toda</option><option value=alta>alta</option><option value=media>média</option><option value=baixa>baixa</option><option value=nula>nula (no-reply)</option></select>'
+  +'<select id=ecTag class=s><option value="">tag: qualquer</option><option value=caixa_ativa>caixa ativa</option><option value=caixa_inexistente>caixa inexistente</option><option value=catch_all>catch-all</option><option value=role_based>role/setorial</option><option value=no_reply>no-reply</option><option value=dominio_autenticado>domínio autenticado</option><option value=sem_mx>sem MX</option><option value=smtp_inacessivel>SMTP inacessível</option></select>'
+  +'<input class=s id=ecDom placeholder="domínio (ex.: mg.gov.br)" style="width:170px">'
+  +'<input class=s id=ecBusca placeholder="e-mail contém…" style="width:170px">'
   +'<label style="font-size:12px;display:flex;align-items:center;gap:3px"><input type=checkbox id=ecMx> só com MX</label>'
   +'<label style="font-size:12px;display:flex;align-items:center;gap:3px"><input type=checkbox id=ecNoDesc> excluir descartáveis</label>'
   +'<button onclick="loadE()" style="background:#0969da;color:#fff">Carregar lista</button></div>'
+  +'<div class=row style="flex-wrap:wrap;gap:5px;margin-top:8px;align-items:center">'
+  +'<b style="font-size:11px;color:#57606a">Segmentos:</b>'
+  +'<button class=chip onclick="ecPreset({ecSmtp:\'valido\'})" title="caixas confirmadas ativas">✅ Ativos confirmados</button>'
+  +'<button class=chip onclick="ecPreset({ecConf:\'70\',ecMx:true,ecNoDesc:true})" title="alta confiabilidade, com correio, sem descartáveis">🎯 Prioritários</button>'
+  +'<button class=chip onclick="ecPreset({ecTag:\'role_based\'})" title="ouvidoria/gabinete/setoriais">🏛 Canais institucionais</button>'
+  +'<button class=chip onclick="ecPreset({ecTipo:\'pessoal\'})" title="gmail/hotmail/etc — validar antes">📇 Pessoais</button>'
+  +'<button class=chip onclick="ecPreset({ecSmtp:\'invalido\'})" title="inexistentes — bounce garantido">🗑 Inexistentes</button>'
+  +'<button class=chip onclick="ecPreset({ecTag:\'sem_mx\'})" title="domínio sem correio">🚫 Sem correio</button>'
+  +'<button class=chip onclick="ecPreset(null)" title="limpa filtros e recarrega tudo">↺ Todos</button>'
+  +'<span style="flex:1"></span><span style="font-size:11px;color:#57606a">carregue e use ⬇ CSV / ⬇ Excel / ⬇ tudo do servidor no topo</span></div>'
   +'<div style="margin-top:8px;font-size:11px;color:#57606a">Os indicadores acima são da base inteira; a lista respeita os filtros (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas). Cada e-mail é único; a coluna <b>estratégia</b> traz a recomendação de ação.</div></div>';
   try{const {data}=await sb.rpc('email_central_stats');const s=data||{};
     const box=document.getElementById('ecKPI');if(!box)return;
@@ -566,11 +578,21 @@ async function renderE(){var gb=document.getElementById('gbar');if(gb)gb.innerHT
       +'<div style="margin-top:8px"><b style="font-size:12px">Por tipo:</b> '+ecChips(s.por_tipo,{institucional:'#dafbe1',descartavel:'#ffebe9',suspeito:'#ffebe9',pessoal:'#fff8c5'})
       +' &nbsp; <b style="font-size:12px">Por risco:</b> '+ecChips(s.por_risco,{baixo:'#dafbe1',medio:'#fff8c5',alto:'#ffebe9'})+'</div>';
   }catch(e){const box=document.getElementById('ecKPI');if(box)box.innerHTML='<span class=na>indicadores indisponíveis: '+esc(e.message||e)+'</span>';}}
+// aplica um segmento pronto: seta os campos de filtro e recarrega a lista
+function ecPreset(p){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e){if(e.type==='checkbox')e.checked=!!v;else e.value=v==null?'':v;}};
+  ['ecTipo','ecRisco','ecSmtp','ecConf','ecAssert','ecTag','ecDom','ecBusca'].forEach(id=>set(id,''));
+  set('ecMx',false);set('ecNoDesc',false);
+  const P=p||{};for(const k in P)set(k,P[k]);
+  loadE();
+}
 async function loadE(){
   const tipo=(document.getElementById('ecTipo')||{}).value||'',
         risco=(document.getElementById('ecRisco')||{}).value||'',
         smtp=(document.getElementById('ecSmtp')||{}).value||'',
         conf=(document.getElementById('ecConf')||{}).value||'',
+        assert=(document.getElementById('ecAssert')||{}).value||'',
+        tag=(document.getElementById('ecTag')||{}).value||'',
         dom=((document.getElementById('ecDom')||{}).value||'').trim(),
         bus=((document.getElementById('ecBusca')||{}).value||'').trim(),
         soMx=(document.getElementById('ecMx')||{}).checked,
@@ -580,6 +602,8 @@ async function loadE(){
   if(risco)q+='&risco=eq.'+risco;
   if(smtp)q+='&smtp_status=eq.'+smtp;
   if(conf)q+='&confiabilidade=gte.'+conf;
+  if(assert)q+='&assertividade=eq.'+assert;
+  if(tag)q+='&tags=cs.%7B'+encodeURIComponent(tag)+'%7D';
   if(dom)q+='&dominio=ilike.*'+encodeURIComponent(dom)+'*';
   if(bus)q+='&email=ilike.*'+encodeURIComponent(bus)+'*';
   if(soMx)q+='&mx_ok=is.true';
@@ -646,7 +670,7 @@ function exportXLSX(){if(typeof XLSX==='undefined'){alert('biblioteca Excel aind
   XLSX.writeFile(wb,'painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.xlsx');}
 // baixa TODA a seleção do servidor (ignora o teto de tela) e exporta — p/ o caso "MG inteiro"
 async function exportServer(){
-  if(panelSig[tab]==='XREF'||tab===7||tab===12||tab===13||tab===14){exportCSV();return;}
+  if(panelSig[tab]==='XREF'||tab===7||tab===12||tab===13||tab===14||tab===15){exportCSV();return;}
   if(tab===2){alert('O Painel 2 já vem completo na tela; use ⬇ CSV / ⬇ Excel.');return;}
   if(!sel.size){alert('Selecione município(s) em “Municípios ▾” e clique Carregar antes.');return;}
   if(!confirm('Baixar TODOS os registros da seleção direto do servidor (sem o teto de tela) e então exportar? Em seleções grandes pode demorar e usar bastante memória.'))return;
