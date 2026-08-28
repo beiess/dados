@@ -87,7 +87,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.11</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.12</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -301,30 +301,36 @@ function mall(on){sel=new Set(on?muniList().map(m=>m.ibge):[]);closePop();toggle
 // filtros do cabeçalho: compõem UMA consulta no servidor (colunas materializadas esfera/uf/ibge/tipo_orgao)
 const UFS27=['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 const ESFS=[['municipal','Municipal (MG, por município)'],['estadual','Estadual e outras fontes'],['federal','Federal (SIAPE/Congresso)'],['justica','Justiça (magistrados/MP)'],['privado','Privado (eventos/empresas)']];
-let selUF=new Set(), selEsf=new Set(['municipal','estadual']), ESFUF=null;
+let selUF=new Set(), selEsf=new Set(['municipal','estadual']), ESFUF=null, esfTouched=false;
+// rótulos dos filtros do topo mostram o contador quando há recorte ativo (tempo real)
+function syncTopLabels(){
+  const e=document.getElementById('esel');if(e)e.textContent='Esfera'+(esfTouched&&selEsf.size&&selEsf.size<ESFS.length?' ('+selEsf.size+')':'')+' ▾';
+  const u=document.getElementById('usel');if(u)u.textContent='Estado'+(selUF.size?' ('+selUF.size+')':'')+' ▾';
+  const t=document.getElementById('tsel');if(t)t.textContent='Tipo de órgão'+(selTOrg.size?' ('+selTOrg.size+')':'')+' ▾';
+}
 async function ensureEsfN(){if(ESFUF)return;
   try{const {data}=await sb.rpc('p1_esferas');ESFUF=data||[];}catch(e){ESFUF=[];}}
 function ufN(u){return (ESFUF||[]).filter(r=>r.uf===u&&r.esfera!=='municipal').reduce((s,r)=>s+(+r.n||0),0);}
 function esfN(e){return (ESFUF||[]).filter(r=>r.esfera===e).reduce((s,r)=>s+(+r.n||0),0);}
 function toggleUF(ev){closePop();const p=document.createElement('div');p.className='pop';p.id='upop';
   const r=ev.target.getBoundingClientRect();p.style.left=r.left+'px';p.style.top=(r.bottom+4)+'px';
-  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Recorte por UF (esferas não-municipais; combina com Esfera e Tipo) · municipais: use “Municípios ▾”</div>'
+  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Marcar <b>filtra a tela em tempo real</b> por UF; <b>Carregar</b> busca essas UFs no servidor. Combina com Esfera e Tipo · municipais: use “Municípios ▾”</div>'
     +'<div class=row><button onclick="uall(true)">marcar todas</button><button onclick="uall(false)">limpar</button></div>'
     +'<div class=lst style="columns:2" id=ulst>carregando…</div>'
     +'<div class=row><button onclick="carregar()" style="background:#0d1117;color:#fff">Carregar</button></div>';
   document.body.appendChild(p);
   ensureEsfN().then(()=>{const l=document.getElementById('ulst');if(!l)return;
     l.innerHTML=UFS27.map(u=>'<label><input type=checkbox '+(selUF.has(u)?'checked':'')+' onchange="usel2(\''+u+'\',this.checked)"> '+u+' <span style="color:#8c959f">('+ufN(u).toLocaleString('pt-BR')+')</span></label>').join('');});}
-function usel2(u,on){on?selUF.add(u):selUF.delete(u);}
+function usel2(u,on){on?selUF.add(u):selUF.delete(u);syncTopLabels();render();}
 function uall(on){selUF=new Set(on?UFS27:[]);closePop();toggleUF({target:document.getElementById('usel')});}
 function toggleEsf(ev){closePop();const p=document.createElement('div');p.className='pop';p.id='epop';
   const r=ev.target.getBoundingClientRect();p.style.left=r.left+'px';p.style.top=(r.bottom+4)+'px';
-  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Cada esfera pode ser carregada sozinha ou combinada com UF, municípios e Tipo de órgão</div>'
+  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Marcar/desmarcar <b>filtra a tela em tempo real</b>; <b>Carregar</b> busca a(s) esfera(s) no servidor. Combina com UF, municípios e Tipo de órgão</div>'
     +'<div class=lst id=elst>'+ESFS.map(([k,lb])=>'<label><input type=checkbox '+(selEsf.has(k)?'checked':'')+' onchange="esel2(\''+k+'\',this.checked)"> '+lb+' <span class=esfn data-esf="'+k+'" style="color:#8c959f"></span></label>').join('')+'</div>'
     +'<div class=row><button onclick="carregar()" style="background:#0d1117;color:#fff">Carregar</button></div>';
   document.body.appendChild(p);
   ensureEsfN().then(()=>{document.querySelectorAll('#elst .esfn').forEach(s=>{const n=esfN(s.dataset.esf);if(n)s.textContent='('+n.toLocaleString('pt-BR')+')';});});}
-function esel2(k,on){on?selEsf.add(k):selEsf.delete(k);}
+function esel2(k,on){on?selEsf.add(k):selEsf.delete(k);esfTouched=true;syncTopLabels();render();}
 // Tipo de órgão — classificação pelo nome, filtro CLIENT-SIDE sobre o que está carregado
 let selTOrg=new Set();
 const TORGS=['Prefeitura','Câmara','Previdência/Instituto','Fundo','Consórcio','Autarquia/Fundação','Universidade/Educação','Saúde/Hospital','Tribunal/Justiça/MP','Assembleia/Legislativo','Governo Estadual','Outros'];
@@ -343,14 +349,14 @@ function tipoOrgao(o){o=norm(o||'');if(!o)return 'Outros';
   return 'Outros';}
 function toggleTOrg(ev){closePop();const p=document.createElement('div');p.className='pop';p.id='tpop';
   const r=ev.target.getBoundingClientRect();p.style.left=r.left+'px';p.style.top=(r.bottom+4)+'px';
-  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Classificação pelo nome do órgão. <b>Aplicar</b> filtra na hora o que está carregado; <b>Carregar</b> busca no servidor só esse(s) tipo(s) — combinável com Esfera/UF/Municípios, sem precisar de carga prévia</div>'
+  p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Classificação pelo nome do órgão. <b>Filtra o que está na tela em tempo real</b> ao marcar; use <b>Carregar do servidor</b> p/ buscar esse(s) tipo(s) direto no banco — combinável com Esfera/UF/Municípios.</div>'
     +'<div class=row><button onclick="tall()">limpar (todos)</button></div>'
     +'<div class=lst>'+TORGS.map((t,i)=>'<label><input type=checkbox '+(selTOrg.has(t)?'checked':'')+' onchange="tsel2('+i+',this.checked)"> '+t+'</label>').join('')+'</div>'
-    +'<div class=row><button onclick="tapply()">Aplicar (no carregado)</button><button onclick="tapply();carregar()" style="background:#0d1117;color:#fff">Carregar do servidor</button></div>';
+    +'<div class=row><button onclick="carregar()" style="background:#0d1117;color:#fff">Carregar do servidor</button></div>';
   document.body.appendChild(p);}
-function tsel2(i,on){const t=TORGS[i];on?selTOrg.add(t):selTOrg.delete(t);}
-function tall(){selTOrg=new Set();tapply();}
-function tapply(){closePop();document.getElementById('tsel').textContent=selTOrg.size?('Tipo de órgão ('+selTOrg.size+') ▾'):'Tipo de órgão ▾';render();}
+function tsel2(i,on){const t=TORGS[i];on?selTOrg.add(t):selTOrg.delete(t);syncTopLabels();render();}
+function tall(){selTOrg=new Set();syncTopLabels();render();}
+function tapply(){closePop();syncTopLabels();render();}
 function closePop(){['mpop','fpop','cpop','upop','epop','tpop'].forEach(id=>{var e=document.getElementById(id);if(e)e.remove();});}
 let panelSig={1:'',2:'',3:'',4:'',5:'',6:'',7:''}, curSig='';
 // Painéis extras (obras=10/11, servidores Brasil=12) — inicializa suas fatias de estado
@@ -639,11 +645,13 @@ function ffilter(q){q=norm(q);const p=document.getElementById('fpop');if(!p)retu
 function ftoggle(v,on){const p=document.getElementById('fpop'),col=p._col;let s=fstate[tab][col];if(!s){s=new Set(p._vals);fstate[tab][col]=s;}on?s.add(v):s.delete(v);render();}
 function fall(on){const p=document.getElementById('fpop');fstate[tab][p._col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
 function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];let roles=(s&&s.size)?[...s]:p._vals;if(!roles.length){alert('selecione');return;}buscaResp(roles);}
-function limparFiltros(){fstate[tab]={};sortState[tab]=null;if(xref&&xref.tab===tab)xref=null;render();}
+function limparFiltros(){fstate[tab]={};sortState[tab]=null;selTOrg=new Set();selUF=new Set();esfTouched=false;syncTopLabels();if(xref&&xref.tab===tab)xref=null;render();}
 function getFiltered(){const cols=colsOf(),rows=dados[tab]||[],q=document.getElementById('q').value.toLowerCase(),fs=fstate[tab];const out=[];
   for(const r of rows){if(!r)continue;
     if(xref&&xref.tab===tab&&!xref.match(r))continue;
-    if(tab===1&&selTOrg.size&&!selTOrg.has(tipoOrgao(r.orgao)))continue;
+    if(selTOrg.size&&r.orgao&&!selTOrg.has(tipoOrgao(r.orgao)))continue;      // Tipo de órgão (qualquer painel c/ órgão)
+    if(selUF.size&&r.uf&&!selUF.has(r.uf))continue;                            // Estado (linhas com uf)
+    if(esfTouched&&selEsf.size&&r.esfera&&!selEsf.has(r.esfera))continue;      // Esfera (só após o usuário mexer)
     if(q&&!cols.some(c=>(''+(r[c]||'')).toLowerCase().includes(q)))continue;
     let ok=true;for(const c in fs){if(!fs[c])continue;const cell=(''+(r[c]||'')).trim();
       if(MV[c]){if(!cell.split(' | ').some(x=>fs[c].has(x.trim()))){ok=false;break;}}else if(!fs[c].has(cell)){ok=false;break;}}
