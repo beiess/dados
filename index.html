@@ -1111,15 +1111,25 @@ function npDados(){const g=id=>(document.getElementById(id)||{}).value||'';
 function npValida(d){if(d.nome.split(/\s+/).length<2)return 'informe o nome completo';if(!d.uf)return 'informe a UF';if(!d.priv&&d.esfera==='municipal'&&!d.ibge)return 'selecione o município';
   if(!d.orgao)return 'informe o órgão/empresa';if(d.cpf&&!validaCPF(d.cpf).ok)return 'CPF inválido ('+validaCPF(d.cpf).msg+')';if(d.nasc&&!/^\d{4}-\d{2}-\d{2}$/.test(d.nasc))return 'data de nascimento: use dd/mm/aaaa';
   if(d.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))return 'e-mail inválido';return null;}
+function npTabela(rs,d){const exato=rs.filter(r=>r.criterio!=='nome parecido');
+  return '<div style="font-size:12px;margin-bottom:4px"><b>'+rs.length+' possível(is) duplicidade(s)</b> — confira antes de cadastrar'+(exato.length?' (<span style="color:#cf222e">'+exato.length+' com CPF/nome idêntico</span>)':'')+':</div>'
+    +'<table><tr><th>critério</th><th>nome</th><th>CPF</th><th>órgão</th><th>UF</th><th>esfera</th><th>origem</th><th></th></tr>'+rs.map(r=>'<tr><td>'+esc(r.criterio)+(r.criterio==='nome parecido'?' ('+Math.round(100*r.similaridade)+'%)':'')+'</td><td>'+esc(r.nome)+'</td><td class=doc>'+esc(anon?mask(r.cpf||''):(r.cpf||''))+'</td><td>'+esc((r.orgao||'').slice(0,50))+'</td><td>'+esc(r.uf||'')+'</td><td>'+esc(r.esfera||'')+'</td><td>'+esc((r.origem||'').slice(0,28))+'</td><td><button class=go onclick="fecharPerfil();perfil(\''+esc(r.cpf||'')+'\',\''+esc(r.nome)+'\')">perfil</button></td></tr>').join('')+'</table>';}
+let _npSeq=0;
 async function npVerificar(){const d=npDados(),msg=document.getElementById('np-msg'),box=document.getElementById('np-dup');const err=npValida(d);if(err){msg.textContent='⚠ '+err;return;}
-  msg.textContent='procurando homônimos…';box.innerHTML='';
-  try{const {data,error}=await sb.rpc('p1_duplicidade',{p_nome:d.nome,p_uf:d.uf,p_ibge:d.ibge||null,p_cpf:d.cpf||null});if(error)throw error;
-    const rs=data||[];const exato=rs.filter(r=>r.criterio!=='nome parecido');
-    if(!rs.length){box.innerHTML='<div style="color:#1a7f37;font-size:12px">✅ Nenhum homônimo encontrado no Painel 1 (CPF, nome exato ou muito parecido'+(d.uf?' em '+d.uf+'/BR':'')+').</div>';}
-    else{box.innerHTML='<div style="font-size:12px;margin-bottom:4px"><b>'+rs.length+' possível(is) duplicidade(s)</b> — confira antes de cadastrar'+(exato.length?' (<span style="color:#cf222e">'+exato.length+' com CPF/nome idêntico</span>)':'')+':</div>'
-      +'<table><tr><th>critério</th><th>nome</th><th>CPF</th><th>órgão</th><th>UF</th><th>esfera</th><th>origem</th><th></th></tr>'+rs.map(r=>'<tr><td>'+esc(r.criterio)+(r.criterio==='nome parecido'?' ('+Math.round(100*r.similaridade)+'%)':'')+'</td><td>'+esc(r.nome)+'</td><td class=doc>'+esc(anon?mask(r.cpf||''):(r.cpf||''))+'</td><td>'+esc((r.orgao||'').slice(0,50))+'</td><td>'+esc(r.uf||'')+'</td><td>'+esc(r.esfera||'')+'</td><td>'+esc((r.origem||'').slice(0,28))+'</td><td><button class=go onclick="fecharPerfil();perfil(\''+esc(r.cpf||'')+'\',\''+esc(r.nome)+'\')">perfil</button></td></tr>').join('')+'</table>';}
-    const b=document.getElementById('np-salvar');b.disabled=false;b.textContent=rs.length?'💾 Cadastrar mesmo assim (é outra pessoa)':'💾 Cadastrar';b.title='';msg.textContent='';
-  }catch(e){msg.textContent='erro na verificação: '+(e.message||e);}}
+  const seq=++_npSeq;msg.textContent='procurando homônimos…';box.innerHTML='';let rs=[];
+  try{const {data,error}=await sb.rpc('p1_duplicidade',{p_nome:d.nome,p_uf:d.uf,p_ibge:d.ibge||null,p_cpf:d.cpf||null});if(error)throw error;rs=data||[];}
+  catch(e){msg.textContent='erro na verificação: '+(e.message||e);return;}
+  if(seq!==_npSeq)return;
+  box.innerHTML=rs.length?npTabela(rs,d):'<div style="color:#1a7f37;font-size:12px">✅ Nenhum homônimo por CPF ou nome exato'+(d.uf?' em '+d.uf+'/BR':'')+'.</div>';
+  box.innerHTML+='<div id=np-fz style="font-size:11px;color:#57606a;margin-top:4px">⏳ procurando nomes parecidos (até 20 s)…</div>';
+  const b=document.getElementById('np-salvar');b.disabled=false;b.textContent=rs.length?'💾 Cadastrar mesmo assim (é outra pessoa)':'💾 Cadastrar';b.title='';msg.textContent='';
+  // busca aproximada (trigram) em segundo plano: pode demorar em nomes muito comuns — não bloqueia o cadastro
+  (async()=>{const fz=document.getElementById('np-fz');try{const t=await token();const c=new AbortController();const timer=setTimeout(()=>c.abort(),20000);
+      const r=await fetch(SB_URL+'/rest/v1/rpc/p1_duplicidade_fuzzy',{method:'POST',headers:{apikey:SB_ANON,Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({p_nome:d.nome,p_uf:d.uf}),signal:c.signal});clearTimeout(timer);
+      if(!r.ok)throw new Error('HTTP '+r.status);const par=(await r.json())||[];if(seq!==_npSeq)return;
+      const todos=rs.concat(par);box.innerHTML=(todos.length?npTabela(todos,d):'<div style="color:#1a7f37;font-size:12px">✅ Nenhum homônimo (CPF, nome exato ou parecido'+(d.uf?' em '+d.uf+'/BR':'')+').</div>');
+      if(par.length){b.textContent='💾 Cadastrar mesmo assim (é outra pessoa)';}
+    }catch(e){if(seq===_npSeq&&fz)fz.textContent='ℹ busca aproximada indisponível agora (nome muito comum ou tempo esgotado) — verificação por CPF/nome exato concluída.';}})();}
 async function npSalvar(){const d=npDados(),msg=document.getElementById('np-msg');const err=npValida(d);if(err){msg.textContent='⚠ '+err;return;}
   const body={nome:d.nome,cpf:d.cpf||null,orgao:d.orgao,cargo_funcao:d.cargo_funcao||null,setor:d.setor||null,email:d.email||null,telefone:d.telefone||null,esfera:d.esfera,uf:d.uf,ibge:d.ibge||null,
     data_nascimento:d.nasc||null,nasc_fonte:d.nasc?'manual':null,consta_site:'Não',origem:'manual:'+ME.email};
