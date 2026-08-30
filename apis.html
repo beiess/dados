@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v5 30/08: getToken = getSession direto (igual app principal) -->
+<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v6 30/08: campo comum + valor capturado (à prova de autofill) -->
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#24292f;background:#f6f8fa}
@@ -13,7 +13,7 @@ th,td{border:1px solid var(--b);padding:5px 7px;vertical-align:top;text-align:le
 .chip{display:inline-block;padding:2px 8px;border-radius:10px;background:#eef1f4;font-size:11px;margin:0 4px 4px 0}small{color:#57606a}
 </style></head><body>
 <div id=gate><form class=card autocomplete="off" onsubmit="return destravar(event)"><div style="font-size:34px">🟡</div><b>Acesso restrito</b><br><small>APIs e dados abertos por órgão</small>
-  <input id=codigo name=codigo-acesso type=text inputmode=numeric maxlength=8 placeholder="código" autocomplete="one-time-code" autocapitalize=off spellcheck=false style="-webkit-text-security:disc" autofocus><button class=p type=button onclick="destravar(event)" style="width:100%">Entrar</button><div id=gerr style="color:#cf222e;font-size:12px;margin-top:6px"></div><div id=gdbg style="color:#8b949e;font-size:11px;margin-top:6px"></div></form></div>
+  <input id=codigo type=text inputmode=numeric maxlength=8 placeholder="código de 4 dígitos" autocomplete=off autocapitalize=off spellcheck=false oninput="CAP=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter'){event.preventDefault();destravar(event)}" autofocus><button class=p type=button onclick="destravar(event)" style="width:100%">Entrar</button><div id=gerr style="color:#cf222e;font-size:12px;margin-top:6px"></div><div id=gdbg style="color:#8b949e;font-size:11px;margin-top:6px"></div></form></div>
 <div id=app class=hidden>
 <header><h1>🟡 APIs e Dados Abertos por Órgão</h1>
   <select id=uf class=s><option value="">todas as UFs</option></select>
@@ -28,14 +28,14 @@ th,td{border:1px solid var(--b);padding:5px 7px;vertical-align:top;text-align:le
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SENHA='0657'; let sb=null; try{sb=supabase.createClient(SB_URL,SB_ANON);}catch(e){}
+const SENHA='0657'; let CAP=''; let sb=null; try{sb=supabase.createClient(SB_URL,SB_ANON);}catch(e){}
 // sessão dos painéis: getSession() do supabase-js pode ficar preso no lock compartilhado com a outra aba → 3 s e cai p/ o token salvo pelo app (mesma origem)
 async function getToken(){try{const {data}=await sb.auth.getSession();return data&&data.session?data.session.access_token:null;}catch(e){return null;}}
 function esc(s){return (''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 async function destravar(ev){if(ev&&ev.preventDefault)ev.preventDefault();
   var err=document.getElementById('gerr');if(err)err.textContent='';
-  var v=(document.getElementById('codigo').value||'').replace(/\D/g,'');
-  if(v!==SENHA){if(err)err.textContent='código incorreto';document.getElementById('codigo').value='';return false;}
+  var v=(CAP||(document.getElementById('codigo').value||'')).replace(/\D/g,'');
+  if(v!==SENHA){if(err)err.textContent='código incorreto';CAP='';document.getElementById('codigo').value='';return false;}
   document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
   carregar();return false;}
 // facetas (UF/domínio) — best-effort; não bloqueia
