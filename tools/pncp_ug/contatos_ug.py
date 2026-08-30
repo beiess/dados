@@ -57,6 +57,12 @@ for c,em,ct,si,po,ou,es in cur.fetchall():
         if '@' in p:
             lab,_,mail=p.partition(':'); m=re.search(r'[\w.+-]+@[\w.-]+\.\w+',mail or p)
             if m: setoriais[c].append((keys(lab if ':' in p else ''),lab.strip()[:60],m.group(0).lower()))
+cur.execute("select c.cnpj, d.emails, d.telefones, d.site, d.ouvidoria_url, d.endereco from diretorio_orgaos_cnpj c join diretorio_orgaos d on d.id=c.diretorio_id")
+for c,ems,tls,si,ou,en in cur.fetchall():
+    d=org[c]
+    for k,v in (('email',', '.join((ems or [])[:5]) or None),('telefone',(tls or [None])[0]),('site',si),('ouvidoria',ou)):
+        if v and not d.get(k): d[k]=v
+    d.setdefault('fonte','diretório oficial')
 cur.execute("select cnpj, email, telefone, site, portal_transparencia, ouvidoria from cadastro_institucional_br")
 for c,em,tl,si,po,ou in cur.fetchall():
     d=org[c]; 
@@ -111,9 +117,27 @@ for em,nome,cargo,setor,cs in cur.fetchall():
     for c in cs: pess_cnpj[c].append((keys((cargo or '')+' '+(setor or '')),nome,cargo,em,None,1,'vinculos'))
 log(f'pessoas candidatas: por cnpj {sum(len(v) for v in pess_cnpj.values())} · por ibge {sum(len(v) for v in pess_ibge.values())}')
 # 3) unidades
-cur.execute("""select u.id, u.cnpj, u.codigo_unidade, u.nome_unidade, u.cod_ibge, o.razao_social, o.poder, o.esfera, u.municipio from pncp_unidades u join pncp_orgaos o using(cnpj)""")
+cur.execute("select uf, nome_norm, sigla, emails, telefones, site, ouvidoria_url from diretorio_orgaos where cardinality(emails)>0 or cardinality(telefones)>0")
+dir_nome={}; dir_sigla={}
+for uf_,nn,sg,ems,tls,si,ou in cur.fetchall():
+    rec={'emails':ems or [],'telefones':tls or [],'site':si,'ouvidoria':ou}
+    dir_nome[(uf_,nn)]=rec
+    if sg and len(sg)>=3: dir_sigla.setdefault((uf_,unac(sg)),rec)
+log(f'diretório p/ casamento por unidade: {len(dir_nome)} nomes · {len(dir_sigla)} siglas')
+def dir_unidade(uf_,esf_,nome_u):
+    ufs_=[uf_,'BR'] if esf_=='F' else [uf_]
+    nn=unac(nome_u)
+    for u_ in ufs_:
+        if (u_,nn) in dir_nome: return dir_nome[(u_,nn)]
+    toks=set(re.findall(r'[A-Z0-9-]{3,}',nn))
+    for u_ in ufs_:
+        for t in toks:
+            if (u_,t) in dir_sigla: return dir_sigla[(u_,t)]
+    return None
+n_dir=0
+cur.execute("""select u.id, u.cnpj, u.codigo_unidade, u.nome_unidade, u.cod_ibge, o.razao_social, o.poder, o.esfera, u.municipio, u.uf from pncp_unidades u join pncp_orgaos o using(cnpj)""")
 rows=[]; n_set=n_pes=0
-for uid,c,cod,nome,ib,razao,poder,esf,mun in cur.fetchall():
+for uid,c,cod,nome,ib,razao,poder,esf,mun,uuf in cur.fetchall():
     d=org.get(c,{}); tp='CM' if (poder=='L' or 'CAMARA' in unac(razao)) else 'PM'
     ks=keys(nome)-keys(razao)-keys(mun)   # palavras-chave PROPRIAS da unidade (tira nome do orgao/municipio); vazio = unidade generica
     best=None
@@ -121,6 +145,12 @@ for uid,c,cod,nome,ib,razao,poder,esf,mun in cur.fetchall():
         sc=len(ks&kk)
         if sc and (not best or sc>best[0]): best=(sc,lab,mail)
     email_setor=(best[2] if best else None); fonte_setor=('setorial MG: '+best[1]) if best else None
+    du=dir_unidade(uuf,esf,nome) if nome else None   # diretório oficial casado pelo nome/sigla da própria unidade (secretaria, autarquia…)
+    if du:
+        if du['emails'] and not email_setor: email_setor=', '.join(du['emails'][:3]); fonte_setor='diretório oficial (unidade)'
+        if du['telefones'] and not d.get('telefone'): d=dict(d); d['telefone']=du['telefones'][0]
+        if du['site'] and not d.get('site'): d=dict(d); d['site']=du['site']
+        n_dir+=1
     sc_=lambda kk,pr,src: len(ks&kk)*10+(2 if pr==2 else 0)+(1 if src=='contatos' else 0)
     cand=[(sc_(kk,pr,src),nome_p,cargo,em,tel,src) for kk,nome_p,cargo,em,tel,pr,src in pess_cnpj.get(c,[])]
     if not cand and ib and esf=='M': cand=[(sc_(kk,pr,src),nome_p,cargo,em,tel,src) for kk,nome_p,cargo,em,tel,pr,src in pess_ibge.get((ib,tp),[])]   # municipio: so p/ orgaos municipais
@@ -139,7 +169,7 @@ for uid,c,cod,nome,ib,razao,poder,esf,mun in cur.fetchall():
     dom=dom_org.get(unac(razao)) if esf in ('E','F') else None
     if not dom and d.get('email'): dom=d['email'].split(',')[0].split('@')[-1].strip() or None
     rows.append((uid,d.get('email'),d.get('telefone'),d.get('site'),d.get('portal'),d.get('ouvidoria'),email_setor,contato_pessoa,(1 if d.get('email') or d.get('telefone') else 0)+(1 if email_setor else 0)+len(pes),fonte,dom))
-log(f'unidades: {len(rows)} · com e-mail setorial {n_set} · com pessoa {n_pes} · com contato de órgão {sum(1 for r in rows if r[1] or r[2])}')
+log(f'unidades: {len(rows)} · com e-mail setorial {n_set} · com pessoa {n_pes} · casadas c/ diretório {n_dir} · com contato de órgão {sum(1 for r in rows if r[1] or r[2])}')
 cur.execute("""create table if not exists pncp_ug_contatos (unidade_id bigint primary key, email_orgao text, telefone_orgao text, site text, portal_transparencia text, ouvidoria text,
   email_setor text, contato_pessoa text, n_contatos int, fonte text, dominio_institucional text); alter table pncp_ug_contatos enable row level security;
   alter table pncp_ug_contatos add column if not exists dominio_institucional text;
@@ -163,6 +193,10 @@ left join pncp_ug_contatos c on c.unidade_id=u.id
 left join uasg a on a.codigo_uasg=u.codigo_unidade and a.cnpj_orgao=u.cnpj
 left join pncp_orgaos_rfb r on r.cnpj=u.cnpj and r.status=200""")
 cur.execute("revoke all on v_pncp_ug from anon; grant select on v_pncp_ug to authenticated, service_role")
+cur.execute("""create or replace view v_diretorio_cnpj as select c.cnpj, d.uf, d.nome, d.sigla, d.tipo, d.site, array_to_string(d.emails,', ') emails, array_to_string(d.telefones,' / ') telefones,
+  d.ouvidoria_url, d.fale_conosco_url, d.endereco, d.redes_sociais, d.fonte_url from diretorio_orgaos_cnpj c join diretorio_orgaos d on d.id=c.diretorio_id;
+  create or replace view v_apis_cnpj as select c.cnpj, a.nome, a.url, a.tipo, a.auth, a.formato, a.dominio, a.status, a.docs_url from apis_orgaos_cnpj c join apis_orgaos a on a.id=c.api_id;
+  revoke all on v_diretorio_cnpj, v_apis_cnpj from anon; grant select on v_diretorio_cnpj, v_apis_cnpj to authenticated, service_role""")
 conn.commit(); cur.execute("select pg_notify('pgrst','reload schema')"); conn.commit()
 cur.execute("select count(*), count(email_orgao), count(email_setor), count(contato_pessoa), count(codigo_uasg) from v_pncp_ug"); log(f'v_pncp_ug: (tot, email_orgao, email_setor, contato_pessoa, uasg) = {cur.fetchone()}')
 cur.execute("select nome_unidade, municipio, uf, email_orgao, email_setor, left(contato_pessoa,90) from v_pncp_ug where email_setor is not null or contato_pessoa is not null limit 4"); [log(f'  ex: {r}') for r in cur.fetchall()]
