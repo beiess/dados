@@ -187,7 +187,8 @@ select u.id, u.uf, u.municipio, u.cod_ibge, o.razao_social as orgao, o.cnpj, u.c
   c.email_orgao, c.telefone_orgao, c.site, c.portal_transparencia, c.ouvidoria, c.email_setor, c.contato_pessoa, c.n_contatos, c.fonte as fonte_contato, c.dominio_institucional,
   a.codigo_uasg, a.nome_uasg, a.uso_sisg, a.codigo_siorg,
   o.orgao_id, o.n_unidades, o.validado, o.publicou_pncp, o.cliente_pncp, u.status_ativo, u.data_inclusao, o.data_inclusao as orgao_data_inclusao,
-  o.situacao_cadastral as situacao_rfb, r.logradouro||coalesce(', '||r.numero,'')||coalesce(' - '||r.bairro,'')||coalesce(' · CEP '||r.cep,'') as endereco_rfb
+  o.situacao_cadastral as situacao_rfb, r.logradouro||coalesce(', '||r.numero,'')||coalesce(' - '||r.bairro,'')||coalesce(' · CEP '||r.cep,'') as endereco_rfb,
+  greatest(u.data_alteracao, o.data_alteracao) as data_alteracao
 from pncp_unidades u join pncp_orgaos o on o.orgao_id=u.orgao_id
 left join pncp_ug_contatos c on c.unidade_id=u.id
 left join uasg a on a.codigo_uasg=u.codigo_unidade and a.cnpj_orgao=u.cnpj

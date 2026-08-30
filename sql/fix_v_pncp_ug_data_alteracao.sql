@@ -1,0 +1,4 @@
+-- Painel 16 dava HTTP 400 (column v_pncp_ug.data_alteracao does not exist): o motor de contatos (contatos_ug.py)
+-- recriou a view SEM a coluna após a migração data_alteracao. Fix aplicado 30/08: recriar a view COM
+-- greatest(u.data_alteracao, o.data_alteracao) as data_alteracao (contatos_ug.py também corrigido p/ manter a coluna).
+-- (definição completa da view em tools/pncp_ug/contatos_ug.py)
