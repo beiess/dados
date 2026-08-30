@@ -89,7 +89,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.14</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.15</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -470,7 +470,7 @@ async function cadBRRows(pr){if(CADBR)return CADBR;
 async function loadPanel(n,ids,quiet){
   const say=quiet?()=>{}:loading, pr=quiet?null:prog, sig=(n===3||n===7)?'ALL':curSig, myGen=(loadSeq[n]=(loadSeq[n]||0)+1); NOTE[n]='';let out=[],cap=0;
   const todos=ids.length>300, key=(n===1?'ibge':'cod_ibge');
-  const inq=(n===3||todos)?'':'&'+key+'=in.('+inList(ids)+')';
+  const inq=(n===3||todos||!ids.length)?'':'&'+key+'=in.('+inList(ids)+')';   // sem municípios (recorte só por UF/esfera) = sem in.() vazio
   const ufs=ufScope(), munSel=ids.length>0&&!todos, mgIn=!ufs||ufs.includes('MG');
   const esfIn=(esfTouched&&selEsf.size&&selEsf.size<ESFS.length)?[...selEsf]:null;
   const soMG=()=>{if(!ids.length&&!mgIn){NOTE[n]='Este painel tem dado municipal só de MG — inclua MG em “Estado ▾” ou selecione municípios.';return false;}return true;};
