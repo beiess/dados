@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v2 30/08: gate sem autofill, botão explícito, erros visíveis -->
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#24292f;background:#f6f8fa}
@@ -12,8 +12,8 @@ th,td{border:1px solid var(--b);padding:5px 7px;vertical-align:top;text-align:le
 #gate input{width:100%;padding:9px;border:1px solid var(--b);border-radius:7px;font-size:18px;text-align:center;letter-spacing:6px;margin:10px 0}.hidden{display:none}
 .chip{display:inline-block;padding:2px 8px;border-radius:10px;background:#eef1f4;font-size:11px;margin:0 4px 4px 0}small{color:#57606a}
 </style></head><body>
-<div id=gate><form class=card onsubmit="return destravar(event)"><div style="font-size:34px">🟡</div><b>Acesso restrito</b><br><small>APIs e dados abertos por órgão</small>
-  <input id=pw type=password inputmode=numeric maxlength=8 placeholder="senha" autofocus><button class=p type=submit style="width:100%">Entrar</button><div id=gerr style="color:#cf222e;font-size:12px;margin-top:6px"></div></form></div>
+<div id=gate><form class=card autocomplete="off" onsubmit="return destravar(event)"><div style="font-size:34px">🟡</div><b>Acesso restrito</b><br><small>APIs e dados abertos por órgão</small>
+  <input id=codigo name=codigo-acesso type=text inputmode=numeric maxlength=8 placeholder="código" autocomplete="one-time-code" autocapitalize=off spellcheck=false style="-webkit-text-security:disc" autofocus><button class=p type=button onclick="destravar(event)" style="width:100%">Entrar</button><div id=gerr style="color:#cf222e;font-size:12px;margin-top:6px"></div><div id=gdbg style="color:#8b949e;font-size:11px;margin-top:6px"></div></form></div>
 <div id=app class=hidden>
 <header><h1>🟡 APIs e Dados Abertos por Órgão</h1>
   <select id=uf class=s><option value="">todas as UFs</option></select>
@@ -28,13 +28,18 @@ th,td{border:1px solid var(--b);padding:5px 7px;vertical-align:top;text-align:le
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SENHA='0657'; const sb=supabase.createClient(SB_URL,SB_ANON);
+const SENHA='0657'; let sb=null; try{sb=supabase.createClient(SB_URL,SB_ANON);}catch(e){}
 function esc(s){return (''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-async function destravar(ev){ev.preventDefault();const v=document.getElementById('pw').value.trim();
-  if(v!==SENHA){document.getElementById('gerr').textContent='senha incorreta';document.getElementById('pw').value='';return false;}
-  const {data:{session}}=await sb.auth.getSession();
-  if(!session){document.getElementById('gerr').innerHTML='faça login nos <a href="./">painéis</a> primeiro (mesmo navegador) e volte aqui';return false;}
-  document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
+async function destravar(ev){if(ev&&ev.preventDefault)ev.preventDefault();const err=document.getElementById('gerr'),dbg=document.getElementById('gdbg');err.textContent='';dbg.textContent='';
+  try{
+    const v=(document.getElementById('codigo').value||'').replace(/\D/g,'');
+    if(v!==SENHA){err.textContent='código incorreto';document.getElementById('codigo').value='';return false;}
+    dbg.textContent='verificando sessão…';
+    if(typeof supabase==='undefined'||!sb){err.textContent='biblioteca não carregou (rede/CDN) — recarregue a página';return false;}
+    const {data,error}=await sb.auth.getSession();if(error)throw error;const session=data&&data.session;
+    if(!session){err.innerHTML='sessão não encontrada: faça login nos <a href="./">painéis</a> nesta mesma janela do navegador e volte aqui';dbg.textContent='';return false;}
+    dbg.textContent='';document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
+  }catch(e){err.textContent='erro: '+(e.message||e);return false;}
   try{const {data}=await sb.rpc('apis_orgaos_facetas');if(data){const u=document.getElementById('uf'),d=document.getElementById('dom');
     (data.ufs||[]).forEach(x=>u.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));(data.dominios||[]).forEach(x=>d.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));}}catch(e){}
   carregar();return false;}
