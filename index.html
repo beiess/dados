@@ -172,8 +172,8 @@ const P13C=["tipo_orgao","municipio","entidade","nome_pessoa","cargo","setor","e
 const P14C=["area","nome","cargo","setor","orgao","esfera","municipio","uf","email","telefone","telefone2","origem","obs"];
 // Painel 15 — Central de E-mails (view v_email_central)
 // Painel 16 — Unidades Gestoras do PNCP (view v_pncp_ug: unidade ⨝ órgão ⨝ UASG ⨝ contatos)
-const P16C=["uf","municipio","orgao","esfera","poder","codigo_unidade","nome_unidade","email_orgao","telefone_orgao","email_setor","contato_pessoa","site","portal_transparencia","ouvidoria","codigo_uasg","nome_uasg","natureza_juridica","cnpj","n_contatos","fonte_contato","cliente_pncp","publicou_pncp","validado","uso_sisg","codigo_siorg","n_unidades","orgao_id","cod_ibge","status_ativo","data_inclusao","orgao_data_inclusao"];
-Object.assign(WID,{nome_unidade:280,codigo_unidade:100,email_orgao:240,telefone_orgao:130,email_setor:220,contato_pessoa:360,codigo_uasg:90,nome_uasg:240,n_contatos:70,fonte_contato:200,cliente_pncp:80,publicou_pncp:90,validado:70,uso_sisg:70,codigo_siorg:90,n_unidades:80,orgao_id:80,status_ativo:80,data_inclusao:110,orgao_data_inclusao:120,pncp_orgao_id:90,pncp_validado:80,pncp_natureza:220,pncp_n_unidades:80,pncp_cliente:80,pncp_data_inclusao:110,pncp_unidades:340});
+const P16C=["uf","municipio","orgao","esfera","poder","codigo_unidade","nome_unidade","email_orgao","telefone_orgao","email_setor","contato_pessoa","situacao_rfb","site","portal_transparencia","ouvidoria","dominio_institucional","codigo_uasg","nome_uasg","natureza_juridica","cnpj","n_contatos","fonte_contato","cliente_pncp","publicou_pncp","validado","uso_sisg","codigo_siorg","n_unidades","orgao_id","cod_ibge","status_ativo","data_inclusao","orgao_data_inclusao","endereco_rfb"];
+Object.assign(WID,{situacao_rfb:100,dominio_institucional:170,endereco_rfb:260,nome_unidade:280,codigo_unidade:100,email_orgao:240,telefone_orgao:130,email_setor:220,contato_pessoa:360,codigo_uasg:90,nome_uasg:240,n_contatos:70,fonte_contato:200,cliente_pncp:80,publicou_pncp:90,validado:70,uso_sisg:70,codigo_siorg:90,n_unidades:80,orgao_id:80,status_ativo:80,data_inclusao:110,orgao_data_inclusao:120,pncp_orgao_id:90,pncp_validado:80,pncp_natureza:220,pncp_n_unidades:80,pncp_cliente:80,pncp_data_inclusao:110,pncp_unidades:340});
 Object.assign(ML,{contato_pessoa:1,email_orgao:1,pncp_unidades:1});Object.assign(NUMC,{n_contatos:1,n_unidades:1,pncp_n_unidades:1});
 const P15C=["email","dominio","tipo","risco","confiabilidade","smtp_status","mx_ok","mx_provedor","spf","dmarc","assertividade","estrategia","tags","n_ocorrencias","fontes","entrada_em"];
 Object.assign(WID,{dominio:180,tipo:120,risco:80,confiabilidade:90,smtp_status:110,mx_ok:70,mx_provedor:110,spf:60,dmarc:70,assertividade:100,estrategia:340,tags:200,n_ocorrencias:80,entrada_em:120});
@@ -188,7 +188,7 @@ const EXTRA={1:["esfera","uf","tipo_orgao","sexo","nasc_fonte","perfil_fonte"],
   11:["cod_ibge","fonte_tipo","data_coleta","grau_confianca"],12:["contato_fonte","poder_siorg","sancionado","fonte_url","data_coleta","grau_confianca"],
   13:["ibge","uf","score","fonte","data_coleta"],14:["cpf","ibge","origem_id","data_carga"],
   15:["nome","cpf","orgao","cargo","setor","esfera","uf","municipio","cnpj","ibge","n_pessoas","local_part","primeira_fonte","status","sintaxe_ok","is_catch_all","role_based","descartavel","dkim","dmarc_politica","verificado_em","camadas"],
-  16:["site","portal_transparencia","ouvidoria","natureza_juridica","cnpj","n_contatos","fonte_contato","validado","uso_sisg","codigo_siorg","n_unidades","orgao_id","cod_ibge","status_ativo","data_inclusao","orgao_data_inclusao"]};
+  16:["site","portal_transparencia","ouvidoria","dominio_institucional","natureza_juridica","cnpj","n_contatos","fonte_contato","validado","uso_sisg","codigo_siorg","n_unidades","orgao_id","cod_ibge","status_ativo","data_inclusao","orgao_data_inclusao","endereco_rfb"]};
 const _ARR={1:P1C,2:P2C,3:P3C,4:P4C,7:P7C,10:POBC,11:PESC,12:P12C,13:P13C,14:P14C,15:P15C,16:P16C};
 Object.keys(EXTRA).forEach(t=>EXTRA[t].forEach(c=>{if(!_ARR[t].includes(c))_ARR[t].push(c);}));
 Object.assign(WID,{ufs_obras:220,n_ufs_obras:60,valor_alerta:220,uf_nome:120,logradouro:200,bairro:120,cep:80,n_pessoas:70,local_part:140,primeira_fonte:110,status:90,sintaxe_ok:70,is_catch_all:80,role_based:80,descartavel:80,dkim:60,dmarc_politica:100,verificado_em:120,camadas:110,sexo:60,nasc_fonte:100,perfil_fonte:120,cidade:150,score:60,fonte_tipo:150,data_coleta:100,grau_confianca:60,data_carga:110,origem_id:90,fonte_url:200,contato_fonte:160,poder_siorg:130,remuneracao_competencia:110,ibge:90,links_relevantes:220,atores_relevantes:220,atores_confirmados:220,latitude:90,longitude:90,cod_orgao:90});
@@ -576,13 +576,13 @@ async function loadPanel(n,ids,quiet){
     if(soMx)q+='&mx_ok=is.true';if(noDesc)q+='&descartavel=is.false';
     out=await sbfetch('v_email_central',q,pr);cap=_lastCapped;
   }else if(n===16){ // Unidades Gestoras do PNCP: município(s) → cod_ibge; senão UF; esfera do topo; formulário refina
-    const q16=fv('p16q'),soCont=fv('p16cont'),soCli=fv('p16cli'),soUasg=fv('p16uasg');
+    const q16=fv('p16q'),soCont=fv('p16cont'),soCli=fv('p16cli'),soUasg=fv('p16uasg'),soAtivo=fv('p16ativo');
     say('Carregando Painel 16 (unidades gestoras do PNCP)…');let q='select='+P16C.join(',');
     if(munSel)q+='&cod_ibge=in.('+inList(ids)+')';else if(ufs)q+='&uf=in.('+ufs.join(',')+')';
     if(esfIn){const es=[...new Set(esfIn.flatMap(e=>e==='estadual'?['estadual','distrital']:[e]))].filter(e=>['municipal','estadual','distrital','federal'].includes(e));
       if(!es.length){NOTE[16]='Painel 16 só tem esferas municipal/estadual/distrital/federal — ajuste “Esfera ▾”.';out=[];cap=0;q=null;}else q+='&esfera=in.('+es.join(',')+')';}
     if(q){if(q16)q+='&or=(nome_unidade.ilike.*'+enc(q16)+'*,orgao.ilike.*'+enc(q16)+'*,municipio.ilike.*'+enc(q16)+'*)';
-      if(soCont)q+='&n_contatos=gt.0';if(soCli)q+='&cliente_pncp=is.true';if(soUasg)q+='&codigo_uasg=not.is.null';
+      if(soCont)q+='&n_contatos=gt.0';if(soCli)q+='&cliente_pncp=is.true';if(soUasg)q+='&codigo_uasg=not.is.null';if(soAtivo)q+='&or=(situacao_rfb.eq.ATIVA,situacao_rfb.is.null)';
       out=await sbfetch('v_pncp_ug',q,pr);cap=_lastCapped;}
   }else if(n===3){say('Carregando Painel 3 (fornecedores de obra)…');
     out=await sbfetch('fornecedores_obra','select='+P3C.join(','),pr);cap=_lastCapped;
@@ -696,6 +696,7 @@ function renderP16(){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='
   +'<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type=checkbox id=p16cont> só com contato</label>'
   +'<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type=checkbox id=p16cli> só clientes (entes autorizados)</label>'
   +'<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type=checkbox id=p16uasg> só com UASG/SISG</label>'
+  +'<label style="display:flex;align-items:center;gap:4px;font-size:12px" title="exclui órgãos com CNPJ baixado/inapto/suspenso na RFB"><input type=checkbox id=p16ativo> só CNPJ ativo (RFB)</label>'
   +'<button onclick="loadP16()" style="background:#0969da;color:#fff">Carregar</button></div>'
   +'<div style="margin-top:8px;font-size:11px;color:#57606a">O filtro do topo (Estado/Municípios/Esfera/Tipo de órgão) já se aplica; estes campos refinam. Vazio = Brasil inteiro (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas — prefira filtrar por UF). Em “☰ colunas” há os campos vinculados (prefeitura do município, cadastro MG/BR, obras, validação do e-mail, quem usa o e-mail).</div></div>';}
 function p16Reset(){dados[16]=[];fstate[16]={};sortState[16]=null;groupBy[16]=[];expanded[16]=new Set();capped[16]=0;panelSig[16]='';render();}

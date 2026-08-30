@@ -41,3 +41,16 @@ localização, órgão, natureza jurídica, UASG e **contatos**; e o Painel 2 en
 - Painel 16 lê `v_pncp_ug` com o filtro do topo (Municípios → cod_ibge; Estado → uf; Esfera → esfera, estadual inclui
   distrital) + formulário (texto, só com contato, só clientes, só UASG). Colunas extras ocultas por padrão.
 - Vínculo `pncp` (CNPJ → registro do PNCP) disponível em ☰ colunas dos Painéis 2, 3, 7, 13 e 15.
+
+## Resultado da carga completa (30/08/2026)
+- Varredura de `orgaos/id/1…98.700` em **1h48** (o servidor acelerou para ~15 req/s de madrugada): **98.456 órgãos**
+  (34 IDs apagados entre 95.2k–96.6k), **162.627 unidades em 24.647 órgãos** (25% — os 404 de `/unidades` são genuínos:
+  200 re-sondados, nenhum mudou). Esfera: Municipal 61.434 · Estadual 19.537 · Federal 13.397 · não inf. 3.736 · Distrital 352.
+- UASG: 24.426 unidades casadas (`codigo_unidade = codigo_uasg` e mesmo CNPJ).
+- RFB: situação dos CNPJs da semente 2021 = ATIVA ~77% · BAIXADA ~19% · INAPTA ~3% → coluna `situacao_rfb`
+  (filtro "só CNPJ ativo" no Painel 16).
+- Contatos (v_pncp_ug): e-mail do órgão em 44.143 unidades, e-mail setorial em 1.513, pessoa de contato em 6.031,
+  contato de órgão (e-mail ou telefone) em ~117 mil (72%); 210 domínios institucionais (fed/est) derivados do Painel 1.
+  Estadual/federal têm pouco e-mail (as fontes de contato são municipais) — coluna `dominio_institucional` ajuda.
+- Painel 2: 2.102/2.151 (MG) e 6.002/6.002 (BR) casados com o registro do PNCP; 514 + 143 marcados como clientes.
+- Nota: `pgrep -f nome.py` dentro de scripts/monitores casa com o próprio comando → usar `pgrep -f "[n]ome.py"`.
