@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v8 30/08: v7 + corrige declaração rows/sortC removida por engano -->
+<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v9 30/08: gate escondia? #gate{display:flex} (id) vencia .hidden (classe) → #gate.hidden !important + style inline -->
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#24292f;background:#f6f8fa}
@@ -9,7 +9,7 @@ button.p{background:#0969da;color:#fff;border-color:#0969da}.wrap{padding:10px 1
 th,td{border:1px solid var(--b);padding:5px 7px;vertical-align:top;text-align:left}th{background:#eef1f4;position:sticky;top:0;cursor:pointer}td a{color:#0969da;word-break:break-all}
 .ok{color:#1a7f37;font-weight:600}.nok{color:#cf222e}.msg{background:#fff;border:1px solid var(--b);border-radius:8px;padding:14px;margin:10px 0}
 #gate{position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:10}#gate .card{background:#fff;border-radius:12px;padding:22px;width:320px;text-align:center}
-#gate input{width:100%;padding:9px;border:1px solid var(--b);border-radius:7px;font-size:18px;text-align:center;letter-spacing:6px;margin:10px 0}.hidden{display:none}
+#gate input{width:100%;padding:9px;border:1px solid var(--b);border-radius:7px;font-size:18px;text-align:center;letter-spacing:6px;margin:10px 0}.hidden{display:none}#gate.hidden{display:none!important}
 .chip{display:inline-block;padding:2px 8px;border-radius:10px;background:#eef1f4;font-size:11px;margin:0 4px 4px 0}small{color:#57606a}
 </style></head><body>
 <div id=gate><form id=gform class=card><div style="font-size:34px">🟡</div><b>Acesso restrito</b><br><small>APIs e dados abertos por órgão</small>
@@ -38,7 +38,7 @@ async function destravar(){
   var v=(CAP||(document.getElementById('codigo').value||'')).replace(/\D/g,'');
   if(dbg)dbg.textContent='verificando…';
   if(v!==SENHA){if(err)err.textContent='código incorreto';if(dbg)dbg.textContent='';CAP='';document.getElementById('codigo').value='';return false;}
-  document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
+  document.getElementById('gate').classList.add('hidden');document.getElementById('gate').style.display='none';document.getElementById('app').classList.remove('hidden');
   carregar();return false;}
 // wiring por addEventListener (não depende de handlers inline, que algumas extensões/CSP bloqueiam)
 (function(){var f=document.getElementById('gform'),ci=document.getElementById('codigo'),db=document.getElementById('gdbg');
