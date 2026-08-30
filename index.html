@@ -89,7 +89,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.15</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.16</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -113,7 +113,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <div class="tab" id=t7 onclick="setTab(7)">🏛️ Painel 8 — Servidores do Estado (MG)</div>
   <div class="tab" id=t8 onclick="setTab(8)">🏢 Painel 9 — Receita Federal (CNPJ)</div>
   <div class="tab" id=t9 onclick="setTab(9)">🗂️ Painel 10 — Automação de Documentos</div>
-  <div class="tab" id=t11 onclick="setTab(11)">👷 Painel 11 — Pessoas ligadas a Obras</div>
+  <div class="tab" id=t11 onclick="setTab(11)">👷 Painel 11 — Pessoas ligadas a Obras (Brasil)</div>
   <div class="tab" id=t12 onclick="setTab(12)">🇧🇷 Painel 12 — Servidores Brasil (União/Justiça/AL)</div>
   <div class="tab" id=t13 onclick="setTab(13)">📇 Painel 13 — Contatos (Outras Fontes)</div>
   <div class="tab" id=t14 onclick="setTab(14)">🧑‍💼 Painel 14 — Gestores RH/Folha/Ordenadores</div>
@@ -185,7 +185,7 @@ const EXTRA={1:["esfera","uf","tipo_orgao","sexo","nasc_fonte","perfil_fonte"],
   2:["uf","ibge","cidade","cod_orgao","entidade","redes_sociais","links_relevantes","atores_relevantes","atores_confirmados","latitude","longitude","pncp_orgao_id","pncp_validado","pncp_natureza","pncp_n_unidades","pncp_cliente","pncp_data_inclusao","pncp_unidades"],
   3:["tipo","sancionado"],4:["cod_ibge","sancionado"],7:["remuneracao","remuneracao_competencia"],
   10:["uf_nome","cod_ibge","natureza_juridica","logradouro","bairro","cep","ufs_obras","n_ufs_obras","valor_alerta","data_coleta","grau_confianca"],
-  11:["cod_ibge","fonte_tipo","data_coleta","grau_confianca"],12:["contato_fonte","poder_siorg","sancionado","fonte_url","data_coleta","grau_confianca"],
+  11:["uf","cod_ibge","fonte_tipo","data_coleta","grau_confianca"],12:["contato_fonte","poder_siorg","sancionado","fonte_url","data_coleta","grau_confianca"],
   13:["ibge","uf","score","fonte","data_coleta"],14:["cpf","ibge","origem_id","data_carga"],
   15:["nome","cpf","orgao","cargo","setor","esfera","uf","municipio","cnpj","ibge","n_pessoas","local_part","primeira_fonte","status","sintaxe_ok","is_catch_all","role_based","descartavel","dkim","dmarc_politica","verificado_em","camadas"],
   16:["site","portal_transparencia","ouvidoria","dominio_institucional","natureza_juridica","cnpj","n_contatos","fonte_contato","validado","uso_sisg","codigo_siorg","n_unidades","orgao_id","cod_ibge","status_ativo","data_inclusao","orgao_data_inclusao","endereco_rfb"]};
@@ -522,8 +522,9 @@ async function loadPanel(n,ids,quiet){
   }else if(n===10){say('Carregando Painel 7 (obras e serviços de engenharia — Brasil)…');let q='select='+POBC.join(',');
     if(munSel)q+=inq;else if(ufs)q+='&uf=in.('+ufs.join(',')+')';
     out=await sbfetch('obras_engenharia_orgaos',q,pr);cap=_lastCapped;
-  }else if(n===11){say('Carregando Painel 11 (pessoas ligadas a obras)…');
-    if(soMG()){out=await sbfetch('pessoas_obras','select='+PESC.join(',')+inq,pr);cap=_lastCapped;}else{out=[];cap=0;}
+  }else if(n===11){say('Carregando Painel 11 (pessoas ligadas a obras — Brasil)…');let q='select='+PESC.join(',');
+    if(munSel)q+=inq;else if(ufs)q+='&uf=in.('+ufs.join(',')+')';   // responsáveis = MG; engenheiros estaduais/federais = todas as UFs
+    out=await sbfetch('pessoas_obras',q,pr);cap=_lastCapped;
   }else if(n===12){ // servidores Brasil: 1 consulta por esfera×UF (índices esfera / uf); formulário refina
     const fe=fv('bresf'),org=fv('brorg'),nome=fv('brnome'),cargo=fv('brcargo');
     let es=esfIn?esfIn.filter(e=>['federal','justica','estadual'].includes(e)):['federal','justica','estadual'];
@@ -795,7 +796,7 @@ function ftoggle(v,on){const p=document.getElementById('fpop'),col=p._col;let s=
 function fall(on){const p=document.getElementById('fpop');fstate[tab][p._col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
 function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];let roles=(s&&s.size)?[...s]:p._vals;if(!roles.length){alert('selecione');return;}buscaResp(roles);}
 function limparFiltros(){fstate[tab]={};sortState[tab]=null;selTOrg=new Set();selUF=new Set();esfTouched=false;syncTopLabels();if(xref&&xref.tab===tab)xref=null;render();}
-const TAB_ESF={2:'municipal',4:'municipal',5:'municipal',6:'municipal',11:'municipal',7:'estadual'};   // painéis sem coluna esfera: esfera implícita
+const TAB_ESF={2:'municipal',4:'municipal',5:'municipal',6:'municipal',7:'estadual'};   // P11 agora tem esfera implícita só p/ responsáveis (MG)   // painéis sem coluna esfera: esfera implícita
 function esfKey(v){v=norm(v||'');if(!v)return null;if(/MUNICIP/.test(v))return 'municipal';if(/ESTADUAL|DISTRITAL/.test(v))return 'estadual';if(/FEDERAL/.test(v))return 'federal';if(/JUSTI/.test(v))return 'justica';if(/PRIVAD/.test(v))return 'privado';return null;}
 function rowUF(r){if(r.uf)return ''+r.uf;const ib=r.ibge||r.cod_ibge;const m=ib?MUNI_BY_IBGE[ib]:null;return m?(m.uf||'MG'):'';}
 function rowOrg(r){return r.orgao||r.razao_social||r.entidade||'';}
