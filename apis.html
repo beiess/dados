@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v7 30/08: gate por addEventListener (sem inline) + form submit + feedback visível -->
+<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v8 30/08: v7 + corrige declaração rows/sortC removida por engano -->
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#24292f;background:#f6f8fa}
@@ -45,6 +45,7 @@ async function destravar(){
   if(f)f.addEventListener('submit',function(e){e.preventDefault();destravar();});
   if(ci){ci.addEventListener('input',function(){CAP=ci.value.replace(/\D/g,'');if(db&&document.getElementById('gate')&&!document.getElementById('gate').classList.contains('hidden'))db.textContent=CAP.length+'/4 dígitos';});
     ci.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();destravar();}});ci.focus();}})();
+let rows=[],sortC='uf',sortD=1;
 let _fac=false;
 async function carregar(){const tok=await getToken();if(!tok){document.getElementById('tw').innerHTML='<div class=msg>Você precisa estar logado nos <a href="./">painéis</a> (nesta mesma janela do navegador). Faça login lá e recarregue esta página.</div>';return;}
   if(!_fac){_fac=true;facetas();}
