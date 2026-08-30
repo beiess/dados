@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v2 30/08: gate sem autofill, botão explícito, erros visíveis -->
+<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v3 30/08: token com fallback (lock do supabase-js entre abas) -->
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#24292f;background:#f6f8fa}
@@ -29,6 +29,13 @@ th,td{border:1px solid var(--b);padding:5px 7px;vertical-align:top;text-align:le
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SENHA='0657'; let sb=null; try{sb=supabase.createClient(SB_URL,SB_ANON);}catch(e){}
+// sessão dos painéis: getSession() do supabase-js pode ficar preso no lock compartilhado com a outra aba → 3 s e cai p/ o token salvo pelo app (mesma origem)
+async function getToken(){
+  try{const r=await Promise.race([sb.auth.getSession(),new Promise(res=>setTimeout(()=>res({timeout:true}),3000))]);
+    if(r&&!r.timeout&&r.data&&r.data.session&&r.data.session.access_token)return r.data.session.access_token;}catch(e){}
+  try{const k=Object.keys(localStorage).find(k=>/^sb-.*-auth-token$/.test(k));if(!k)return null;const j=JSON.parse(localStorage.getItem(k));
+    const t=j&&(j.access_token||(j.currentSession&&j.currentSession.access_token));if(!t)return null;
+    const exp=(JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))||{}).exp;if(exp&&exp*1000<Date.now()-60000)return null;return t;}catch(e){return null;}}
 function esc(s){return (''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 async function destravar(ev){if(ev&&ev.preventDefault)ev.preventDefault();const err=document.getElementById('gerr'),dbg=document.getElementById('gdbg');err.textContent='';dbg.textContent='';
   try{
@@ -36,21 +43,21 @@ async function destravar(ev){if(ev&&ev.preventDefault)ev.preventDefault();const 
     if(v!==SENHA){err.textContent='código incorreto';document.getElementById('codigo').value='';return false;}
     dbg.textContent='verificando sessão…';
     if(typeof supabase==='undefined'||!sb){err.textContent='biblioteca não carregou (rede/CDN) — recarregue a página';return false;}
-    const {data,error}=await sb.auth.getSession();if(error)throw error;const session=data&&data.session;
-    if(!session){err.innerHTML='sessão não encontrada: faça login nos <a href="./">painéis</a> nesta mesma janela do navegador e volte aqui';dbg.textContent='';return false;}
+    const tok=await getToken();
+    if(!tok){err.innerHTML='sessão não encontrada: faça login nos <a href="./">painéis</a> nesta mesma janela do navegador e volte aqui';dbg.textContent='';return false;}
     dbg.textContent='';document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
   }catch(e){err.textContent='erro: '+(e.message||e);return false;}
-  try{const {data}=await sb.rpc('apis_orgaos_facetas');if(data){const u=document.getElementById('uf'),d=document.getElementById('dom');
+  try{const tk=await getToken();const rr=await fetch(SB_URL+'/rest/v1/rpc/apis_orgaos_facetas',{method:'POST',headers:{apikey:SB_ANON,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:'{}'});const data=rr.ok?await rr.json():null;if(data){const u=document.getElementById('uf'),d=document.getElementById('dom');
     (data.ufs||[]).forEach(x=>u.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));(data.dominios||[]).forEach(x=>d.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));}}catch(e){}
   carregar();return false;}
 let rows=[],sortC='uf',sortD=1;
-async function carregar(){const {data:{session}}=await sb.auth.getSession();if(!session){location.href='./';return;}
+async function carregar(){const tok=await getToken();if(!tok){location.href='./';return;}
   const g=id=>document.getElementById(id).value.trim();let q='select=uf,esfera,orgao,nome,tipo,auth,formato,dominio,status,url,docs_url,obs,fonte_url,testado_em&order=uf,orgao,nome&limit=5000';
   if(g('uf'))q+='&uf=eq.'+encodeURIComponent(g('uf'));if(g('esf'))q+='&esfera=eq.'+g('esf');if(g('dom'))q+='&dominio=eq.'+encodeURIComponent(g('dom'));
   if(g('st')==='ok')q+='&status=like.200*';else if(g('st')==='nok')q+='&status=not.like.200*';
   if(g('q'))q+='&or=(orgao.ilike.*'+encodeURIComponent(g('q'))+'*,nome.ilike.*'+encodeURIComponent(g('q'))+'*,url.ilike.*'+encodeURIComponent(g('q'))+'*)';
   document.getElementById('tw').innerHTML='<div class=msg>Carregando…</div>';
-  const r=await fetch(SB_URL+'/rest/v1/apis_orgaos?'+q,{headers:{apikey:SB_ANON,Authorization:'Bearer '+session.access_token}});
+  const r=await fetch(SB_URL+'/rest/v1/apis_orgaos?'+q,{headers:{apikey:SB_ANON,Authorization:'Bearer '+tok}});
   if(!r.ok){document.getElementById('tw').innerHTML='<div class=msg>erro '+r.status+'</div>';return;}
   rows=await r.json();render();}
 function sortBy(c){if(sortC===c)sortD=-sortD;else{sortC=c;sortD=1;}render();}
