@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v3 30/08: token com fallback (lock do supabase-js entre abas) -->
+<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v4 30/08: senha abre já; sessão só no carregar -->
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#24292f;background:#f6f8fa}
@@ -37,21 +37,22 @@ async function getToken(){
     const t=j&&(j.access_token||(j.currentSession&&j.currentSession.access_token));if(!t)return null;
     const exp=(JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))||{}).exp;if(exp&&exp*1000<Date.now()-60000)return null;return t;}catch(e){return null;}}
 function esc(s){return (''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-async function destravar(ev){if(ev&&ev.preventDefault)ev.preventDefault();const err=document.getElementById('gerr'),dbg=document.getElementById('gdbg');err.textContent='';dbg.textContent='';
-  try{
-    const v=(document.getElementById('codigo').value||'').replace(/\D/g,'');
-    if(v!==SENHA){err.textContent='código incorreto';document.getElementById('codigo').value='';return false;}
-    dbg.textContent='verificando sessão…';
-    if(typeof supabase==='undefined'||!sb){err.textContent='biblioteca não carregou (rede/CDN) — recarregue a página';return false;}
-    const tok=await getToken();
-    if(!tok){err.innerHTML='sessão não encontrada: faça login nos <a href="./">painéis</a> nesta mesma janela do navegador e volte aqui';dbg.textContent='';return false;}
-    dbg.textContent='';document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
-  }catch(e){err.textContent='erro: '+(e.message||e);return false;}
-  try{const tk=await getToken();const rr=await fetch(SB_URL+'/rest/v1/rpc/apis_orgaos_facetas',{method:'POST',headers:{apikey:SB_ANON,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:'{}'});const data=rr.ok?await rr.json():null;if(data){const u=document.getElementById('uf'),d=document.getElementById('dom');
-    (data.ufs||[]).forEach(x=>u.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));(data.dominios||[]).forEach(x=>d.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));}}catch(e){}
+async function destravar(ev){if(ev&&ev.preventDefault)ev.preventDefault();
+  var err=document.getElementById('gerr');if(err)err.textContent='';
+  var v=(document.getElementById('codigo').value||'').replace(/\D/g,'');
+  if(v!==SENHA){if(err)err.textContent='código incorreto';document.getElementById('codigo').value='';return false;}
+  document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
   carregar();return false;}
+// facetas (UF/domínio) — best-effort; não bloqueia
+async function facetas(){try{const tk=await getToken();if(!tk)return;
+  const rr=await fetch(SB_URL+'/rest/v1/rpc/apis_orgaos_facetas',{method:'POST',headers:{apikey:SB_ANON,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:'{}'});
+  const data=rr.ok?await rr.json():null;if(!data)return;const u=document.getElementById('uf'),d=document.getElementById('dom');
+  if(u&&u.options.length<=1)(data.ufs||[]).forEach(x=>u.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));
+  if(d&&d.options.length<=1)(data.dominios||[]).forEach(x=>d.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));}catch(e){}}
 let rows=[],sortC='uf',sortD=1;
-async function carregar(){const tok=await getToken();if(!tok){location.href='./';return;}
+let _fac=false;
+async function carregar(){const tok=await getToken();if(!tok){document.getElementById('tw').innerHTML='<div class=msg>Você precisa estar logado nos <a href="./">painéis</a> (nesta mesma janela do navegador). Faça login lá e recarregue esta página.</div>';return;}
+  if(!_fac){_fac=true;facetas();}
   const g=id=>document.getElementById(id).value.trim();let q='select=uf,esfera,orgao,nome,tipo,auth,formato,dominio,status,url,docs_url,obs,fonte_url,testado_em&order=uf,orgao,nome&limit=5000';
   if(g('uf'))q+='&uf=eq.'+encodeURIComponent(g('uf'));if(g('esf'))q+='&esfera=eq.'+g('esf');if(g('dom'))q+='&dominio=eq.'+encodeURIComponent(g('dom'));
   if(g('st')==='ok')q+='&status=like.200*';else if(g('st')==='nok')q+='&status=not.like.200*';
