@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<style>
+:root{--b:#d0d7de}*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#24292f;background:#f6f8fa}
+header{display:flex;gap:8px;align-items:center;padding:8px 16px;background:#0d1117;color:#fff;flex-wrap:wrap}header h1{font-size:15px;margin:0 10px 0 0}
+.s{padding:6px 8px;border:1px solid var(--b);border-radius:6px;font:inherit}button{padding:6px 10px;border:1px solid var(--b);border-radius:7px;background:#fff;cursor:pointer;font:inherit}
+button.p{background:#0969da;color:#fff;border-color:#0969da}.wrap{padding:10px 16px}table{border-collapse:collapse;width:100%;background:#fff;font-size:12px}
+th,td{border:1px solid var(--b);padding:5px 7px;vertical-align:top;text-align:left}th{background:#eef1f4;position:sticky;top:0;cursor:pointer}td a{color:#0969da;word-break:break-all}
+.ok{color:#1a7f37;font-weight:600}.nok{color:#cf222e}.msg{background:#fff;border:1px solid var(--b);border-radius:8px;padding:14px;margin:10px 0}
+#gate{position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:10}#gate .card{background:#fff;border-radius:12px;padding:22px;width:320px;text-align:center}
+#gate input{width:100%;padding:9px;border:1px solid var(--b);border-radius:7px;font-size:18px;text-align:center;letter-spacing:6px;margin:10px 0}.hidden{display:none}
+.chip{display:inline-block;padding:2px 8px;border-radius:10px;background:#eef1f4;font-size:11px;margin:0 4px 4px 0}small{color:#57606a}
+</style></head><body>
+<div id=gate><form class=card onsubmit="return destravar(event)"><div style="font-size:34px">🟡</div><b>Acesso restrito</b><br><small>APIs e dados abertos por órgão</small>
+  <input id=pw type=password inputmode=numeric maxlength=8 placeholder="senha" autofocus><button class=p type=submit style="width:100%">Entrar</button><div id=gerr style="color:#cf222e;font-size:12px;margin-top:6px"></div></form></div>
+<div id=app class=hidden>
+<header><h1>🟡 APIs e Dados Abertos por Órgão</h1>
+  <select id=uf class=s><option value="">todas as UFs</option></select>
+  <select id=esf class=s><option value="">todas as esferas</option><option value=federal>federal</option><option value=estadual>estadual</option><option value=distrital>distrital</option><option value=municipal>municipal</option></select>
+  <select id=dom class=s><option value="">todos os domínios</option></select>
+  <select id=st class=s><option value="">qualquer status</option><option value=ok>respondendo (200)</option><option value=nok>erro/bloqueado/chave</option></select>
+  <input id=q class=s placeholder="órgão, nome da API ou URL contém…" style="width:280px">
+  <button class=p onclick="carregar()">Carregar</button><button onclick="exportCSV()">⬇ CSV</button>
+  <span id=cnt style="margin-left:auto;font-size:12px;opacity:.85"></span><a href="./" style="color:#fff;font-size:12px">← painéis</a></header>
+<div class=wrap><div id=tw><div class=msg>Catálogo vivo de APIs, portais de dados abertos e downloads oficiais, por órgão e UF — cada um <b>testado com uma requisição real</b> (status). Fonte: curadoria web dos diretórios oficiais (União, MG e demais UFs em lotes). Clique em <b>Carregar</b>.</div></div></div>
+</div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SENHA='0657'; const sb=supabase.createClient(SB_URL,SB_ANON);
+function esc(s){return (''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function destravar(ev){ev.preventDefault();const v=document.getElementById('pw').value.trim();
+  if(v!==SENHA){document.getElementById('gerr').textContent='senha incorreta';document.getElementById('pw').value='';return false;}
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){document.getElementById('gerr').innerHTML='faça login nos <a href="./">painéis</a> primeiro (mesmo navegador) e volte aqui';return false;}
+  document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
+  try{const {data}=await sb.rpc('apis_orgaos_facetas');if(data){const u=document.getElementById('uf'),d=document.getElementById('dom');
+    (data.ufs||[]).forEach(x=>u.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));(data.dominios||[]).forEach(x=>d.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));}}catch(e){}
+  carregar();return false;}
+let rows=[],sortC='uf',sortD=1;
+async function carregar(){const {data:{session}}=await sb.auth.getSession();if(!session){location.href='./';return;}
+  const g=id=>document.getElementById(id).value.trim();let q='select=uf,esfera,orgao,nome,tipo,auth,formato,dominio,status,url,docs_url,obs,fonte_url,testado_em&order=uf,orgao,nome&limit=5000';
+  if(g('uf'))q+='&uf=eq.'+encodeURIComponent(g('uf'));if(g('esf'))q+='&esfera=eq.'+g('esf');if(g('dom'))q+='&dominio=eq.'+encodeURIComponent(g('dom'));
+  if(g('st')==='ok')q+='&status=like.200*';else if(g('st')==='nok')q+='&status=not.like.200*';
+  if(g('q'))q+='&or=(orgao.ilike.*'+encodeURIComponent(g('q'))+'*,nome.ilike.*'+encodeURIComponent(g('q'))+'*,url.ilike.*'+encodeURIComponent(g('q'))+'*)';
+  document.getElementById('tw').innerHTML='<div class=msg>Carregando…</div>';
+  const r=await fetch(SB_URL+'/rest/v1/apis_orgaos?'+q,{headers:{apikey:SB_ANON,Authorization:'Bearer '+session.access_token}});
+  if(!r.ok){document.getElementById('tw').innerHTML='<div class=msg>erro '+r.status+'</div>';return;}
+  rows=await r.json();render();}
+function sortBy(c){if(sortC===c)sortD=-sortD;else{sortC=c;sortD=1;}render();}
+function render(){const cols=['uf','esfera','orgao','nome','tipo','auth','formato','dominio','status','url','docs_url','obs','testado_em'];
+  const rs=rows.slice().sort((a,b)=>(''+(a[sortC]||'')).localeCompare(''+(b[sortC]||''),'pt')*sortD);
+  const ok=rs.filter(r=>(r.status||'').startsWith('200')).length;
+  document.getElementById('cnt').textContent=rs.length+' APIs · '+ok+' respondendo';
+  document.getElementById('tw').innerHTML='<table><thead><tr>'+cols.map(c=>'<th onclick="sortBy(\''+c+'\')">'+c+(sortC===c?(sortD>0?' ▲':' ▼'):'')+'</th>').join('')+'</tr></thead><tbody>'
+   +rs.map(r=>'<tr>'+cols.map(c=>{const v=r[c];if(!v)return '<td>—</td>';if(c==='status')return '<td class="'+((''+v).startsWith('200')?'ok':'nok')+'">'+esc(v)+'</td>';
+     if((c==='url'||c==='docs_url')&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank rel=noopener>'+esc((''+v).slice(0,90))+'</a></td>';return '<td>'+esc(v)+'</td>';}).join('')+'</tr>').join('')+'</tbody></table>';}
+function exportCSV(){if(!rows.length)return;const cols=Object.keys(rows[0]);const csv=[cols.join(';')].concat(rows.map(r=>cols.map(c=>{const v=''+(r[c]==null?'':r[c]);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(';'))).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='apis_orgaos_'+rows.length+'.csv';document.body.appendChild(a);a.click();a.remove();}
+</script></body></html>

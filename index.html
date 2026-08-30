@@ -89,7 +89,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.19</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.20</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -100,6 +100,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
   <span id=cnt></span><span id=lnk style="font-size:11px;color:#0969da;margin-left:8px"></span><span class=sp></span>
   <a href="crm/" class=mbtn style="text-decoration:none" title="Abrir o Plenum CRM (equipe comercial)">📇 CRM</a>
+  <a href="apis.html" target="_blank" rel="noopener" class=mbtn style="text-decoration:none;padding:6px 8px" title="APIs e dados abertos por órgão (acesso restrito)">🟡</a>
   <span id=who style="font-size:12px;opacity:.8"></span><button onclick=sair()>sair</button>
 </header>
 <div class=tabs>
@@ -119,7 +120,6 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <div class="tab" id=t14 onclick="setTab(14)">🧑‍💼 Painel 14 — Gestores RH/Folha/Ordenadores</div>
   <div class="tab" id=t15 onclick="setTab(15)">📧 Painel 15 — Central de E-mails</div>
   <div class="tab" id=t16 onclick="setTab(16)">🏢 Painel 16 — Unidades Gestoras (PNCP)</div>
-  <div class="tab" id=t17 onclick="setTab(17)">🔌 Painel 17 — APIs e Dados Abertos por Órgão</div>
   <button onclick="openCols(event)">☰ colunas</button>
   <button onclick="limparFiltros()">limpar filtros</button>
   <button onclick="exportCSV()">⬇ CSV</button>
@@ -219,10 +219,10 @@ const LINKS={
  p6:{label:'Responsabilidades em licitações (Painel 6)',chave:'CPF',key:r=>cpf11(r.cpf),table:'painel6_responsaveis',keycol:'cpf',norm:cpf11,chunk:100,select:'cpf,orgao,tipo_responsabilidade,email,origem,cod_ibge',fields:['tipo_responsabilidade','orgao','municipio','email','origem','n_resp'],post:(rec,rows)=>{rec.n_resp=rows.length;rec.municipio=agg(rows.map(x=>(MUNI_BY_IBGE[x.cod_ibge]||{}).cidade));}},
  val:{label:'Validação do e-mail (Painel 15)',chave:'e-mail',key:r=>email1(r.email||r.email_institucional||r.email_orgao||r.email_setor),table:'email_validacao',keycol:'email',norm:email1,select:'email,smtp_status,confiabilidade,tipo,risco,assertividade,estrategia,tags,mx_ok,verificado_em',fields:['smtp_status','confiabilidade','tipo','risco','assertividade','estrategia','tags','mx_ok','verificado_em']},
  pncp:{label:'Registro no PNCP (todos os órgãos cadastrados)',chave:'CNPJ',key:r=>cnpj14(r.cnpj||r.documento||r.doc_contratado),table:'pncp_orgaos',keycol:'cnpj',norm:cnpj14,select:'cnpj,orgao_id,razao_social,esfera,poder,natureza_juridica,validado,status_ativo,n_unidades,uf,municipio,publicou_pncp,cliente_pncp,data_inclusao',fields:['orgao_id','razao_social','esfera','poder','natureza_juridica','validado','n_unidades','uf','municipio','publicou_pncp','cliente_pncp','data_inclusao']},
- dir:{label:'Diretório oficial (contatos publicados pelo governo)',chave:'CNPJ',key:r=>cnpj14(r.cnpj||r.documento),table:'v_diretorio_cnpj',keycol:'cnpj',norm:cnpj14,select:'cnpj,nome,sigla,site,emails,telefones,ouvidoria_url,fale_conosco_url,endereco,redes_sociais,fonte_url',fields:['nome','sigla','site','emails','telefones','ouvidoria_url','fale_conosco_url','endereco','redes_sociais','fonte_url']},
- apis:{label:'APIs e dados abertos do órgão (Painel 17)',chave:'CNPJ',key:r=>cnpj14(r.cnpj||r.documento),table:'v_apis_cnpj',keycol:'cnpj',norm:cnpj14,select:'cnpj,nome,url,tipo,auth,status,dominio',fields:['nome','url','tipo','auth','status','dominio']},
+ dir:{label:'Diretório oficial (contatos publicados pelo governo)',chave:'CNPJ',key:r=>cnpj14(r.cnpj||r.documento||(Array.isArray(r.cnpjs)?r.cnpjs[0]:r.cnpjs)),table:'v_diretorio_cnpj',keycol:'cnpj',norm:cnpj14,select:'cnpj,nome,sigla,site,emails,telefones,ouvidoria_url,fale_conosco_url,endereco,redes_sociais,fonte_url',fields:['nome','sigla','site','emails','telefones','ouvidoria_url','fale_conosco_url','endereco','redes_sociais','fonte_url']},
+ apis:{label:'APIs e dados abertos do órgão (🟡 apis.html)',chave:'CNPJ',key:r=>cnpj14(r.cnpj||r.documento||(Array.isArray(r.cnpjs)?r.cnpjs[0]:r.cnpjs)),table:'v_apis_cnpj',keycol:'cnpj',norm:cnpj14,select:'cnpj,nome,url,tipo,auth,status,dominio',fields:['nome','url','tipo','auth','status','dominio']},
  vinc:{label:'Quem usa este e-mail (Painel 15 · vínculos)',chave:'e-mail',key:r=>email1(r.email||r.email_institucional||r.email_orgao||r.email_setor),table:'email_vinculos',keycol:'email',norm:email1,select:'email,nome,cpf,orgao,cargo,setor,esfera,uf,municipio,cnpj,n_pessoas',fields:['nome','cpf','orgao','cargo','setor','esfera','uf','municipio','cnpj','n_pessoas']}};
-const TABLINKS={1:['mun','pref','p6','val'],2:['pncp','dir','apis','obra','vinc','val'],3:['val','vinc','pncp'],4:['mun','pref','forn'],5:['mun','pref'],6:['mun','pref','p1','val'],7:['p1n'],10:['pncp','dir','apis','cadbr','cadmg','vinc','val'],11:['mun','pref','p1','p6','val'],12:['p1n','val'],13:['mun','pref','pncp','dir','cadbr','cadmg','obra','val','vinc'],14:['mun','pref','p1','p6','val'],15:['p1','p6','pncp','dir','cadbr','cadmg','obra'],16:['dir','apis','pref','cadmg','cadbr','obra','val','vinc'],17:['pncp','dir']};
+const TABLINKS={1:['mun','pref','p6','val'],2:['pncp','dir','apis','obra','vinc','val'],3:['val','vinc','pncp'],4:['mun','pref','forn'],5:['mun','pref'],6:['mun','pref','p1','val'],7:['p1n'],10:['pncp','dir','apis','cadbr','cadmg','vinc','val'],11:['mun','pref','p1','p6','val'],12:['p1n','val'],13:['mun','pref','pncp','dir','cadbr','cadmg','obra','val','vinc'],14:['mun','pref','p1','p6','val'],15:['p1','p6','pncp','dir','cadbr','cadmg','obra'],16:['dir','apis','pref','cadmg','cadbr','obra','val','vinc']};
 function isLinkCol(c){const i=(''+c).indexOf(':');return i>0&&!!LINKS[c.slice(0,i)];}
 function isCpfCol(c){return c==='cpf'||/:cpf$/.test(c);}
 function colLabel(c){return isLinkCol(c)?c.replace(':',' › '):c;}
@@ -465,7 +465,7 @@ let panelSig={1:'',2:'',3:'',4:'',5:'',6:'',7:''}, curSig='';
 // Painéis extras (obras=10/11, servidores Brasil=12) — inicializa suas fatias de estado
 [10,11,12,13,14,15,16,17].forEach(t=>{dados[t]=[];fstate[t]={};colw[t]={};sortState[t]=null;visState[t]=null;groupBy[t]=[];expanded[t]=new Set();capped[t]=0;panelSig[t]='';});
 // carrega UM painel (por município, ou MG-wide no caso do P3). Sem order= no servidor (ordenação é no cliente).
-const NOTE={}, inflight={}, loadSeq={}, FILT_TABS=[1,2,4,5,6,10,11,12,13,14,15,16,17]; let loadGen=0, CADBR=null;
+const NOTE={}, inflight={}, loadSeq={}, FILT_TABS=[1,2,4,5,6,10,11,12,13,14,15,16]; let loadGen=0, CADBR=null;
 function ufScope(){return (selUF.size&&selUF.size<UFS27.length)?[...selUF]:null;}
 function fv(id){const e=document.getElementById(id);return e?(e.type==='checkbox'?!!e.checked:(''+(e.value||'')).trim()):'';}
 function tabName(n){const e=document.getElementById('t'+n);return e?(e.dataset.lbl||e.textContent).trim():('Painel '+n);}
@@ -615,7 +615,7 @@ async function loadPanel(n,ids,quiet){
   dados[n]=out;capped[n]=cap;panelSig[n]=sig; fstate[n]={};sortState[n]=null;expanded[n]=new Set();
 }
 // pré-carga em segundo plano dos demais painéis com o MESMO filtro (1 por vez; orçamento de linhas; pula recortes enormes)
-const PREF_ORDER=[1,2,10,11,6,4,14,13,16,17,15,12,5];
+const PREF_ORDER=[1,2,10,11,6,4,14,13,16,15,12,5];
 async function prefetchAll(ids,skip){const gen=loadGen;let budget=1200000;
   for(const n of PREF_ORDER){if(gen!==loadGen)break;if(n===skip||panelSig[n]===curSig||inflightOk(n))continue;
     if(n===5&&!(ids.length&&ids.length<=100))continue;          // despesa: só recortes pequenos
@@ -643,7 +643,7 @@ async function carregar(){closePop();const ids=[...sel];
   tab=t;setTabUI();render();
   prefetchAll(ids,t);
 }
-const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11,t12:12,t13:13,t14:14,t15:15,t16:16,t17:17};
+const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11,t12:12,t13:13,t14:14,t15:15,t16:16};
 function setTabUI(){Object.entries(TABIDS).forEach(([id,n])=>{const e=document.getElementById(id);if(!e)return;e.classList.toggle('on',tab===n);
   if(!e.dataset.lbl)e.dataset.lbl=e.textContent.trim();
   const k=(dados[n]||[]).length, stale=!!(curSig&&panelSig[n]!==curSig&&panelSig[n]!=='ALL'&&panelSig[n]!=='XREF');
