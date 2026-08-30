@@ -89,7 +89,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.20</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.21</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -197,7 +197,8 @@ const EXTRA={1:["esfera","uf","tipo_orgao","sexo","nasc_fonte","perfil_fonte","t
   16:["site","portal_transparencia","ouvidoria","dominio_institucional","natureza_juridica","cnpj","n_contatos","fonte_contato","validado","uso_sisg","codigo_siorg","n_unidades","orgao_id","cod_ibge","status_ativo","data_inclusao","orgao_data_inclusao","endereco_rfb"],
   17:["obs","fonte_url","testado_em","cnpjs"]};
 const _ARR={1:P1C,2:P2C,3:P3C,4:P4C,7:P7C,10:POBC,11:PESC,12:P12C,13:P13C,14:P14C,15:P15C,16:P16C,17:P17C};
-Object.keys(EXTRA).forEach(t=>EXTRA[t].forEach(c=>{if(!_ARR[t].includes(c))_ARR[t].push(c);}));
+const DERIVED={1:['tipo']};   // colunas calculadas no cliente — nunca vão para o select
+Object.keys(EXTRA).forEach(t=>EXTRA[t].forEach(c=>{if(!_ARR[t].includes(c)&&!(DERIVED[t]||[]).includes(c))_ARR[t].push(c);}));
 Object.assign(WID,{ufs_obras:220,n_ufs_obras:60,valor_alerta:220,uf_nome:120,logradouro:200,bairro:120,cep:80,n_pessoas:70,local_part:140,primeira_fonte:110,status:90,sintaxe_ok:70,is_catch_all:80,role_based:80,descartavel:80,dkim:60,dmarc_politica:100,verificado_em:120,camadas:110,sexo:60,nasc_fonte:100,perfil_fonte:120,cidade:150,score:60,fonte_tipo:150,data_coleta:100,grau_confianca:60,data_carga:110,origem_id:90,fonte_url:200,contato_fonte:160,poder_siorg:130,remuneracao_competencia:110,ibge:90,links_relevantes:220,atores_relevantes:220,atores_confirmados:220,latitude:90,longitude:90,cod_orgao:90});
 Object.assign(NUMC,{n_pessoas:1,n_ufs_obras:1,score:1});TOTC[17]=[];Object.assign(ML,{ufs_obras:1,valor_alerta:1,links_relevantes:1,atores_relevantes:1,atores_confirmados:1,camadas:1});
 // ── campos VINCULADOS: colunas virtuais "vínculo:campo" resolvidas pela chave do registro (CPF, CNPJ, IBGE, e-mail, nome) ──
