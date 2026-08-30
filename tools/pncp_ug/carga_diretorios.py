@@ -30,6 +30,11 @@ def jl(p):
         try: out.append(json.loads(ln))
         except Exception: pass
     return out
+def txt(v):
+    if v is None: return None
+    if isinstance(v,list): return ' | '.join(str(x) for x in v if str(x).strip()) or None
+    if isinstance(v,dict): return ' | '.join(f"{k}: {x}" for k,x in v.items() if x) or None
+    return str(v).strip() or None
 def arr(v):
     if v is None: return []
     if isinstance(v,list): return [str(x).strip() for x in v if str(x).strip()]
@@ -42,9 +47,9 @@ for f in sorted(glob.glob(os.path.join(JOB,'*','orgaos.jsonl'))):
         if not nome or (uf,nome) in seen: continue
         seen.add((uf,nome))
         extras={k:v for k,v in r.items() if k not in ('uf','esfera','nome','sigla','tipo','poder','site','emails','telefones','endereco','ouvidoria_url','fale_conosco_url','redes_sociais','orgao_pai','fonte_url','fontes','cnpjs_pncp','n_unidades_pncp','publicou_pncp','siorg_codigo','coletado_em')}
-        cn=[re.sub(r'\D','',c) for c in arr(r.get('cnpjs_pncp'))]; cn=[c for c in cn if len(c)==14]
-        rows.append((r.get('uf') or uf, r.get('esfera'), nome, unac(nome), r.get('sigla') or None, r.get('tipo'), r.get('poder'), r.get('site') or None, arr(r.get('emails')), arr(r.get('telefones')),
-                     r.get('endereco') or None, r.get('ouvidoria_url') or None, r.get('fale_conosco_url') or None, r.get('redes_sociais') or None, r.get('orgao_pai') or None, r.get('fonte_url') or None,
+        cn=[re.sub(r'\D','',c) for c in arr(r.get('cnpjs_pncp'))+arr(r.get('cnpj_pncp'))]; cn=sorted({c for c in cn if len(c)==14})
+        rows.append((r.get('uf') or uf, txt(r.get('esfera')), nome, unac(nome), txt(r.get('sigla')), txt(r.get('tipo')), txt(r.get('poder')), txt(r.get('site')), arr(r.get('emails')), arr(r.get('telefones')),
+                     txt(r.get('endereco')), txt(r.get('ouvidoria_url')), txt(r.get('fale_conosco_url')), txt(r.get('redes_sociais')), txt(r.get('orgao_pai')), txt(r.get('fonte_url')),
                      arr(r.get('fontes')), cn, r.get('n_unidades_pncp'), r.get('publicou_pncp'), (str(r['siorg_codigo']) if r.get('siorg_codigo') else None), r.get('coletado_em') or None, Json(extras)))
     execute_values(cur,"""insert into diretorio_orgaos (uf,esfera,nome,nome_norm,sigla,tipo,poder,site,emails,telefones,endereco,ouvidoria_url,fale_conosco_url,redes_sociais,orgao_pai,fonte_url,fontes,cnpjs_pncp,n_unidades_pncp,publicou_pncp,siorg_codigo,coletado_em,extras) values %s
       on conflict (uf,nome) do update set esfera=excluded.esfera, nome_norm=excluded.nome_norm, sigla=excluded.sigla, tipo=excluded.tipo, poder=excluded.poder, site=excluded.site, emails=excluded.emails, telefones=excluded.telefones,
@@ -59,7 +64,7 @@ for f in sorted(glob.glob(os.path.join(JOB,'*','apis.jsonl'))):
         key=(r.get('uf') or uf, (r.get('orgao') or '').strip(), (r.get('url') or '').strip())
         if not key[2] or key in seen: continue
         seen.add(key)
-        rows.append((key[0], r.get('esfera'), key[1], r.get('nome'), key[2], r.get('docs_url') or None, r.get('tipo'), r.get('auth'), r.get('formato'), r.get('dominio'), r.get('status'), r.get('obs') or None, r.get('fonte_url') or None, r.get('testado_em') or None))
+        rows.append((key[0], txt(r.get('esfera')), key[1], txt(r.get('nome')), key[2], txt(r.get('docs_url')), txt(r.get('tipo')), txt(r.get('auth')), txt(r.get('formato')), txt(r.get('dominio')), txt(r.get('status')), txt(r.get('obs')), txt(r.get('fonte_url')), txt(r.get('testado_em'))))
     execute_values(cur,"""insert into apis_orgaos (uf,esfera,orgao,nome,url,docs_url,tipo,auth,formato,dominio,status,obs,fonte_url,testado_em) values %s
       on conflict (uf,orgao,url) do update set esfera=excluded.esfera, nome=excluded.nome, docs_url=excluded.docs_url, tipo=excluded.tipo, auth=excluded.auth, formato=excluded.formato, dominio=excluded.dominio, status=excluded.status, obs=excluded.obs, fonte_url=excluded.fonte_url, testado_em=excluded.testado_em""",rows,page_size=500)
     tot_a+=len(rows); log(f'{uf}: apis_orgaos upsert {len(rows)}')
