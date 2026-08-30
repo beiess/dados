@@ -37,6 +37,7 @@ a{color:#0969da}.msg{padding:22px;color:#57606a}.S{color:#1a7f37;font-weight:700
 #login input{width:100%;padding:10px;margin:6px 0;border:1px solid var(--b);border-radius:8px;font:inherit}
 #login button{width:100%;padding:10px;background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;margin-top:8px}
 #err{color:#cf222e;font-size:12px;min-height:16px}.hidden{display:none}
+.dt{font:inherit;font-size:12px;padding:3px 5px;border:1px solid var(--b);border-radius:6px;margin:0 2px}
 .pop{position:absolute;z-index:50;background:#fff;border:1px solid var(--b);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.15);padding:8px;width:280px}
 .pop input.s{width:100%;padding:6px;border:1px solid var(--b);border-radius:6px;margin-bottom:6px}
 .pop .lst{max-height:230px;overflow:auto;border:1px solid var(--b);border-radius:6px;padding:4px}
@@ -89,12 +90,13 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.21</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.22</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
   <button class=mbtn id=tsel onclick="toggleTOrg(event)" title="Tipo de órgão — filtra o carregado na hora (Aplicar) ou busca direto no servidor (Carregar), combinável com os demais filtros">Tipo de órgão ▾</button>
   <input id=q placeholder="busca global…" oninput=render()>
+  <span id=perbox title="Traz só registros incluídos ou alterados no período (por data de alteração). Marque 📅 para aplicar."><label style="display:inline-flex;align-items:center;gap:3px;font-size:12px"><input type=checkbox id=perOn onchange=aplicarPeriodo()> 📅</label><input type=date id=dtini class=dt onchange=aplicarPeriodo()>–<input type=date id=dtfim class=dt onchange=aplicarPeriodo()></span>
   <button class=mbtn id=ssel onclick="topFilter(event,'setor')" title="filtra por setor — lista de seleção múltipla sobre o que está carregado">Setor ▾</button>
   <button class=mbtn id=csel onclick="topFilter(event,'cargo')" title="filtra por cargo/função — lista de seleção múltipla sobre o que está carregado">Cargo ▾</button>
   <button id=anon class=on onclick=toggleAnon()>🔒 CPF oculto</button>
@@ -174,15 +176,16 @@ const P13C=["tipo_orgao","municipio","entidade","nome_pessoa","cargo","setor","e
 const P14C=["area","nome","cargo","setor","orgao","esfera","municipio","uf","email","telefone","telefone2","origem","obs"];
 // Painel 15 — Central de E-mails (view v_email_central)
 // Painel 16 — Unidades Gestoras do PNCP (view v_pncp_ug: unidade ⨝ órgão ⨝ UASG ⨝ contatos)
-const P16C=["uf","municipio","orgao","esfera","poder","codigo_unidade","nome_unidade","email_orgao","telefone_orgao","email_setor","contato_pessoa","situacao_rfb","site","portal_transparencia","ouvidoria","dominio_institucional","codigo_uasg","nome_uasg","natureza_juridica","cnpj","n_contatos","fonte_contato","cliente_pncp","publicou_pncp","validado","uso_sisg","codigo_siorg","n_unidades","orgao_id","cod_ibge","status_ativo","data_inclusao","orgao_data_inclusao","endereco_rfb"];
+const P16C=["uf","municipio","orgao","esfera","poder","codigo_unidade","nome_unidade","email_orgao","telefone_orgao","email_setor","contato_pessoa","situacao_rfb","site","portal_transparencia","ouvidoria","dominio_institucional","codigo_uasg","nome_uasg","natureza_juridica","cnpj","n_contatos","fonte_contato","cliente_pncp","publicou_pncp","validado","uso_sisg","codigo_siorg","n_unidades","orgao_id","cod_ibge","status_ativo","data_inclusao","orgao_data_inclusao","endereco_rfb","data_alteracao"];
 Object.assign(WID,{tipo:80,situacao_rfb:100,dominio_institucional:170,endereco_rfb:260,nome_unidade:280,codigo_unidade:100,email_orgao:240,telefone_orgao:130,email_setor:220,contato_pessoa:360,codigo_uasg:90,nome_uasg:240,n_contatos:70,fonte_contato:200,cliente_pncp:80,publicou_pncp:90,validado:70,uso_sisg:70,codigo_siorg:90,n_unidades:80,orgao_id:80,status_ativo:80,data_inclusao:110,orgao_data_inclusao:120,pncp_orgao_id:90,pncp_validado:80,pncp_natureza:220,pncp_n_unidades:80,pncp_cliente:80,pncp_data_inclusao:110,pncp_unidades:340});
 Object.assign(ML,{contato_pessoa:1,email_orgao:1,pncp_unidades:1});Object.assign(NUMC,{n_contatos:1,n_unidades:1,pncp_n_unidades:1});
 // Painel 17 — catálogo de APIs/portais de dados abertos por órgão (tabela apis_orgaos, curadoria web por UF)
 const P17C=["uf","esfera","orgao","nome","tipo","auth","formato","dominio","status","url","docs_url","obs","fonte_url","testado_em","cnpjs"];
 Object.assign(WID,{nome:260,tipo:100,auth:90,formato:80,dominio:110,status:130,url:320,docs_url:220,obs:260,fonte_url:220,testado_em:100,cnpjs:160});
 Object.assign(ML,{obs:1,cnpjs:1});
-const P15C=["email","dominio","tipo","risco","confiabilidade","smtp_status","mx_ok","mx_provedor","spf","dmarc","assertividade","estrategia","tags","n_ocorrencias","fontes","entrada_em"];
-Object.assign(WID,{dominio:180,tipo:120,risco:80,confiabilidade:90,smtp_status:110,mx_ok:70,mx_provedor:110,spf:60,dmarc:70,assertividade:100,estrategia:340,tags:200,n_ocorrencias:80,entrada_em:120});
+[P1C,P2C,P3C,P4C,P5DB,P5C,P6C,P7C,POBC,PESC,P12C,P13C,P14C].forEach(a=>{if(!a.includes('data_alteracao'))a.push('data_alteracao');});
+const P15C=["email","dominio","tipo","risco","confiabilidade","smtp_status","mx_ok","mx_provedor","spf","dmarc","assertividade","estrategia","tags","n_ocorrencias","fontes","entrada_em","data_alteracao"];
+Object.assign(WID,{data_alteracao:150,dominio:180,tipo:120,risco:80,confiabilidade:90,smtp_status:110,mx_ok:70,mx_provedor:110,spf:60,dmarc:70,assertividade:100,estrategia:340,tags:200,n_ocorrencias:80,entrada_em:120});
 Object.assign(WID,{esfera_adm:110,orgao_superior:220,natureza_juridica:150,org_ref_status:120,codigo_siorg:90,lattes:130,email:230,telefone:120,email_institucional:230,telefone_institucional:140,partido:80,remuneracao_liquida:120,instituidor_pensao:240,id_servidor_portal:110,entidade:260,atividade:200,tipo_vinculo:130,situacao:150,regime:170,jornada:110,data_ingresso_orgao:110,competencia:95,fonte:130,poder:130,classe_cargo:90,cargo:220});
 Object.assign(ML,{entidade:1,orgao:1,cargo:1,atividade:1});
 TOTC[12]=["remuneracao","remuneracao_liquida"];TOTC[16]=[];Object.assign(NUMC,{remuneracao_liquida:1});Object.assign(ML,{instituidor_pensao:1});
@@ -273,7 +276,10 @@ async function fetchLinks(miss){const gen=++_lgen,t=await token();if(!t)return;c
 
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let tab=1,dados={1:[],2:[],3:[],4:[],5:[],6:[],7:[]},anon=true,munis=[],sel=new Set(),cadByKey={},cadAll=[];
-let ME={email:'',admin:false};   // usuário logado: equipe só edita o que inseriu (origem manual:<email>); admin edita tudo
+let ME={email:'',admin:false};
+let PER={on:false,ini:'',fim:''};   // filtro de período por data_alteracao (registros incluídos/alterados no intervalo)
+function hojeISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function perQ(){return (PER.on&&PER.ini&&PER.fim)?('&data_alteracao=gte.'+PER.ini+'T00:00:00&data_alteracao=lte.'+PER.fim+'T23:59:59.999'):'';}   // usuário logado: equipe só edita o que inseriu (origem manual:<email>); admin edita tudo
 function podeEditar(r){return ME.admin||((r.origem||'')==='manual:'+ME.email);}
 function tipoPessoa(r){return r.esfera==='privado'?'privado':(r.esfera?'público':'');}
 let fstate={1:{},2:{},3:{},4:{},5:{},6:{},7:{}}, colw={1:{},2:{},3:{},4:{},5:{},6:{},7:{}};
@@ -332,6 +338,7 @@ async function fetchKey(tbl,qs,t,gtId,lteId,limit,withCount){
 // busca paginada: 1ª página traz a contagem total (Prefer:count=exact); o resto vem em PARALELO (pool)
 async function sbfetch(tbl,qs,onprog){
   const t=await token(); if(!t) throw new Error('sessão expirada — recarregue e faça login');
+  qs=qs+perQ();   // período por data de alteração (quando ativo)
   qs=qs.replace(/&?order=[^&]*/g,'')+'&order=id';  // paginação estável: ordena por chave única (PK)
   qs=qs.replace(/(^|&)select=([^&]*)/,(m,p,v)=>p+'select='+(v.split(',').includes('id')?v:'id,'+v));  // keyset precisa do id no payload
   const page=1000, CAP=capOverride||DLCAP; _lastCapped=0;
@@ -380,6 +387,7 @@ async function start(){const {data:{session}}=await sb.auth.getSession();if(!ses
   document.getElementById('who').textContent=session.user.email;
   ME={email:session.user.email,admin:false};try{const {data:{user}}=await sb.auth.getUser();const {data}=await sb.from('funcionarios').select('funcao,acesso_irrestrito').eq('auth_user_id',user.id).limit(1);const f=data&&data[0];ME.admin=!!(f&&(f.funcao==='admin'||f.acesso_irrestrito));}catch(e){}
   document.getElementById('who').textContent=session.user.email+(ME.admin?' · admin':'');
+  document.getElementById('dtini').value=document.getElementById('dtfim').value=hojeISO();
   try{munis=await fetch('municipios.json').then(r=>r.json());}catch(e){munis=[];}
   try{orgaos=await fetch('orgaos.json').then(r=>r.json());}catch(e){orgaos={};}
   loading('Carregando cadastro institucional…');
@@ -833,7 +841,19 @@ function ffilter(q){q=norm(q);const p=document.getElementById('fpop');if(!p)retu
 function ftoggle(v,on){const p=document.getElementById('fpop'),col=p._col;let s=fstate[tab][col];if(!s){s=new Set(p._vals);fstate[tab][col]=s;}on?s.add(v):s.delete(v);render();}
 function fall(on){const p=document.getElementById('fpop');fstate[tab][p._col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
 function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];let roles=(s&&s.size)?[...s]:p._vals;if(!roles.length){alert('selecione');return;}buscaResp(roles);}
-function limparFiltros(){fstate[tab]={};sortState[tab]=null;selTOrg=new Set();selUF=new Set();esfTouched=false;syncTopLabels();if(xref&&xref.tab===tab)xref=null;render();}
+function aplicarPeriodo(){PER.on=document.getElementById('perOn').checked;PER.ini=document.getElementById('dtini').value;PER.fim=document.getElementById('dtfim').value;
+  Object.keys(panelSig).forEach(n=>{if(panelSig[n]&&panelSig[n]!=='XREF')panelSig[n]='';});   // invalida p/ recarregar com o novo período
+  const n=tab;
+  const done=()=>render(), fail=e=>showErr(e.message);
+  if(n===8||n===9){render();return;}
+  if(n===3||n===7){loadPanelQ(n,[]).then(done).catch(fail);return;}
+  if(n===12){if(document.getElementById('brorg'))loadBR();else render();return;}
+  if(n===13){if(document.getElementById('ctmun'))loadCT();else render();return;}
+  if(n===14){if(document.getElementById('p14mun'))loadP14();else render();return;}
+  if(n===15){if(document.getElementById('ecTipo'))loadE();else render();return;}
+  if(n===16){if(document.getElementById('p16q'))loadP16();else render();return;}
+  if(sel.size||curSig||p1WantOut([...sel])){loadPanelQ(n,[...sel]).then(done).catch(fail);}else render();}
+function limparFiltros(){fstate[tab]={};sortState[tab]=null;selTOrg=new Set();selUF=new Set();esfTouched=false;PER.on=false;document.getElementById('perOn').checked=false;syncTopLabels();if(xref&&xref.tab===tab)xref=null;render();}
 const TAB_ESF={2:'municipal',4:'municipal',5:'municipal',6:'municipal',7:'estadual'};   // P11 agora tem esfera implícita só p/ responsáveis (MG)   // painéis sem coluna esfera: esfera implícita
 function esfKey(v){v=norm(v||'');if(!v)return null;if(/MUNICIP/.test(v))return 'municipal';if(/ESTADUAL|DISTRITAL/.test(v))return 'estadual';if(/FEDERAL/.test(v))return 'federal';if(/JUSTI/.test(v))return 'justica';if(/PRIVAD/.test(v))return 'privado';return null;}
 function rowUF(r){if(r.uf)return ''+r.uf;const ib=r.ibge||r.cod_ibge;const m=ib?MUNI_BY_IBGE[ib]:null;return m?(m.uf||'MG'):'';}
@@ -905,6 +925,7 @@ function leafHTML(r){const cols=visibleCols();
     if(c==='instagram'&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>insta</a></td>';
     if(LINKC[c]&&(''+v).startsWith('http'))return '<td><a href="'+esc(v)+'" target=_blank>link</a></td>';
     if((tab===17&&(c==='url'||c==='docs_url'||c==='fonte_url'))||/:(site|ouvidoria_url|fale_conosco_url|url|docs_url|fonte_url)$/.test(c)){if((''+v).startsWith('http'))return '<td class=ml><a href="'+esc(v)+'" target=_blank>'+esc((''+v).slice(0,70))+'</a></td>';}
+    if((c==='data_alteracao'||/(_em|data_inclusao|verificado_em|testado_em)$/.test(c))&&/^\d{4}-\d\d-\d\d/.test(''+v))return '<td title="'+esc(v)+'">'+esc((''+v).slice(0,16).replace('T',' '))+'</td>';
     if(ML[c]||isLinkCol(c))return '<td class=ml>'+(''+v).split(' | ').map(esc).join('<br>')+'</td>';
     return '<td>'+esc(v)+'</td>';}).join('')+'</tr>';}
 // linha de grupo (cascata)
