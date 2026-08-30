@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v6 30/08: campo comum + valor capturado (à prova de autofill) -->
+<html lang="pt-BR"><head><meta charset="utf-8"><title>🟡 APIs e Dados Abertos por Órgão</title><!-- v7 30/08: gate por addEventListener (sem inline) + form submit + feedback visível -->
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <style>
 :root{--b:#d0d7de}*{box-sizing:border-box}body{margin:0;font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#24292f;background:#f6f8fa}
@@ -12,8 +12,9 @@ th,td{border:1px solid var(--b);padding:5px 7px;vertical-align:top;text-align:le
 #gate input{width:100%;padding:9px;border:1px solid var(--b);border-radius:7px;font-size:18px;text-align:center;letter-spacing:6px;margin:10px 0}.hidden{display:none}
 .chip{display:inline-block;padding:2px 8px;border-radius:10px;background:#eef1f4;font-size:11px;margin:0 4px 4px 0}small{color:#57606a}
 </style></head><body>
-<div id=gate><form class=card autocomplete="off" onsubmit="return destravar(event)"><div style="font-size:34px">🟡</div><b>Acesso restrito</b><br><small>APIs e dados abertos por órgão</small>
-  <input id=codigo type=text inputmode=numeric maxlength=8 placeholder="código de 4 dígitos" autocomplete=off autocapitalize=off spellcheck=false oninput="CAP=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter'){event.preventDefault();destravar(event)}" autofocus><button class=p type=button onclick="destravar(event)" style="width:100%">Entrar</button><div id=gerr style="color:#cf222e;font-size:12px;margin-top:6px"></div><div id=gdbg style="color:#8b949e;font-size:11px;margin-top:6px"></div></form></div>
+<div id=gate><form id=gform class=card><div style="font-size:34px">🟡</div><b>Acesso restrito</b><br><small>APIs e dados abertos por órgão</small>
+  <input id=codigo type=text inputmode=numeric maxlength=8 placeholder="código de 4 dígitos" autocomplete=off autocapitalize=off spellcheck=false autofocus>
+  <button id=gbtn type=submit class=p style="width:100%">Entrar</button><div id=gerr style="color:#cf222e;font-size:12px;margin-top:6px"></div><div id=gdbg style="color:#8b949e;font-size:11px;margin-top:4px"></div></form></div></form></div>
 <div id=app class=hidden>
 <header><h1>🟡 APIs e Dados Abertos por Órgão</h1>
   <select id=uf class=s><option value="">todas as UFs</option></select>
@@ -32,19 +33,18 @@ const SENHA='0657'; let CAP=''; let sb=null; try{sb=supabase.createClient(SB_URL
 // sessão dos painéis: getSession() do supabase-js pode ficar preso no lock compartilhado com a outra aba → 3 s e cai p/ o token salvo pelo app (mesma origem)
 async function getToken(){try{const {data}=await sb.auth.getSession();return data&&data.session?data.session.access_token:null;}catch(e){return null;}}
 function esc(s){return (''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-async function destravar(ev){if(ev&&ev.preventDefault)ev.preventDefault();
-  var err=document.getElementById('gerr');if(err)err.textContent='';
+async function destravar(){
+  var err=document.getElementById('gerr'),dbg=document.getElementById('gdbg');if(err)err.textContent='';
   var v=(CAP||(document.getElementById('codigo').value||'')).replace(/\D/g,'');
-  if(v!==SENHA){if(err)err.textContent='código incorreto';CAP='';document.getElementById('codigo').value='';return false;}
+  if(dbg)dbg.textContent='verificando…';
+  if(v!==SENHA){if(err)err.textContent='código incorreto';if(dbg)dbg.textContent='';CAP='';document.getElementById('codigo').value='';return false;}
   document.getElementById('gate').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
   carregar();return false;}
-// facetas (UF/domínio) — best-effort; não bloqueia
-async function facetas(){try{const tk=await getToken();if(!tk)return;
-  const rr=await fetch(SB_URL+'/rest/v1/rpc/apis_orgaos_facetas',{method:'POST',headers:{apikey:SB_ANON,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:'{}'});
-  const data=rr.ok?await rr.json():null;if(!data)return;const u=document.getElementById('uf'),d=document.getElementById('dom');
-  if(u&&u.options.length<=1)(data.ufs||[]).forEach(x=>u.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));
-  if(d&&d.options.length<=1)(data.dominios||[]).forEach(x=>d.insertAdjacentHTML('beforeend','<option>'+esc(x)+'</option>'));}catch(e){}}
-let rows=[],sortC='uf',sortD=1;
+// wiring por addEventListener (não depende de handlers inline, que algumas extensões/CSP bloqueiam)
+(function(){var f=document.getElementById('gform'),ci=document.getElementById('codigo'),db=document.getElementById('gdbg');
+  if(f)f.addEventListener('submit',function(e){e.preventDefault();destravar();});
+  if(ci){ci.addEventListener('input',function(){CAP=ci.value.replace(/\D/g,'');if(db&&document.getElementById('gate')&&!document.getElementById('gate').classList.contains('hidden'))db.textContent=CAP.length+'/4 dígitos';});
+    ci.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();destravar();}});ci.focus();}})();
 let _fac=false;
 async function carregar(){const tok=await getToken();if(!tok){document.getElementById('tw').innerHTML='<div class=msg>Você precisa estar logado nos <a href="./">painéis</a> (nesta mesma janela do navegador). Faça login lá e recarregue esta página.</div>';return;}
   if(!_fac){_fac=true;facetas();}
