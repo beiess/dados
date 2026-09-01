@@ -90,7 +90,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.23</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.24</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -403,13 +403,17 @@ function toggleMuni(ev){closePop();const p=document.createElement('div');p.class
   p.innerHTML='<div style="font-size:11px;color:#57606a;margin-bottom:6px">Brasil inteiro — use “Estado ▾” para restringir a lista. Dado municipal carregado: MG (Painel 7 obras: Brasil). <b>Carregar</b> aplica o filtro do topo a todos os painéis.</div>'
     +'<input class=s placeholder="buscar município…" oninput="mfilter(this.value)">'
     +'<div class=row><button onclick="mall(true)">marcar todos</button><button onclick="mall(false)">limpar</button></div>'
-    +'<div class=lst id=mlst></div><div class=row><button onclick="carregar()" style="background:#0d1117;color:#fff">Carregar ('+sel.size+')</button></div>';
+    +'<div class=row id=mmatchbar></div>'
+    +'<div class=lst id=mlst></div><div class=row><button id=mcarga onclick="carregar()" style="background:#0d1117;color:#fff">Carregar ('+sel.size+')</button></div>';
   document.body.appendChild(p);mfilter('');}
-function mfilter(q){q=norm(q);const lst=document.getElementById('mlst');if(!lst)return;
-  lst.innerHTML=muniList().filter(m=>!q||norm(m.nome).includes(q)).slice(0,500).map(m=>
-    '<label><input type=checkbox '+(sel.has(m.ibge)?'checked':'')+' onchange="msel2(\''+m.ibge+'\',this.checked)"> '+esc(m.nome)+' <span style="color:#8c959f">'+(m.uf||'MG')+(m.n1?' · '+m.n1:'')+'</span></label>').join('');}
+function mfilter(q){const nq=norm(q);const lst=document.getElementById('mlst');if(!lst)return;
+  const hits=muniList().filter(m=>!nq||norm(m.nome).includes(nq));
+  lst.innerHTML=hits.slice(0,500).map(m=>
+    '<label><input type=checkbox '+(sel.has(m.ibge)?'checked':'')+' onchange="msel2(\''+m.ibge+'\',this.checked)"> '+esc(m.nome)+' <span style="color:#8c959f">'+(m.uf||'MG')+(m.n1?' · '+m.n1:'')+'</span></label>').join('');
+  const mb=document.getElementById('mmatchbar');if(mb)mb.innerHTML=nq?'<button onclick="mmatch(true)" title="Marca os '+hits.length+' municípios que batem com a busca">✓ marcar resultados ('+hits.length+')</button><button onclick="mmatch(false)">✗ desmarcar</button>':'';}
 function msel2(ib,on){on?sel.add(ib):sel.delete(ib);}
 function mall(on){sel=new Set(on?muniList().map(m=>m.ibge):[]);closePop();toggleMuni({target:document.getElementById('msel')});}
+function mmatch(on){const p=document.getElementById('mpop');if(!p)return;const nq=norm(p.querySelector('.s').value);const hits=muniList().filter(m=>!nq||norm(m.nome).includes(nq));hits.forEach(m=>on?sel.add(m.ibge):sel.delete(m.ibge));const b=document.getElementById('mcarga');if(b)b.textContent='Carregar ('+sel.size+')';mfilter(p.querySelector('.s').value);}
 // filtros do cabeçalho: compõem UMA consulta no servidor (colunas materializadas esfera/uf/ibge/tipo_orgao)
 const UFS27=['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 const ESFS=[['municipal','Municipal (MG, por município)'],['estadual','Estadual e outras fontes'],['federal','Federal (SIAPE/Congresso)'],['justica','Justiça (magistrados/MP)'],['privado','Privado (eventos/empresas)']];
@@ -833,13 +837,16 @@ function openFilter(ev,col){ev.stopPropagation();closePop();const vals=distinct(
   const p=document.createElement('div');p.className='pop';p.id='fpop';p._col=col;p._vals=vals;
   const rc=ev.target.getBoundingClientRect();p.style.left=Math.max(8,rc.left-220)+'px';p.style.top=(rc.bottom+4)+'px';
   let extra=(col==='responsabilidade')?'<div class=row><button onclick="respGlobal()" style="background:#0969da;color:#fff">🔎 buscar em TODO o MG</button></div>':'';
-  p.innerHTML='<input class=s placeholder="buscar…" oninput="ffilter(this.value)"><div class=row><button onclick="fall(true)">todos</button><button onclick="fall(false)">nenhum</button></div><div class=lst id=flst></div>'+extra;
+  p.innerHTML='<input class=s placeholder="buscar…" oninput="ffilter(this.value)"><div class=row><button onclick="fall(true)">todos</button><button onclick="fall(false)">nenhum</button></div><div class=row id=fmatchbar></div><div class=lst id=flst></div>'+extra;
   document.body.appendChild(p);ffilter('');}
-function ffilter(q){q=norm(q);const p=document.getElementById('fpop');if(!p)return;const col=p._col,cur=fstate[tab][col];
-  document.getElementById('flst').innerHTML=p._vals.filter(v=>!q||norm(v).includes(q)).slice(0,800).map(v=>
-    '<label><input type=checkbox '+(!cur||cur.has(v)?'checked':'')+' onchange="ftoggle(this.dataset.v,this.checked)" data-v="'+esc(v)+'"> '+esc(v)+'</label>').join('');}
+function ffilter(q){const nq=norm(q);const p=document.getElementById('fpop');if(!p)return;const col=p._col,cur=fstate[tab][col];
+  const hits=p._vals.filter(v=>!nq||norm(v).includes(nq));
+  document.getElementById('flst').innerHTML=hits.slice(0,800).map(v=>
+    '<label><input type=checkbox '+(!cur||cur.has(v)?'checked':'')+' onchange="ftoggle(this.dataset.v,this.checked)" data-v="'+esc(v)+'"> '+esc(v)+'</label>').join('');
+  const mb=document.getElementById('fmatchbar');if(mb)mb.innerHTML=nq?'<button onclick="fmatch(true)" title="Marca todos os '+hits.length+' valores que batem com a busca">✓ marcar resultados ('+hits.length+')</button><button onclick="fmatch(false)">✗ desmarcar</button>':'';}
 function ftoggle(v,on){const p=document.getElementById('fpop'),col=p._col;let s=fstate[tab][col];if(!s){s=new Set(p._vals);fstate[tab][col]=s;}on?s.add(v):s.delete(v);render();}
 function fall(on){const p=document.getElementById('fpop');fstate[tab][p._col]=on?null:new Set();ffilter(p.querySelector('.s').value);render();}
+function fmatch(on){const p=document.getElementById('fpop');if(!p)return;const col=p._col;const nq=norm(p.querySelector('.s').value);const hits=p._vals.filter(v=>!nq||norm(v).includes(nq));let s=fstate[tab][col];if(!s){s=new Set(p._vals);fstate[tab][col]=s;}hits.forEach(v=>on?s.add(v):s.delete(v));ffilter(p.querySelector('.s').value);render();}
 function respGlobal(){const p=document.getElementById('fpop');const s=fstate[1]['responsabilidade'];let roles=(s&&s.size)?[...s]:p._vals;if(!roles.length){alert('selecione');return;}buscaResp(roles);}
 function aplicarPeriodo(){PER.on=document.getElementById('perOn').checked;PER.ini=document.getElementById('dtini').value;PER.fim=document.getElementById('dtfim').value;
   Object.keys(panelSig).forEach(n=>{if(panelSig[n]&&panelSig[n]!=='XREF')panelSig[n]='';});   // invalida p/ recarregar com o novo período
