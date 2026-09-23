@@ -90,7 +90,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.24</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.25</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -126,7 +126,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <button onclick="limparFiltros()">limpar filtros</button>
   <button onclick="exportCSV()">⬇ CSV</button>
   <button onclick="exportXLSX()">⬇ Excel</button>
-  <button onclick="exportServer()" title="baixa TODA a seleção do servidor (sem o teto de tela) e exporta">⬇ tudo do servidor</button>
+  <button onclick="exportServer()" title="baixa TODA a seleção do servidor (sem teto) e exporta em arquivos de 600.000 linhas, numerados">⬇ tudo do servidor</button>
   <button onclick="openEnriq()" title="Envie CSV/Excel com nome ou CPF — devolve o arquivo preenchido com os dados do Painel 1">⬆ Enriquecer arquivo</button>
   <button onclick="openNova()" title="Cadastrar pessoa nova no Painel 1 (com verificação de duplicidade)">➕ Nova pessoa</button>
   <span id=xtag></span>
@@ -290,7 +290,7 @@ let groupBy={1:[],2:[],3:[],4:[],5:[],6:[],7:[]};                // ordem de agr
 let expanded={1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set(),6:new Set(),7:new Set()};
 let capped={1:0,2:0,3:0,4:0,5:0,6:0,7:0};                       // nº baixado quando bateu no teto (p/ export do servidor)
 let _disp=[], _shown=0;                                     // render progressivo
-const CHUNK=400, DLCAP=600000;                              // linhas por lote de render; teto de download
+const CHUNK=400, DLCAP=600000, FILECAP=600000, PARTGAP=900;   // render por lote; teto da carga de TELA; linhas por ARQUIVO exportado; pausa entre downloads
 function allCols(){return colsOf();}
 function visibleCols(){const v=visState[tab];if(!v)return colsOf().filter(c=>!(EXTRA[tab]||[]).includes(c));return v.order.filter(c=>(colsOf().includes(c)||isLinkCol(c))&&!v.hidden.has(c));}
 function ensureVis(){let v=visState[tab];if(!v){v={order:colsOf().slice(),hidden:new Set(EXTRA[tab]||[])};visState[tab]=v;}
@@ -564,7 +564,7 @@ async function loadPanel(n,ids,quiet){
       if(cargo)ext+='&and=(or(cargo.ilike.*'+enc(cargo)+'*,funcao.ilike.*'+enc(cargo)+'*,atividade.ilike.*'+enc(cargo)+'*))';
       outer:for(const e of es)for(const u of (ufs||[null])){
         rows=rows.concat(await sbfetch('servidores_brasil_2026','select='+P12C.join(',')+'&esfera=eq.'+e+(u?'&uf=eq.'+u:'')+ext,pr));cap12=Math.max(cap12,_lastCapped);
-        if(rows.length>=DLCAP){cap12=rows.length;break outer;}}
+        if(rows.length>=(capOverride||DLCAP)){cap12=rows.length;break outer;}}
       const seen=new Set();out=rows.filter(r=>!seen.has(r.id)&&(seen.add(r.id),true));cap=cap12;}
   }else if(n===13){ // contatos (Outras Fontes): município(s) → ibge; senão UF; tipo de órgão do topo → códigos PM/CM/PREV/CONSORCIO/OUTRO
     const tp=fv('cttipo'),mun=fv('ctmun'),org=fv('ctorg'),nome=fv('ctnome'),best=fv('ctbest');
@@ -682,7 +682,7 @@ function renderBR(){var gb=document.getElementById('gbar');if(gb)gb.innerHTML=''
   +'<input class=s id=brnome placeholder="nome do servidor" style="width:200px">'
   +'<input class=s id=brcargo placeholder="cargo, função ou atividade" style="width:200px">'
   +'<button onclick="loadBR()" style="background:#0969da;color:#fff">Carregar</button></div>'
-  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Combine os filtros à vontade; deixe tudo vazio para baixar a base inteira (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas — prefira filtrar). O filtro do topo (Esfera/Estado/Tipo) já se aplica; estes campos refinam.</div></div>';}
+  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Combine os filtros à vontade; deixe tudo vazio para baixar a base inteira (a tela carrega até '+DLCAP.toLocaleString('pt-BR')+' linhas; “⬇ tudo do servidor” traz o resultado inteiro em arquivos de '+FILECAP.toLocaleString('pt-BR')+' linhas). O filtro do topo (Esfera/Estado/Tipo) já se aplica; estes campos refinam.</div></div>';}
 function brReset(){dados[12]=[];fstate[12]={};sortState[12]=null;groupBy[12]=[];expanded[12]=new Set();capped[12]=0;render();}
 async function loadBR(){
   try{await loadPanelQ(12,[...sel]);}catch(e){showErr(e.message);return;}
@@ -699,7 +699,7 @@ function renderCT(){var gb=document.getElementById('gbar');if(gb)gb.innerHTML=''
   +'<input class=s id=ctnome placeholder="nome, cargo ou e-mail" style="width:220px">'
   +'<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type=checkbox id=ctbest> só o melhor contato por cidade+órgão</label>'
   +'<button onclick="loadCT()" style="background:#0969da;color:#fff">Carregar</button></div>'
-  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Combine os filtros à vontade; deixe tudo vazio para baixar a base inteira (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas). O filtro do topo (Municípios/Estado/Tipo) já se aplica; estes campos refinam.</div></div>';}
+  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Combine os filtros à vontade; deixe tudo vazio para baixar a base inteira (teto de tela de '+DLCAP.toLocaleString('pt-BR')+' linhas; “⬇ tudo do servidor” exporta o resultado inteiro em partes). O filtro do topo (Municípios/Estado/Tipo) já se aplica; estes campos refinam.</div></div>';}
 function ctReset(){dados[13]=[];fstate[13]={};sortState[13]=null;groupBy[13]=[];expanded[13]=new Set();capped[13]=0;render();}
 async function loadCT(){
   try{await loadPanelQ(13,[...sel]);}catch(e){showErr(e.message);return;}
@@ -717,7 +717,7 @@ function renderP14(){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='
   +'<input class=s id=p14org placeholder="órgão/entidade" style="width:200px">'
   +'<input class=s id=p14nome placeholder="nome, cargo ou e-mail" style="width:220px">'
   +'<button onclick="loadP14()" style="background:#0969da;color:#fff">Carregar</button></div>'
-  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Combine os filtros; deixe tudo vazio para baixar a base inteira (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas). O filtro do topo (Esfera/Estado/Municípios/Tipo) já se aplica; estes campos refinam. MG primeiro: use UF=MG.</div></div>';}
+  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Combine os filtros; deixe tudo vazio para baixar a base inteira (teto de tela de '+DLCAP.toLocaleString('pt-BR')+' linhas; “⬇ tudo do servidor” exporta o resultado inteiro em partes). O filtro do topo (Esfera/Estado/Municípios/Tipo) já se aplica; estes campos refinam. MG primeiro: use UF=MG.</div></div>';}
 function p14Reset(){dados[14]=[];fstate[14]={};sortState[14]=null;groupBy[14]=[];expanded[14]=new Set();capped[14]=0;panelSig[14]='';render();}
 async function loadP14(){
   try{await loadPanelQ(14,[...sel]);}catch(e){showErr(e.message);return;}
@@ -734,7 +734,7 @@ function renderP16(){var gb=document.getElementById('gbar');if(gb)gb.innerHTML='
   +'<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type=checkbox id=p16uasg> só com UASG/SISG</label>'
   +'<label style="display:flex;align-items:center;gap:4px;font-size:12px" title="exclui órgãos com CNPJ baixado/inapto/suspenso na RFB"><input type=checkbox id=p16ativo> só CNPJ ativo (RFB)</label>'
   +'<button onclick="loadP16()" style="background:#0969da;color:#fff">Carregar</button></div>'
-  +'<div style="margin-top:8px;font-size:11px;color:#57606a">O filtro do topo (Estado/Municípios/Esfera/Tipo de órgão) já se aplica; estes campos refinam. Vazio = Brasil inteiro (teto de '+DLCAP.toLocaleString('pt-BR')+' linhas — prefira filtrar por UF). Em “☰ colunas” há os campos vinculados (prefeitura do município, cadastro MG/BR, obras, validação do e-mail, quem usa o e-mail).</div></div>';}
+  +'<div style="margin-top:8px;font-size:11px;color:#57606a">O filtro do topo (Estado/Municípios/Esfera/Tipo de órgão) já se aplica; estes campos refinam. Vazio = Brasil inteiro (teto de tela de '+DLCAP.toLocaleString('pt-BR')+' linhas; “⬇ tudo do servidor” exporta o resultado inteiro em partes — prefira filtrar por UF). Em “☰ colunas” há os campos vinculados (prefeitura do município, cadastro MG/BR, obras, validação do e-mail, quem usa o e-mail).</div></div>';}
 function p16Reset(){dados[16]=[];fstate[16]={};sortState[16]=null;groupBy[16]=[];expanded[16]=new Set();capped[16]=0;panelSig[16]='';render();}
 async function loadP16(){
   try{await loadPanelQ(16,[...sel]);}catch(e){showErr(e.message);return;}
@@ -787,7 +787,7 @@ async function renderE(){var gb=document.getElementById('gbar');if(gb)gb.innerHT
   +'<button class=chip onclick="ecPreset({ecTag:\'sem_mx\'})" title="domínio sem correio">🚫 Sem correio</button>'
   +'<button class=chip onclick="ecPreset(null)" title="limpa filtros e recarrega tudo">↺ Todos</button>'
   +'<span style="flex:1"></span><span style="font-size:11px;color:#57606a">carregue e use ⬇ CSV / ⬇ Excel / ⬇ tudo do servidor no topo</span></div>'
-  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Os indicadores acima são da base inteira; a lista respeita os filtros — inclusive o filtro do topo (Estado/Municípios/Esfera, pelos vínculos do e-mail) — teto de '+DLCAP.toLocaleString('pt-BR')+' linhas. Cada e-mail é único; a coluna <b>estratégia</b> traz a recomendação de ação. Em “☰ colunas” há nome, CPF, órgão, CNPJ, cidade e UF vinculados a cada e-mail.</div></div>';
+  +'<div style="margin-top:8px;font-size:11px;color:#57606a">Os indicadores acima são da base inteira; a lista respeita os filtros — inclusive o filtro do topo (Estado/Municípios/Esfera, pelos vínculos do e-mail) — teto de tela de '+DLCAP.toLocaleString('pt-BR')+' linhas (“⬇ tudo do servidor” exporta o resultado inteiro em partes). Cada e-mail é único; a coluna <b>estratégia</b> traz a recomendação de ação. Em “☰ colunas” há nome, CPF, órgão, CNPJ, cidade e UF vinculados a cada e-mail.</div></div>';
   try{const {data}=await sb.rpc('email_central_stats');const s=data||{};
     const box=document.getElementById('ecKPI');if(!box)return;
     const cls=s.classificados||0, mx=s.com_mx||0;
@@ -889,23 +889,46 @@ function sortBy(ev,col){ev.stopPropagation();const s=sortState[tab];
   if(s&&s.col===col){if(s.dir==='asc')s.dir='desc';else sortState[tab]=null;}else sortState[tab]={col,dir:'asc'};
   render();}
 function csvval(v){v=''+(v==null?'':v);return /[;"\n\r]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v;}
-function exportCSV(){const cols=visibleCols(),flt=viewRows();if(!flt.length){alert('nada para exportar');return;}
-  const L=[cols.join(';')];for(const r of flt)L.push(cols.map(c=>{let v=r[c]||'';if(isCpfCol(c)&&anon)v=mask(v);return csvval(v);}).join(';'));
-  const b=new Blob(['﻿'+L.join('\r\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');
-  a.href=URL.createObjectURL(b);a.download='painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);}
-function exportXLSX(){if(typeof XLSX==='undefined'){alert('biblioteca Excel ainda carregando — tente em instantes');return;}
+// ── exportação em PARTES: o resultado inteiro sai em arquivos de FILECAP linhas, numerados 1..N ──
+function dlBlob(b,nome){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nome;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);}
+function partName(tot,i,np,ext){const w=Math.max(2,(''+np).length),sq=String(i+1).padStart(w,'0');
+  return 'painel'+tab+'_'+tot+'reg'+(anon?'_cpf-mascarado':'')+(np>1?'_'+sq+'de'+String(np).padStart(w,'0'):'')+'.'+ext;}
+function okPartes(np,tot,ext){if(np<2)return true;
+  return confirm(tot.toLocaleString('pt-BR')+' registros → '+np+' arquivos .'+ext+' de até '+FILECAP.toLocaleString('pt-BR')+
+    ' linhas cada, numerados 1 a '+np+' no nome. O navegador pode pedir permissão p/ baixar vários arquivos. Continuar?');}
+const pausa=ms=>new Promise(r=>setTimeout(r,ms));
+let _cntBak=null;
+function partProg(i,np){const e=document.getElementById('cnt');if(!e||np<2)return;
+  if(_cntBak===null)_cntBak=e.textContent;e.textContent='⬇ gerando arquivo '+(i+1)+' de '+np+'… ('+_cntBak+')';}
+function partDone(){const e=document.getElementById('cnt');if(e&&_cntBak!==null)e.textContent=_cntBak;_cntBak=null;}
+async function exportCSV(){const cols=visibleCols(),flt=viewRows();if(!flt.length){alert('nada para exportar');return;}
+  const np=Math.max(1,Math.ceil(flt.length/FILECAP));if(!okPartes(np,flt.length,'csv'))return;
+  const hdr=cols.join(';');
+  for(let i=0;i<np;i++){partProg(i,np);
+    const L=[hdr];for(const r of flt.slice(i*FILECAP,(i+1)*FILECAP))L.push(cols.map(c=>{let v=r[c]||'';if(isCpfCol(c)&&anon)v=mask(v);return csvval(v);}).join(';'));
+    dlBlob(new Blob(['﻿'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}),partName(flt.length,i,np,'csv'));
+    if(i<np-1)await pausa(PARTGAP);}
+  partDone();}
+async function exportXLSX(){if(typeof XLSX==='undefined'){alert('biblioteca Excel ainda carregando — tente em instantes');return;}
   const cols=visibleCols(),flt=viewRows();if(!flt.length){alert('nada para exportar');return;}
-  const aoa=[cols];for(const r of flt)aoa.push(cols.map(c=>{let v=r[c]==null?'':r[c];if(isCpfCol(c)&&anon)v=mask(v);
-    return NUMC[c]?parseNum(v):(''+v);}));
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=cols.map(c=>({wch:Math.min(60,Math.max(10,(WID[c]||120)/7))}));
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'painel'+tab);
-  XLSX.writeFile(wb,'painel'+tab+'_'+flt.length+'reg'+(anon?'_cpf-mascarado':'')+'.xlsx');}
-// baixa TODA a seleção do servidor (ignora o teto de tela) e exporta — p/ o caso "MG inteiro"
+  const np=Math.max(1,Math.ceil(flt.length/FILECAP));if(!okPartes(np,flt.length,'xlsx'))return;   // 1 planilha não passa de 1.048.576 linhas
+  for(let i=0;i<np;i++){partProg(i,np);
+    const aoa=[cols];for(const r of flt.slice(i*FILECAP,(i+1)*FILECAP))aoa.push(cols.map(c=>{let v=r[c]==null?'':r[c];if(isCpfCol(c)&&anon)v=mask(v);
+      return NUMC[c]?parseNum(v):(''+v);}));
+    const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=cols.map(c=>({wch:Math.min(60,Math.max(10,(WID[c]||120)/7))}));
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'painel'+tab+(np>1?'_'+(i+1):''));
+    XLSX.writeFile(wb,partName(flt.length,i,np,'xlsx'));
+    if(i<np-1)await pausa(PARTGAP);}
+  partDone();}
+// baixa TODA a seleção do servidor (SEM teto) e exporta em arquivos sequenciais de FILECAP linhas — p/ o caso "MG inteiro"
 async function exportServer(){
   if(panelSig[tab]==='XREF'||tab===7||tab===3||tab===2||(!curSig&&tab>=12)){exportCSV();return;}
   if(!sel.size&&!selUF.size&&!p1WantOut([...sel])){alert('Monte o filtro no topo e clique Carregar antes.');return;}
-  if(!confirm('Baixar TODOS os registros da seleção direto do servidor (sem o teto de tela) e então exportar? Em seleções grandes pode demorar e usar bastante memória.'))return;
-  capOverride=2000000;
+  const est=_lastTotal>0?(' (≈ '+_lastTotal.toLocaleString('pt-BR')+' registros na última consulta)'):'';
+  if(!confirm('Baixar TODOS os registros da seleção direto do servidor, sem teto'+est+
+    ', e exportar em arquivos de até '+FILECAP.toLocaleString('pt-BR')+' linhas cada (numerados)? Em seleções grandes pode demorar e usar bastante memória.'))return;
+  capOverride=Infinity;   // sem corte: baixa até esgotar o resultado da busca
   try{await loadPanelQ(tab,[...sel]);}catch(e){capOverride=0;showErr(e.message);return;}
   capOverride=0;render();exportCSV();}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
@@ -981,7 +1004,7 @@ function render(){if(document.getElementById('app').classList.contains('hidden')
   const body=_disp.slice(0,_shown).map(rowHTML).join('')||'<tr><td>'+esc(NOTE[tab]||((dados[tab]||[]).length?'nenhum registro passa pelos filtros':'sem dados'))+'</td></tr>';
   const t=tw();t.innerHTML='<table>'+cg+head+'<tbody id=tb>'+body+'</tbody></table>';t.onscroll=onScroll;
   const nm={1:'servidores',2:'órgãos',3:'fornecedores',4:'contratos',5:'linhas de despesa',6:'responsáveis',7:'servidores do estado',10:'órgãos que contratam obra',11:'pessoas ligadas a obras',12:'servidores (Brasil)',13:'contatos',14:'gestores RH/folha/ordenadores',15:'e-mails',16:'unidades gestoras (PNCP)',17:'APIs / portais de dados'}[tab];
-  const cap=capped[tab]?(' ⚠ baixados '+capped[tab].toLocaleString('pt-BR')+' (teto); use “⬇ do servidor” p/ exportar TUDO'):'';
+  const cap=capped[tab]?(' ⚠ baixados '+capped[tab].toLocaleString('pt-BR')+' (teto de tela); use “⬇ tudo do servidor” p/ exportar TUDO em arquivos de '+FILECAP.toLocaleString('pt-BR')+' linhas'):'';
   const gi=groupBy[tab].length?(' · '+_disp.filter(d=>d.k==='g'&&d.lv===0).length.toLocaleString('pt-BR')+' grupos'):'';
   document.getElementById('cnt').textContent=flt.length.toLocaleString('pt-BR')+' '+nm+gi+cap;
   const tc=TOTC[tab]||[];document.getElementById('tot').textContent=tc.length?tc.map(c=>'Σ '+c+': '+fmtBR(flt.reduce((s,r)=>s+parseNum(r[c]),0))).join('   ·   '):'';
