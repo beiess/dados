@@ -90,7 +90,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
 </div>
 <div id=app class=hidden>
 <header>
-  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.25</span></h1>
+  <h1>Painel Estratégico <span style="opacity:.5;font-size:11px">v11.26</span></h1>
   <button class=mbtn id=esel onclick="toggleEsf(event)" title="Municipal (por municípios) × Estadual e outras fontes (por Estado)">Esfera ▾</button>
   <button class=mbtn id=usel onclick="toggleUF(event)" title="Estados (UF): servidores estaduais/outras fontes; também restringe a lista de municípios">Estado ▾</button>
   <button class=mbtn id=msel onclick="toggleMuni(event)">Municípios ▾</button>
@@ -127,6 +127,7 @@ tr.grp .gf{color:#8c959f;font-weight:400}
   <button onclick="exportCSV()">⬇ CSV</button>
   <button onclick="exportXLSX()">⬇ Excel</button>
   <button onclick="exportServer()" title="baixa TODA a seleção do servidor (sem teto) e exporta em arquivos de 600.000 linhas, numerados">⬇ tudo do servidor</button>
+  <button id=p1dump onclick="p1DumpAll()" style="display:none" title="Baixa a base INTEIRA do Painel 1 direto do servidor, sem listar na tela, em arquivos CSV de 600.000 linhas numerados (pede senha)">🔐 ⬇ Painel 1 completo</button>
   <button onclick="openEnriq()" title="Envie CSV/Excel com nome ou CPF — devolve o arquivo preenchido com os dados do Painel 1">⬆ Enriquecer arquivo</button>
   <button onclick="openNova()" title="Cadastrar pessoa nova no Painel 1 (com verificação de duplicidade)">➕ Nova pessoa</button>
   <span id=xtag></span>
@@ -657,7 +658,8 @@ async function carregar(){closePop();const ids=[...sel];
   prefetchAll(ids,t);
 }
 const TABIDS={t1:1,t2:2,t3:3,t4:4,t5:5,t6:6,t7:7,t8:8,t9:9,t10:10,t11:11,t12:12,t13:13,t14:14,t15:15,t16:16};
-function setTabUI(){Object.entries(TABIDS).forEach(([id,n])=>{const e=document.getElementById(id);if(!e)return;e.classList.toggle('on',tab===n);
+function setTabUI(){const bd=document.getElementById('p1dump');if(bd)bd.style.display=(tab===1?'':'none');
+  Object.entries(TABIDS).forEach(([id,n])=>{const e=document.getElementById(id);if(!e)return;e.classList.toggle('on',tab===n);
   if(!e.dataset.lbl)e.dataset.lbl=e.textContent.trim();
   const k=(dados[n]||[]).length, stale=!!(curSig&&panelSig[n]!==curSig&&panelSig[n]!=='ALL'&&panelSig[n]!=='XREF');
   e.innerHTML=esc(e.dataset.lbl)+(inflight[n]?' <span class=bdg title="carregando…">⏳</span>':(k?' <span class="bdg'+(stale?' old':'')+'" title="'+(stale?'carregado com um filtro anterior':'registros carregados com o filtro atual')+'">'+k.toLocaleString('pt-BR')+'</span>':''));});}
@@ -931,6 +933,80 @@ async function exportServer(){
   capOverride=Infinity;   // sem corte: baixa até esgotar o resultado da busca
   try{await loadPanelQ(tab,[...sel]);}catch(e){capOverride=0;showErr(e.message);return;}
   capOverride=0;render();exportCSV();}
+// ── Painel 1 completo: dump direto do servidor, SEM listar na tela ──────────────────────
+// Por que não reaproveita o caminho normal: 8,4M linhas em memória + render estouram a aba.
+// Aqui a base é varrida em janelas de id (keyset, limit=1000 = max-rows do PostgREST), cada
+// lote vira texto CSV na hora (o objeto é descartado) e o arquivo é emitido a cada P1PART
+// linhas — memória constante, nada renderizado, retomada indicada em caso de falha.
+const P1SENHA='AndreAzevedo', P1PART=600000, P1CONC=6, P1JAN=200000, P1PAGE=1000, P1BL=560;   // senha do dump; linhas por arquivo; faixas simultâneas; linhas por janela de ids; linhas por requisição (max-rows do PostgREST); bytes/linha medidos (só p/ estimar o disco)
+const P1DUMPC=['id','uf','ibge','esfera','tipo_orgao','orgao','setor','cargo_funcao','nome','cpf','data_nascimento','sexo','matricula','telefone','email','instagram','contato_adicional','remuneracao','responsabilidade','sancionado','mandato_eletivo','pep','candidatura','escolaridade','estado_civil','cor_raca','ocupacao','socio_empresa','vinculo_externo','entidade_id','dup_of','nasc_fonte','sexo_fonte','perfil_fonte','consta_site','origem','data_alteracao'];
+let _p1Run=false,_p1Stop=false;
+function p1DumpStop(){_p1Stop=true;const b=document.getElementById('p1stop');if(b)b.textContent='⏳ parando após o lote atual…';}
+function p1Stat(h){tw().innerHTML='<div class=msg>'+h+'</div>';}
+function p1Tam(b){return b>=1073741824?(b/1073741824).toFixed(2)+' GB':Math.round(b/1048576)+' MB';}
+function p1Bar(pc){return '<div class=barwrap style="width:420px"><div class=bar style="width:'+pc+'%;animation:none;margin-left:0"></div></div>';}
+async function p1DumpAll(){
+  if(_p1Run){alert('Já existe um download do Painel 1 em andamento.');return;}
+  const s=prompt('Painel 1 completo — informe a senha para liberar o download:');
+  if(s===null)return;
+  if(s!==P1SENHA){alert('Senha incorreta.');return;}
+  let t=await token();if(!t){alert('sessão expirada — recarregue a página e entre de novo.');return;}
+  const qs='select='+P1DUMPC.join(',')+'&order=id';
+  p1Stat('🔎 medindo a base do Painel 1…'+p1Bar(0));
+  let total=0,minId=0,maxId=0;
+  try{const f=await fetchKey('painel1_servidores',qs,t,null,null,1,true);
+    if(!f.data.length){p1Stat('Painel 1 sem registros.');return;}
+    total=f.total>0?f.total:0;minId=f.data[0].id;
+    maxId=(await fetchKey('painel1_servidores','select=id&order=id.desc',t,null,null,1,false)).data[0].id;
+  }catch(e){showErr('Painel 1 completo: '+e.message);return;}
+  const np=Math.max(1,Math.ceil(total/P1PART));
+  if(!confirm('Painel 1 completo: ~'+total.toLocaleString('pt-BR')+' registros × '+P1DUMPC.length+' colunas\n→ ~'+np+
+    ' arquivos .csv de '+P1PART.toLocaleString('pt-BR')+' linhas, numerados painel1_001.csv, painel1_002.csv…\n\n'+
+    '⚠ ocupa ~'+p1Tam(total*P1BL)+' no disco somando todos os arquivos — confira o espaço livre antes.\n'+
+    'CPF: '+(anon?'MASCARADO':'EM CLARO')+' (botão 🔒 no topo).\n'+
+    'O navegador vai pedir permissão p/ baixar vários arquivos — é preciso aceitar.\n\nComeçar?'))return;
+  _p1Run=true;_p1Stop=false;
+  const t0=Date.now(),hdr=P1DUMPC.join(';');
+  let buf=[],parte=0,lidas=0,bytes=0,cur=minId-1;
+  const dens=Math.max(1,(maxId-minId+1)/Math.max(1,total||1)),span=Math.max(1000,Math.ceil(P1JAN*dens));
+  const emite=n=>{parte++;const nome='painel1_'+String(parte).padStart(3,'0')+'.csv';
+    const txt='\ufeff'+hdr+'\r\n'+buf.splice(0,n).join('\r\n')+'\r\n';bytes+=txt.length;
+    dlBlob(new Blob([txt],{type:'text/csv;charset=utf-8'}),nome);return nome;};
+  const stat=ex=>{const pc=total?Math.min(100,Math.round(lidas/total*100)):0;
+    p1Stat('<b>⬇ Painel 1 completo</b> — '+lidas.toLocaleString('pt-BR')+' de ~'+total.toLocaleString('pt-BR')+' linhas ('+pc+'%) · '+
+      parte+' arquivo(s) · '+p1Tam(bytes)+' gravados · '+Math.round((Date.now()-t0)/1000)+'s'+(ex||'')+p1Bar(pc)+
+      '<button id=p1stop onclick="p1DumpStop()">⏹ parar</button> <span style="font-size:11px;color:#57606a">pode deixar a aba aberta em segundo plano</span>');};
+  stat('');
+  try{
+    while(cur<maxId&&!_p1Stop){
+      const b=Math.min(maxId,cur+span);
+      t=(await token())||t;                                   // renova o token a cada janela (dump longo)
+      const w=Math.max(1,Math.ceil((b-cur)/P1CONC)),faixas=[];
+      for(let a=cur;a<b;a+=w)faixas.push([a,Math.min(a+w,b)]);
+      const lotes=await Promise.all(faixas.map(async([fa,fb])=>{let out=[],c=fa;
+        while(!_p1Stop){const r=await fetchKey('painel1_servidores',qs,t,c,fb,P1PAGE,false);
+          out=out.concat(r.data);if(r.data.length<P1PAGE)break;c=r.data[r.data.length-1].id;}
+        return out;}));
+      let linhas=[].concat.apply([],lotes);lotes.length=0;
+      linhas.sort((x,y)=>x.id-y.id);
+      lidas+=linhas.length;
+      for(const r of linhas)buf.push(P1DUMPC.map(c=>{let v=r[c]==null?'':r[c];if(isCpfCol(c)&&anon)v=mask(v);return csvval(v);}).join(';'));
+      linhas=null;
+      while(buf.length>=P1PART){const nome=emite(P1PART);stat(' · último: '+nome);await pausa(PARTGAP);}
+      cur=b;stat('');
+    }
+    if(buf.length)emite(buf.length);
+  }catch(e){const salvo=buf.length?emite(buf.length):null;_p1Run=false;
+    p1Stat('⚠ <b>Painel 1 completo parou</b> em '+lidas.toLocaleString('pt-BR')+' linhas · '+parte+' arquivo(s) salvo(s)'+
+      (salvo?' (o último, '+salvo+', é parcial)':'')+'<br>Erro: '+esc(e.message)+
+      '<br><span style="font-size:11px;color:#57606a">retomar a partir do id '+cur.toLocaleString('pt-BR')+'</span>'+
+      '<br><button onclick="render()">voltar ao painel</button>');return;}
+  _p1Run=false;
+  p1Stat('<b>✓ Painel 1 completo</b> — '+lidas.toLocaleString('pt-BR')+' linhas em '+parte+' arquivo(s): painel1_001.csv … painel1_'+
+    String(Math.max(parte,1)).padStart(3,'0')+'.csv · '+p1Tam(bytes)+' · '+Math.round((Date.now()-t0)/1000)+'s'+
+    (_p1Stop?' · <b>interrompido por você</b> (retomar a partir do id '+cur.toLocaleString('pt-BR')+')':'')+
+    '<br><button onclick="render()">voltar ao painel</button>');
+}
 function toggleAnon(){anon=!anon;var b=document.getElementById('anon');b.textContent=anon?'🔒 CPF oculto':'🔓 CPF visível';b.classList.toggle('on',anon);render();}
 let allOpen={1:false,2:false,3:false,4:false,5:false,6:false,7:false,10:false,11:false,12:false,13:false,14:false,15:false,16:false,17:false};
 // célula de uma linha-folha (usa as colunas visíveis)
